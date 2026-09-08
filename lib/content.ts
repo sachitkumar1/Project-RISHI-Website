@@ -346,5 +346,5 @@ export const APPLY = {
     { label: "Interviews", value: "9/12 – 9/13 · Invite only" },
   ],
   blurb:
-    "We recruit at the start of the Fall and Spring semesters. Come meet us at a coffee chat or info session, then submit your application before the deadline.",
+    "Applications open now!",
 };
