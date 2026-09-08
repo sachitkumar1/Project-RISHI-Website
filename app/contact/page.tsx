@@ -22,7 +22,7 @@ export default function ContactPage() {
             Let&rsquo;s talk.
           </h1>
           <p className="mt-6 max-w-md text-lg text-paper/80">
-            Questions about our work, partnerships, or joining the team? Reach out
+            Questions about our work or partnerships? Reach out
             — we&rsquo;d love to hear from you.
           </p>
           <a href={`mailto:${ORG.email}`} className="btn-accent mt-8">

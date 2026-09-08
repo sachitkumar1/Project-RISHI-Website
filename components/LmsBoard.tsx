@@ -1594,7 +1594,6 @@ function ClubCalendar({ tasks, events, archive, period, onOpenTask, onOpenEvent 
           </span>
         ))}
       </div>
-      <p className="mt-1 text-[11px] text-ink/40">Coloured by the project group / role of whoever assigned the task or created the event.</p>
 
       {openDay && (
         <Modal title={openDay.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} onClose={() => setOpenDay(null)}>
@@ -1643,7 +1642,6 @@ function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask,
   return (
     <div className="mt-10">
       <h3 className="font-display text-2xl font-semibold text-pine-deep">Full Club Overview</h3>
-      <p className="mt-1 text-sm text-ink/55">Club-wide tasks and events grouped by project / role. Use the toggles above to switch between active-only and everything, and to narrow the time period. You can only act on items you created yourself.</p>
       {nothing && <p className="mt-6 text-sm text-ink/45">Nothing matches the selected filters.</p>}
       <div className="mt-6 space-y-8">
         {LANE_ORDER.map((lane) => {

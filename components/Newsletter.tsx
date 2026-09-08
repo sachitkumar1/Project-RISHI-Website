@@ -36,10 +36,6 @@ export default function Newsletter() {
       <p className="font-display text-xl font-semibold text-paper">
         Sign up for our newsletter
       </p>
-      <p className="mt-1 text-sm text-paper/60">
-        The Director of Outreach&rsquo;s semesterly update, in your inbox.
-      </p>
-
       {done ? (
         <p className="mt-4 rounded-xl bg-marigold/15 px-4 py-3 text-sm text-marigold-soft">
           Thanks for subscribing — we&rsquo;ll be in touch.

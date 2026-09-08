@@ -197,10 +197,6 @@ export default function SettingsPage() {
                   <ReadonlyField label="Role(s)" value={profile.roleLabels.join(", ")} />
                 </div>
               </div>
-              <p className="mt-5 text-xs text-ink/45">
-                Name, email, and roles are managed by the club and can&rsquo;t be edited here. If
-                something looks wrong, let a lead know.
-              </p>
             </div>
 
             {/* Directory contact info (editable) */}

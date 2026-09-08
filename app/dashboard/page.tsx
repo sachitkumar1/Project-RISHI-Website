@@ -129,9 +129,6 @@ export default function DashboardPage() {
           <h2 className="font-display text-3xl font-semibold text-pine-deep">
             Tasks &amp; Events
           </h2>
-          <p className="mt-2 text-ink/60">
-            Assign and track work, and see everything on your personal calendar.
-          </p>
           <div className="mt-8">
             <LmsBoard />
           </div>

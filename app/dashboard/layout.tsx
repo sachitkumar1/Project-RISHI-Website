@@ -1,4 +1,4 @@
-import ChatWidget from "@/components/ChatWidget";
+// import ChatWidget from "@/components/ChatWidget"; // dormant for now
 import PushManager from "@/components/PushManager";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -6,7 +6,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <>
       {children}
       <PushManager />
-      <ChatWidget />
+      {/* Chat kept dormant for now — re-enable by uncommenting. */}
+      {/* <ChatWidget /> */}
     </>
   );
 }
