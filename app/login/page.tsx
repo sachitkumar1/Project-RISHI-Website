@@ -23,14 +23,14 @@ function LoginCard() {
       </span>
       <h1 className="mt-4 font-display text-4xl font-semibold">Member Login</h1>
       <p className="mt-3 text-sm text-paper/70">
-        Sign in with your Project RISHI Google account to access the member
+        Sign in with your Berkeley email to access the member
         dashboard.
       </p>
 
       {error && (
         <p className="mt-5 rounded-xl border border-red-300/30 bg-red-500/15 px-4 py-3 text-sm text-red-100">
           That account isn&rsquo;t on the member list. If this is a mistake,
-          please inform your lead.
+          please inform Webmaster.
         </p>
       )}
 
