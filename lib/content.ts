@@ -330,7 +330,7 @@ export const PROJECTS_PAGE = {
   //   YouTube example:  https://www.youtube.com/embed/VIDEO_ID
   //   Vimeo example:    https://player.vimeo.com/video/VIDEO_ID
   // Leave "" to show a labelled placeholder until you have the video.
-  videoEmbedUrl: "https://youtu.be/ux-yLtuwQyk",
+  videoEmbedUrl: "https://www.youtube.com/embed/ux-yLtuwQyk",
 };
 
 export const APPLY = {

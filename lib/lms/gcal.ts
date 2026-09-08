@@ -118,8 +118,14 @@ export async function exchangeCodeForRefreshToken(code: string): Promise<string 
       grant_type: "authorization_code",
     }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error("gcal: code exchange failed —", res.status, body.slice(0, 300));
+    return null;
+  }
   const data = (await res.json()) as { refresh_token?: string };
+  if (!data.refresh_token)
+    console.error("gcal: code exchange returned no refresh_token (Workspace policy or already-granted grant)");
   return data.refresh_token ?? null;
 }
 
@@ -135,6 +141,10 @@ async function accessTokenFromRefresh(refreshToken: string): Promise<string> {
     }),
   });
   if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    // Surface Google's real reason (invalid_grant, admin_policy_enforced,
+    // access_denied, …) so Workspace-domain / verification issues are diagnosable.
+    console.error("gcal: refresh token exchange failed —", res.status, body.slice(0, 300));
     const e = new Error("refresh_failed") as Error & { status?: number };
     e.status = res.status;
     throw e;
