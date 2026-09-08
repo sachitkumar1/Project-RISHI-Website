@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { pullRosterFromSheet, pushRosterToSheet } from "@/lib/lms/sheets";
 import { isRosterFromSheet } from "@/lib/members";
-import { listRosterRows } from "@/lib/lms/roster";
+import { getRosterMode, listRosterRows } from "@/lib/lms/roster";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,6 +20,7 @@ export async function GET() {
   }
   return NextResponse.json({
     source: isRosterFromSheet() ? "sheet" : "code",
+    mode: await getRosterMode(), // "code" = members.ts only; "sheet" = sheet controls logins
     rows,
     sheetUrl: `https://docs.google.com/spreadsheets/d/${process.env.ROSTER_SHEET_ID || "1dXFFftlCir1gEJYuNY7ms2ox8dkLjVfFlLpT-0SmFaw"}/edit`,
   });

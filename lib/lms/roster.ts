@@ -36,6 +36,44 @@ function sb(): SupabaseClient {
 
 const lc = (e: string) => e.trim().toLowerCase();
 
+// ---------------------------------------------------------------- roster mode
+// "code" (DEFAULT): ignore the Google Sheet; the roster comes only from
+// members.ts (BASE_MEMBERS). "sheet": the Google-Sheet-backed roster controls
+// logins, falling back to members.ts when empty. Persisted in lms_settings so
+// it survives restarts and is shared across serverless instances; togglable by
+// the webmaster from Settings.
+export type RosterMode = "sheet" | "code";
+const MODE_KEY = "roster_source";
+let cachedMode: RosterMode = "code"; // safe default: members.ts only
+
+export async function getRosterMode(): Promise<RosterMode> {
+  if (!usingSupabase) return cachedMode;
+  try {
+    const { data, error } = await sb()
+      .from("lms_settings").select("value").eq("key", MODE_KEY).maybeSingle();
+    if (error) return cachedMode;             // DB blip → keep last known (default code)
+    cachedMode = data?.value === "sheet" ? "sheet" : "code"; // anything but "sheet" → code
+    return cachedMode;
+  } catch {
+    return cachedMode;
+  }
+}
+
+export function currentRosterMode(): RosterMode {
+  return cachedMode;
+}
+
+export async function setRosterMode(mode: RosterMode): Promise<void> {
+  cachedMode = mode;
+  if (usingSupabase) {
+    const { error } = await sb().from("lms_settings").upsert(
+      { key: MODE_KEY, value: mode, updated_at: new Date().toISOString() },
+      { onConflict: "key" },
+    );
+    if (error) throw new Error(error.message);
+  }
+}
+
 /** A roster row as stored/edited. `active: false` blocks login without deleting. */
 export type RosterRow = Member & { active: boolean };
 
@@ -106,6 +144,12 @@ let loading: Promise<void> | null = null;
 
 async function load(): Promise<void> {
   try {
+    // members.ts-only mode (the default): skip the sheet/DB roster entirely.
+    if ((await getRosterMode()) === "code") {
+      applyRoster(null); // null → BASE_MEMBERS (members.ts)
+      loadedAt = Date.now();
+      return;
+    }
     const rows = await listRosterRows();
     const active = rows.filter((r) => r.active !== false);
     applyRoster(active.length > 0 ? active : null); // empty → fall back to code roster

@@ -49,7 +49,7 @@ export default function SettingsPage() {
   const [cPhone, setCPhone] = useState("");
   const [cSaving, setCSaving] = useState(false);
   const [cMsg, setCMsg] = useState<string | null>(null);
-  const [roster, setRoster] = useState<{ source: string; rows: number; sheetUrl: string } | null>(null);
+  const [roster, setRoster] = useState<{ source: string; mode: "sheet" | "code"; rows: number; sheetUrl: string } | null>(null);
   const [rSyncing, setRSyncing] = useState(false);
   const [rMsg, setRMsg] = useState<string | null>(null);
   const [exportCode, setExportCode] = useState<string | null>(null);
@@ -102,6 +102,25 @@ export default function SettingsPage() {
       setRMsg(e instanceof Error ? e.message : "Roster sync failed.");
     }
     setRSyncing(false);
+  }
+
+  async function setRosterMode(next: "sheet" | "code") {
+    setRMsg(null);
+    try {
+      const r = await fetch("/api/lms/roster/mode", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: next }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.error || "Couldn't change the roster source.");
+      const s2 = await fetch("/api/lms/roster/sync").then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      if (s2) setRoster(s2);
+      setRMsg(next === "sheet"
+        ? "Google Sheet sync is ON \u2014 the sheet now controls the roster."
+        : "Google Sheet sync is OFF \u2014 the roster now comes from members.ts only.");
+    } catch (e) {
+      setRMsg(e instanceof Error ? e.message : "Couldn't change the roster source.");
+    }
   }
 
   async function copyMembersCode() {
@@ -233,20 +252,39 @@ export default function SettingsPage() {
               <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
                 <h2 className="font-display text-lg font-semibold text-pine-deep">Member roster</h2>
                 <p className="mt-1 text-sm text-ink/60">
-                  Add or remove members, and change roles, in the{" "}
+                  By default the roster comes from <code>lib/members.ts</code>. Turn on Google Sheet sync to
+                  manage members and roles from the{" "}
                   <a href={roster.sheetUrl} target="_blank" rel="noreferrer" className="text-pine underline">roster Google Sheet</a>
-                  {" "}\u2014 no code needed. Edits are picked up automatically every hour; use the button to apply them now.
+                  {" "}instead \u2014 no code needed.
                 </p>
-                <p className="mt-3 text-xs text-ink/50">
-                  Currently using the <strong>{roster.source === "sheet" ? "Google Sheet" : "built-in code"}</strong> roster
-                  {roster.source === "sheet" ? ` (${roster.rows} row${roster.rows === 1 ? "" : "s"})` : ""}.
-                </p>
-                <div className="mt-4 flex items-center gap-3">
-                  <button onClick={syncRoster} disabled={rSyncing}
-                    className="rounded-full bg-pine px-5 py-2 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-60">
-                    {rSyncing ? "Syncing\u2026" : "Sync roster from sheet"}
+
+                {/* On/off toggle for sheet sync */}
+                <div className="mt-4 flex items-center justify-between rounded-2xl border border-pine/12 bg-paper px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-ink">Sync roster with Google Sheet</p>
+                    <p className="mt-0.5 text-xs text-ink/50">
+                      {roster.mode === "sheet"
+                        ? `On \u2014 the Google Sheet controls the roster (${roster.rows} row${roster.rows === 1 ? "" : "s"}).`
+                        : "Off \u2014 using members.ts only. The Google Sheet is ignored."}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setRosterMode(roster.mode === "sheet" ? "code" : "sheet")}
+                    role="switch" aria-checked={roster.mode === "sheet"}
+                    className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${roster.mode === "sheet" ? "bg-pine" : "bg-ink/20"}`}>
+                    <span className={`absolute top-1 h-5 w-5 rounded-full bg-paper transition-all ${roster.mode === "sheet" ? "left-6" : "left-1"}`} />
                   </button>
                 </div>
+
+                {roster.mode === "sheet" && (
+                  <div className="mt-4 flex items-center gap-3">
+                    <button onClick={syncRoster} disabled={rSyncing}
+                      className="rounded-full bg-pine px-5 py-2 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-60">
+                      {rSyncing ? "Syncing\u2026" : "Sync roster from sheet"}
+                    </button>
+                    <span className="text-xs text-ink/45">Applies sheet edits right now instead of waiting for the hourly sync.</span>
+                  </div>
+                )}
                 {rMsg && <p className="mt-2 text-sm text-ink/70">{rMsg}</p>}
 
                 <div className="mt-6 border-t border-pine/10 pt-4">

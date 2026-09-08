@@ -36,7 +36,7 @@
 import crypto from "crypto";
 import { listDirectory } from "@/lib/lms/directory";
 import { listAllTasks } from "@/lib/lms/store";
-import { listRosterRows, refreshRoster, replaceRoster, type RosterRow } from "@/lib/lms/roster";
+import { getRosterMode, listRosterRows, refreshRoster, replaceRoster, type RosterRow } from "@/lib/lms/roster";
 import { BASE_MEMBERS, ROLE_KEYS, roles } from "@/lib/members";
 import type { ProjectGroup, RoleFlags } from "@/lib/lms/types";
 import { PROJECT_GROUP_LABELS } from "@/lib/lms/types";
@@ -472,6 +472,8 @@ function rosterRowToSheet(m: RosterRow): Row {
 
 /** Write the current roster to the sheet (creates the tab if needed). */
 export async function pushRosterToSheet(): Promise<SyncResult> {
+  if ((await getRosterMode()) === "code")
+    return { ok: true, skipped: "Roster is in members.ts-only mode — sheet roster sync is off." };
   const auth = await getAccessToken();
   if ("error" in auth) return { ok: false, skipped: auth.error };
   const id = rosterSheetId();
@@ -565,6 +567,8 @@ export function parseRosterGrid(
  * lock everyone out) — we report an error and leave things as they are.
  */
 export async function pullRosterFromSheet(): Promise<SyncResult> {
+  if ((await getRosterMode()) === "code")
+    return { ok: true, skipped: "Roster is in members.ts-only mode — sheet roster sync is off." };
   const auth = await getAccessToken();
   if ("error" in auth) return { ok: false, skipped: auth.error };
   const id = rosterSheetId();
