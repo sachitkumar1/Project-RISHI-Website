@@ -114,8 +114,8 @@ export const BASE_MEMBERS: Member[] = [
   { email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "", group: "H", roles: roles({  }) },
   { email: "shipra_jha1@berkeley.edu", firstName: "Shipra", lastName: "Jha", phone: "", group: "H", roles: roles({  }) },
   { email: "surabhikhanna@berkeley.edu", firstName: "Surabhi", lastName: "Khanna", phone: "", group: "E", roles: roles({ lead: true }) },
-  { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) }
-  { email: "mtoabstudios@gmail.com", firstName: "Sachit", lastName: "Youtube", phone: "", group: "R", roles: roles({  }) }
+  { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) },
+  { email: "mtoabstudios@gmail.com", firstName: "Sachit", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) }
 
 ];
 
