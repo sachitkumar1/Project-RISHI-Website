@@ -93,7 +93,7 @@ export const BASE_MEMBERS: Member[] = [
   { email: "kaavya_pravin@berkeley.edu", firstName: "Kaavya", lastName: "Pravin", phone: "9259845837", group: "H", roles: roles({  }) },
   { email: "keshav.kumar@berkeley.edu", firstName: "Keshav", lastName: "Kumar", phone: "4088582304", group: "R", roles: roles({  }) },
   { email: "krrishikasaxena@berkeley.edu", firstName: "Krrishika", lastName: "Saxena", phone: "7274552816", group: "H", roles: roles({ lead: true }) },
-  { email: "pushkar_kairam@berkeley.edu", firstName: "Pushkar", lastName: "Kairam", phone: "", group: "W", roles: roles({  }) },
+  { email: "pushkar_kairam@berkeley.edu", firstName: "Pushkar", lastName: "Kairam", phone: "5308132662", group: "W", roles: roles({  }) },
   { email: "ramitgoyal@berkeley.edu", firstName: "Ramit", lastName: "Goyal", phone: "4084109504", group: "R", roles: roles({  }) },
   { email: "rsudeora@berkeley.edu", firstName: "Rayan", lastName: "Sudeora", phone: "9259646250", group: "H", roles: roles({  }) },
   { email: "rayhan_jain@berkeley.edu", firstName: "Rayhan", lastName: "Jain", phone: "8188056294", group: "H", roles: roles({  }) },
@@ -107,15 +107,15 @@ export const BASE_MEMBERS: Member[] = [
   { email: "yadukrishnaraghu@berkeley.edu", firstName: "Yadukrishna", lastName: "Raghu", phone: "5105880030", group: "E", roles: roles({ internal: true }) },
   { email: "zahrahabib@berkeley.edu", firstName: "Zahra", lastName: "Habib", phone: "3107173017", group: "H", roles: roles({  }) },
   // ---- Added from the live roster sheet (Sep 2026) ----
-  { email: "loyna_rism@berkeley.edu", firstName: "Loyna", lastName: "Rism", phone: "", group: "W", roles: roles({  }) },
+  { email: "loyna_rism@berkeley.edu", firstName: "Loyna", lastName: "Rism", phone: "7147474650", group: "W", roles: roles({  }) },
   { email: "meeramahidhara@berkeley.edu", firstName: "Meera", lastName: "Mahidhara", phone: "", group: "W", roles: roles({  }) },
-  { email: "nish_upad@berkeley.edu", firstName: "Nishanth", lastName: "Upadhyayula", phone: "", group: "W", roles: roles({  }) },
-  { email: "rishit_pradhan@berkeley.edu", firstName: "Rishit", lastName: "Pradhan", phone: "", group: "H", roles: roles({  }) },
-  { email: "sahaanamehta@berkeley.edu", firstName: "Sahaana", lastName: "Mehta", phone: "", group: "R", roles: roles({  }) },
-  { email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "", group: "H", roles: roles({  }) },
-  { email: "shipra_jha1@berkeley.edu", firstName: "Shipra", lastName: "Jha", phone: "", group: "H", roles: roles({  }) },
-  { email: "surabhikhanna@berkeley.edu", firstName: "Surabhi", lastName: "Khanna", phone: "", group: "E", roles: roles({ lead: true }) },
-  { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) },
+  { email: "nish_upad@berkeley.edu", firstName: "Nishanth", lastName: "Upadhyayula", phone: "5105572027", group: "W", roles: roles({  }) },
+  //{ email: "rishit_pradhan@berkeley.edu", firstName: "Rishit", lastName: "Pradhan", phone: "6614977055", group: "H", roles: roles({  }) },
+  { email: "sahaanamehta@berkeley.edu", firstName: "Sahaana", lastName: "Mehta", phone: "3109976323", group: "R", roles: roles({  }) },
+  //{ email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "5107172645", group: "H", roles: roles({  }) },
+  { email: "shipra_jha1@berkeley.edu", firstName: "Shipra", lastName: "Jha", phone: "8473458295", group: "H", roles: roles({  }) },
+  { email: "surabhikhanna@berkeley.edu", firstName: "Surabhi", lastName: "Khanna", phone: "5594005999", group: "E", roles: roles({ lead: true }) },
+  { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "8588475623", group: "R", roles: roles({  }) },
   { email: "mtoabstudios@gmail.com", firstName: "Sachit", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) }
 
 ];
