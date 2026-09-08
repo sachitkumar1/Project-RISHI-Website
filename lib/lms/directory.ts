@@ -8,7 +8,7 @@
 // ============================================================================
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { MEMBERS, memberFullName, memberRoleLabel } from "@/lib/members";
+import { MEMBERS, memberFullName, memberRoleLabel, memberYear } from "@/lib/members";
 import { PROJECT_GROUP_LABELS } from "@/lib/lms/types";
 import { formatPhone } from "@/lib/lms/phone";
 
@@ -35,7 +35,35 @@ export type DirectoryEntry = {
   group: string;
   email: string; // override ?? members.ts email
   phone: string; // override ?? members.ts phone ?? ""
+  year: string; // year at Berkeley ("" = not specified)
+  positionCategory: string; // bucket for filtering (role label, or "General Member")
+  positionRank: number; // custom directory order (lower = higher up)
 };
+
+// The order positions appear in the directory (NOT a real hierarchy — just the
+// requested display order). Matches the labels memberRoleLabel produces.
+export const POSITION_ORDER = [
+  "President",
+  "VP Internal",
+  "VP of Projects",
+  "NMT Leader",
+  "Director of International Affairs",
+  "Director of Finance",
+  "Director of Outreach",
+  "Education Lead",
+  "Health Lead",
+  "Water & Sanitation Lead",
+  "Women's Empowerment Lead",
+] as const;
+
+const GENERAL = "General Member";
+function positionRank(label: string): number {
+  const i = (POSITION_ORDER as readonly string[]).indexOf(label);
+  return i === -1 ? POSITION_ORDER.length : i;
+}
+function positionCategory(label: string): string {
+  return (POSITION_ORDER as readonly string[]).includes(label) ? label : GENERAL;
+}
 
 // In-memory fallback, keyed by login email.
 const mem = new Map<string, ContactOverride>();
@@ -95,13 +123,17 @@ export async function listDirectory(): Promise<DirectoryEntry[]> {
   return MEMBERS.filter((m) => !m.hidden)
     .map((m) => {
       const o = overrides.get(lc(m.email));
+      const role = memberRoleLabel(m);
       return {
         loginEmail: lc(m.email),
         name: memberFullName(m),
-        role: memberRoleLabel(m),
+        role,
         group: PROJECT_GROUP_LABELS[m.group],
         email: o?.contactEmail ?? m.email,
         phone: formatPhone(o?.phone ?? m.phone ?? ""),
+        year: memberYear(m.email),
+        positionCategory: positionCategory(role),
+        positionRank: positionRank(role),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));

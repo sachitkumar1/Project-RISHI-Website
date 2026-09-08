@@ -25,7 +25,7 @@ import { PROJECT_GROUP_LABELS } from "@/lib/lms/types";
 /** Every role flag, in the order they appear as columns on the roster sheet. */
 export const ROLE_KEYS = [
   "nmtLeader", "newbie", "lead", "internal", "vpp", "exec",
-  "outreach", "webmaster", "financeDirector", "president", "vpProjects", "vpInternal",
+  "outreach", "webmaster", "financeDirector", "internationalDirector", "president", "vpProjects", "vpInternal",
 ] as const;
 
 export type Member = {
@@ -52,6 +52,7 @@ export function roles(flags: Partial<RoleFlags>): RoleFlags {
     outreach: false,
     webmaster: false,
     financeDirector: false,
+    internationalDirector: false,
     president: false,
     vpProjects: false,
     vpInternal: false,
@@ -88,7 +89,7 @@ export const BASE_MEMBERS: Member[] = [
   { email: "dilpreetvohra@berkeley.edu", firstName: "Jannat", lastName: "Vohra", phone: "9253023115", group: "W", roles: roles({ lead: true }) },
   // ---- Added from the 26–27 Master Roster ----
   { email: "jahanveersingh@berkeley.edu", firstName: "Jahan", lastName: "Singh", phone: "5597701709", group: "W", roles: roles({  }) },
-  { email: "jiya.dharne@berkeley.edu", firstName: "Jiya", lastName: "Dharne", phone: "5103887239", group: "R", roles: roles({ exec: true }) },
+  { email: "jiya.dharne@berkeley.edu", firstName: "Jiya", lastName: "Dharne", phone: "5103887239", group: "R", roles: roles({ exec: true, internationalDirector: true }) },
   { email: "kaavya_pravin@berkeley.edu", firstName: "Kaavya", lastName: "Pravin", phone: "9259845837", group: "H", roles: roles({  }) },
   { email: "keshav.kumar@berkeley.edu", firstName: "Keshav", lastName: "Kumar", phone: "4088582304", group: "R", roles: roles({  }) },
   { email: "krrishikasaxena@berkeley.edu", firstName: "Krrishika", lastName: "Saxena", phone: "7274552816", group: "H", roles: roles({ lead: true }) },
@@ -109,12 +110,13 @@ export const BASE_MEMBERS: Member[] = [
   { email: "loyna_rism@berkeley.edu", firstName: "Loyna", lastName: "Rism", phone: "", group: "W", roles: roles({  }) },
   { email: "meeramahidhara@berkeley.edu", firstName: "Meera", lastName: "Mahidhara", phone: "", group: "W", roles: roles({  }) },
   { email: "nish_upad@berkeley.edu", firstName: "Nishanth", lastName: "Upadhyayula", phone: "", group: "W", roles: roles({  }) },
- // { email: "rishit_pradhan@berkeley.edu", firstName: "Rishit", lastName: "Pradhan", phone: "", group: "H", roles: roles({  }) },
+  { email: "rishit_pradhan@berkeley.edu", firstName: "Rishit", lastName: "Pradhan", phone: "", group: "H", roles: roles({  }) },
   { email: "sahaanamehta@berkeley.edu", firstName: "Sahaana", lastName: "Mehta", phone: "", group: "R", roles: roles({  }) },
- // { email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "", group: "H", roles: roles({  }) },
+  { email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "", group: "H", roles: roles({  }) },
   { email: "shipra_jha1@berkeley.edu", firstName: "Shipra", lastName: "Jha", phone: "", group: "H", roles: roles({  }) },
   { email: "surabhikhanna@berkeley.edu", firstName: "Surabhi", lastName: "Khanna", phone: "", group: "E", roles: roles({ lead: true }) },
   { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) },
+  { email: "mtoabstudios@gmail.com", firstName: "Sachit", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) }
 
 ];
 
@@ -169,6 +171,7 @@ export function memberRoleLabel(m: Member): string {
   if (r.vpProjects) return "VP of Projects";
   if (r.vpInternal) return "VP Internal";
   if (r.financeDirector) return "Director of Finance";
+  if (r.internationalDirector) return "Director of International Affairs";
   if (r.outreach) return "Director of Outreach";
   // Otherwise, the general multi-role label.
   const parts: string[] = [];
@@ -181,6 +184,51 @@ export function memberRoleLabel(m: Member): string {
   if (parts.length === 0) parts.push(`${g} Member`);
   return parts.join(" · ");
 }
+
+/**
+ * Year at Berkeley per member (from the club's roster). Email-keyed so it applies
+ * regardless of whether the live roster comes from members.ts or the Sheet.
+ * Members not listed here have no year on file ("Not specified" in the directory).
+ */
+export const MEMBER_YEARS: Record<string, string> = {
+  "aarushimupparti@berkeley.edu": "Junior",
+  "arnav.mishra@berkeley.edu": "Junior",
+  "akotte@berkeley.edu": "Senior",
+  "grishma_jain@berkeley.edu": "Junior",
+  "jahanveersingh@berkeley.edu": "Sophomore",
+  "dilpreetvohra@berkeley.edu": "Junior",
+  "jiya.dharne@berkeley.edu": "Junior",
+  "kaavya_pravin@berkeley.edu": "Junior",
+  "keshav.kumar@berkeley.edu": "Senior",
+  "krrishikasaxena@berkeley.edu": "Junior",
+  "loyna_rism@berkeley.edu": "Junior",
+  "maiabergesv@berkeley.edu": "Sophomore",
+  "megha_ramachandran@berkeley.edu": "Sophomore",
+  "nikita_jadhav@berkeley.edu": "Junior",
+  "narayannirali@berkeley.edu": "Junior",
+  "palakprabhakar1@berkeley.edu": "Sophomore",
+  "pushkar_kairam@berkeley.edu": "Junior",
+  "ramitgoyal@berkeley.edu": "Junior",
+  "rayhan_jain@berkeley.edu": "Sophomore",
+  "rheamaster@berkeley.edu": "Senior",
+  "riaprathinidhi1@berkeley.edu": "Sophomore",
+  "ryancr@berkeley.edu": "Junior",
+  "sachitk@berkeley.edu": "Sophomore",
+  "sanjoli@berkeley.edu": "Junior",
+  "senthil.shashwath@berkeley.edu": "Sophomore",
+  "shiama@berkeley.edu": "Senior",
+  "simar_26@berkeley.edu": "Sophomore",
+  "srivishal@berkeley.edu": "Junior",
+  "tanyagoel101@berkeley.edu": "Junior",
+  "thanuj@berkeley.edu": "Sophomore",
+  "yadukrishnaraghu@berkeley.edu": "Junior",
+  "zahrahabib@berkeley.edu": "Sophomore",
+};
+
+export function memberYear(email?: string | null): string {
+  return MEMBER_YEARS[(email ?? "").trim().toLowerCase()] ?? "";
+}
+
 
 /**
  * TEST-ACCOUNT VISIBILITY

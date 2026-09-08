@@ -26,6 +26,7 @@ export type RoleFlags = {
   webmaster: boolean;
   // Specific Exec titles (under the "exec" umbrella):
   financeDirector: boolean; // Director of Finance
+  internationalDirector: boolean; // Director of International Affairs
   // Specific VP/P titles (under the "vpp" umbrella):
   president: boolean;
   vpProjects: boolean; // VP of Projects

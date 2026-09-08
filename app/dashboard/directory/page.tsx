@@ -5,7 +5,34 @@ import Link from "next/link";
 import Contours from "@/components/Contours";
 import { formatPhoneInput } from "@/lib/lms/phone";
 
-type Entry = { loginEmail: string; name: string; role: string; group: string; email: string; phone: string };
+type Entry = {
+  loginEmail: string; name: string; role: string; group: string; email: string; phone: string;
+  year: string; positionCategory: string; positionRank: number;
+};
+
+const YEAR_RANK: Record<string, number> = { Freshman: 1, Sophomore: 2, Junior: 3, Senior: 4, Graduate: 5 };
+const yr = (y: string) => YEAR_RANK[y] ?? 99;
+type SortKey = "name" | "position" | "group" | "year";
+
+
+function Select({ label, value, onChange, options }: {
+  label: string; value: string; onChange: (v: string) => void; options: [string, string][];
+}) {
+  return (
+    <label className="inline-flex items-center gap-1.5 rounded-full border border-pine/20 bg-paper py-1 pl-3 pr-1 text-sm">
+      <span className="text-xs font-semibold text-ink/45">{label}:</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="cursor-pointer rounded-full bg-transparent py-1 pr-6 text-sm font-medium text-pine-deep outline-none"
+      >
+        {options.map(([v, l]) => (
+          <option key={v} value={v}>{l}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 export default function DirectoryPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -13,6 +40,10 @@ export default function DirectoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [sortBy, setSortBy] = useState<SortKey>("name");
+  const [fGroup, setFGroup] = useState("");
+  const [fYear, setFYear] = useState("");
+  const [fPosition, setFPosition] = useState("");
 
   // self-edit
   const [editing, setEditing] = useState(false);
@@ -36,13 +67,36 @@ export default function DirectoryPage() {
 
   const mine = useMemo(() => entries.find((e) => e.loginEmail === me), [entries, me]);
 
+  const groupOpts = useMemo(() => Array.from(new Set(entries.map((e) => e.group))).sort(), [entries]);
+  const yearOpts = useMemo(
+    () => Array.from(new Set(entries.map((e) => e.year).filter(Boolean))).sort((a, b) => yr(a) - yr(b)),
+    [entries],
+  );
+  const hasNoYear = useMemo(() => entries.some((e) => !e.year), [entries]);
+  const positionOpts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of entries) if (!m.has(e.positionCategory)) m.set(e.positionCategory, e.positionRank);
+    return Array.from(m.entries()).sort((a, b) => a[1] - b[1]).map(([k]) => k);
+  }, [entries]);
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return entries;
-    return entries.filter((e) =>
-      [e.name, e.role, e.group, e.email, e.phone].some((f) => f.toLowerCase().includes(s)),
-    );
-  }, [entries, q]);
+    const byName = (a: Entry, b: Entry) => a.name.localeCompare(b.name);
+    const list = entries.filter((e) => {
+      if (s && ![e.name, e.role, e.group, e.email, e.phone, e.year].some((f) => f.toLowerCase().includes(s))) return false;
+      if (fGroup && e.group !== fGroup) return false;
+      if (fPosition && e.positionCategory !== fPosition) return false;
+      if (fYear === "__NONE__") { if (e.year) return false; }
+      else if (fYear && e.year !== fYear) return false;
+      return true;
+    });
+    return list.sort((a, b) => {
+      if (sortBy === "position") return a.positionRank - b.positionRank || byName(a, b);
+      if (sortBy === "group") return a.group.localeCompare(b.group) || byName(a, b);
+      if (sortBy === "year") return yr(a.year) - yr(b.year) || byName(a, b);
+      return byName(a, b);
+    });
+  }, [entries, q, fGroup, fYear, fPosition, sortBy]);
 
   function startEdit() {
     if (!mine) return;
@@ -110,15 +164,33 @@ export default function DirectoryPage() {
               )}
             </div>
 
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Select label="Sort by" value={sortBy} onChange={(v) => setSortBy(v as SortKey)}
+                options={[["name", "Name (A\u2013Z)"], ["position", "Position"], ["group", "Project Group"], ["year", "Year"]]} />
+              <Select label="Project Group" value={fGroup} onChange={setFGroup}
+                options={[["", "All"], ...groupOpts.map((g) => [g, g] as [string, string])]} />
+              <Select label="Year" value={fYear} onChange={setFYear}
+                options={[["", "All"], ...yearOpts.map((y) => [y, y] as [string, string]), ...(hasNoYear ? [["__NONE__", "Not specified"] as [string, string]] : [])]} />
+              <Select label="Position" value={fPosition} onChange={setFPosition}
+                options={[["", "All"], ...positionOpts.map((p) => [p, p] as [string, string])]} />
+              {(fGroup || fYear || fPosition || sortBy !== "name") && (
+                <button onClick={() => { setSortBy("name"); setFGroup(""); setFYear(""); setFPosition(""); }}
+                  className="rounded-full border border-pine/20 px-3 py-1.5 text-xs font-semibold text-pine-deep hover:bg-pine/5">
+                  Reset
+                </button>
+              )}
+            </div>
+
             <p className="mt-3 text-xs text-ink/45">{filtered.length} of {entries.length} members</p>
 
             <div className="mt-4 overflow-x-auto rounded-2xl border border-pine/12">
-              <table className="w-full min-w-[760px] text-left text-sm">
+              <table className="w-full min-w-[860px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-pine/12 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/50">
                     <th className="px-4 py-3 font-semibold">Name</th>
                     <th className="px-4 py-3 font-semibold">Role</th>
                     <th className="px-4 py-3 font-semibold">Project Group</th>
+                    <th className="px-4 py-3 font-semibold">Year</th>
                     <th className="px-4 py-3 font-semibold">Email</th>
                     <th className="px-4 py-3 font-semibold">Phone</th>
                   </tr>
@@ -133,6 +205,7 @@ export default function DirectoryPage() {
                         </td>
                         <td className="px-4 py-3 text-ink/70">{e.role}</td>
                         <td className="px-4 py-3 text-ink/70">{e.group}</td>
+                        <td className="px-4 py-3 text-ink/70">{e.year || <span className="text-ink/30">&mdash;</span>}</td>
                         <td className="px-4 py-3">
                           <a href={`mailto:${e.email}`} className="text-pine hover:underline">{e.email}</a>
                         </td>
@@ -143,7 +216,7 @@ export default function DirectoryPage() {
                     );
                   })}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink/45">No members match your search.</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-ink/45">No members match your filters.</td></tr>
                   )}
                 </tbody>
               </table>
