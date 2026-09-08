@@ -150,3 +150,139 @@ grant all privileges on table lms_newsletter_reads to service_role;
 grant all privileges on table lms_newsletter_subscribers to service_role;
 
 alter table lms_announcements add column if not exists merge_data jsonb not null default '{}'::jsonb;
+alter table lms_tasks add column if not exists email_template jsonb;
+
+-- ============================================================================
+--  Dashboard / Calendar / Tasks / Events overhaul
+-- ============================================================================
+
+-- ---- Tasks: lifecycle, submission, comments, history, reminders ------------
+alter table lms_tasks add column if not exists submission_text  text;
+alter table lms_tasks add column if not exists submission_link  text;
+alter table lms_tasks add column if not exists require_submission boolean not null default false;
+alter table lms_tasks add column if not exists history          jsonb not null default '[]'::jsonb;
+alter table lms_tasks add column if not exists comments         jsonb not null default '[]'::jsonb;
+alter table lms_tasks add column if not exists reminders_sent   jsonb not null default '[]'::jsonb;
+
+-- ---- Events: all-day support (end_at already exists, optional range) --------
+alter table lms_events add column if not exists all_day boolean not null default false;
+
+-- ---- Notification center ---------------------------------------------------
+-- Every task/event email is also written here as an in-dashboard notification
+-- (title = email subject, body = email body). The bell icon reads from this.
+create table if not exists lms_notifications (
+  id          text primary key,
+  user_email  text not null,
+  title       text not null,
+  body        text not null,
+  kind        text not null default 'info',  -- task_assigned | approved | rejected | ...
+  ref_id      text,                          -- task/event id this relates to (optional)
+  read        boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+create index if not exists lms_notifications_user_idx on lms_notifications (user_email, created_at desc);
+alter table lms_notifications enable row level security;
+grant all privileges on table lms_notifications to service_role;
+
+-- ============================================================================
+--  Background push notifications (web push) + Chat / group chat
+-- ============================================================================
+
+-- One row per browser/device subscription, keyed by its push endpoint.
+create table if not exists lms_push_subscriptions (
+  endpoint    text primary key,
+  user_email  text not null,
+  p256dh      text not null,
+  auth        text not null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_push_user on lms_push_subscriptions (user_email);
+
+-- A conversation: a 1:1 DM (is_group false) or a group chat (is_group true).
+create table if not exists lms_chats (
+  id          uuid primary key,
+  is_group    boolean not null default false,
+  title       text,
+  created_by  text not null,
+  created_at  timestamptz not null default now()
+);
+
+-- Membership rows (one per member per chat).
+create table if not exists lms_chat_members (
+  chat_id  uuid not null references lms_chats(id) on delete cascade,
+  email    text not null,
+  primary key (chat_id, email)
+);
+create index if not exists idx_chat_members_email on lms_chat_members (email);
+
+-- Messages. Tapback reactions are stored inline as a jsonb array of
+-- { "email": "...", "emoji": "..." } objects.
+create table if not exists lms_messages (
+  id          uuid primary key,
+  chat_id     uuid not null references lms_chats(id) on delete cascade,
+  sender_email text not null,
+  body        text not null,
+  reactions   jsonb not null default '[]'::jsonb,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_messages_chat on lms_messages (chat_id, created_at);
+
+-- ============================================================================
+--  Security + grants for push & chat tables  (THE MISSING PIECE)
+-- ----------------------------------------------------------------------------
+--  Every other table above enables RLS and grants the service_role. The push
+--  and chat tables were created without these, so when "Automatically expose
+--  new tables" is OFF the server's service-role key had NO access to them —
+--  which made every chat query fail (the empty "no members" picker). These
+--  lines bring them in line with the rest of the schema. Safe to re-run.
+-- ============================================================================
+alter table lms_push_subscriptions enable row level security;
+alter table lms_chats              enable row level security;
+alter table lms_chat_members       enable row level security;
+alter table lms_messages           enable row level security;
+
+grant all privileges on table lms_push_subscriptions to service_role;
+grant all privileges on table lms_chats              to service_role;
+grant all privileges on table lms_chat_members       to service_role;
+grant all privileges on table lms_messages           to service_role;
+
+-- Run once in the Supabase SQL editor. Safe to re-run.
+
+-- 1) Chat: "delete conversation for yourself" (per-member hide).
+alter table lms_chat_members add column if not exists hidden_at timestamptz;
+
+-- 2) Member directory: per-member contact overrides (email/phone shown in the
+--    directory only; never affects the login email or members.ts).
+create table if not exists lms_contact_overrides (
+  email         text primary key,
+  contact_email text,
+  phone         text,
+  updated_at    timestamptz not null default now()
+);
+alter table lms_contact_overrides enable row level security;
+grant all privileges on table lms_contact_overrides to service_role;
+
+
+-- ============================================================================
+--  Roster table — lets the Google Sheet control who can log in and their roles.
+--  Run once in the Supabase SQL editor. Safe to re-run.
+--
+--  This table MIRRORS the roster Google Sheet. It is populated by the roster
+--  sync (hourly cron, or the "Sync roster from sheet" button in Settings).
+--  If it's empty, the app falls back to the roster in lib/members.ts.
+-- ============================================================================
+create table if not exists lms_roster (
+  email       text primary key,
+  first_name  text not null default '',
+  last_name   text not null default '',
+  group_code  text not null default 'E',   -- E | R | W | H
+  phone       text not null default '',
+  hidden      boolean not null default false,
+  active      boolean not null default true, -- false = keep the row, block login
+  roles       jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz not null default now()
+);
+alter table lms_roster enable row level security;
+grant all privileges on table lms_roster to service_role;
+
+

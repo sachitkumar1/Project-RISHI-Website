@@ -210,8 +210,7 @@ export default function Home() {
             <div className="relative z-10">
               <h3 className="font-display text-3xl font-semibold">Join us</h3>
               <p className="mt-3 max-w-md text-paper/75">
-                We recruit at the start of the Fall and Spring semesters. Register
-                your interest and we&rsquo;ll reach out with next steps.
+                Applications are open now!
               </p>
               <Link href="/apply" className="btn-accent mt-7">
                 See recruitment dates
