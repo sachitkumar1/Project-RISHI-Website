@@ -109,14 +109,12 @@ export const BASE_MEMBERS: Member[] = [
   { email: "loyna_rism@berkeley.edu", firstName: "Loyna", lastName: "Rism", phone: "", group: "W", roles: roles({  }) },
   { email: "meeramahidhara@berkeley.edu", firstName: "Meera", lastName: "Mahidhara", phone: "", group: "W", roles: roles({  }) },
   { email: "nish_upad@berkeley.edu", firstName: "Nishanth", lastName: "Upadhyayula", phone: "", group: "W", roles: roles({  }) },
-  { email: "rishit_pradhan@berkeley.edu", firstName: "Rishit", lastName: "Pradhan", phone: "", group: "H", roles: roles({  }) },
+ // { email: "rishit_pradhan@berkeley.edu", firstName: "Rishit", lastName: "Pradhan", phone: "", group: "H", roles: roles({  }) },
   { email: "sahaanamehta@berkeley.edu", firstName: "Sahaana", lastName: "Mehta", phone: "", group: "R", roles: roles({  }) },
-  { email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "", group: "H", roles: roles({  }) },
+ // { email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "", group: "H", roles: roles({  }) },
   { email: "shipra_jha1@berkeley.edu", firstName: "Shipra", lastName: "Jha", phone: "", group: "H", roles: roles({  }) },
   { email: "surabhikhanna@berkeley.edu", firstName: "Surabhi", lastName: "Khanna", phone: "", group: "E", roles: roles({ lead: true }) },
   { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) },
-  { email: "mtoabstudios@gmail.com", firstName: "Sachit", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) },
-  { email: "sachitkumarnexus@gmail.com", firstName: "Nexus", lastName: "Kumar", phone: "", group: "R", roles: roles({  }) }
 
 ];
 
