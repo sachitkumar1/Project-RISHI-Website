@@ -115,9 +115,7 @@ export const BASE_MEMBERS: Member[] = [
   //{ email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "5107172645", group: "H", roles: roles({  }) },
   { email: "shipra_jha1@berkeley.edu", firstName: "Shipra", lastName: "Jha", phone: "8473458295", group: "H", roles: roles({  }) },
   { email: "surabhikhanna@berkeley.edu", firstName: "Surabhi", lastName: "Khanna", phone: "5594005999", group: "E", roles: roles({ lead: true }) },
-  { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "8588475623", group: "R", roles: roles({  }) },
-  { email: "mtoabstudios@gmail.com", firstName: "Sachit", lastName: "Rahate", phone: "", group: "R", roles: roles({  }) }
-
+  { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "8588475623", group: "R", roles: roles({  }) }
 ];
 
 /**
