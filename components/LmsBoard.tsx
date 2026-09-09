@@ -1064,130 +1064,263 @@ function EventDetail({
 }
 
 // --------------------------------------------------------------------- calendar
-function CalendarMonth({ tasks, events, myEmail, archive, period, onOpenTask, onOpenEvent }: {
-  tasks: Task[]; events: ClubEvent[]; myEmail: string; archive: "active" | "all"; period: TimeWindow;
-  onOpenTask: (id: string) => void; onOpenEvent: (id: string) => void;
+// ============================ shared calendar view =========================
+// One engine renders Day / Week / Month / Year layouts (Google/Apple-style).
+// Both the personal and club-overview calendars feed it normalized items.
+type CalColor = { bg: string; fg: string; dot?: string };
+type CalItem = {
+  id: string;
+  kind: "task" | "event";
+  title: string;
+  at: string;       // ISO datetime (task dueAt / event startAt)
+  allDay?: boolean;
+  color: CalColor;
+  onOpen: () => void;
+};
+
+const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const startOfWeek = (d: Date) => { const x = startOfDay(d); x.setDate(x.getDate() - x.getDay()); return x; };
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function CalendarView({ title, items, period, legend }: {
+  title: string; items: CalItem[]; period: TimeWindow; legend: React.ReactNode;
 }) {
-  const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [cursor, setCursor] = useState(() => new Date());
   const [openDay, setOpenDay] = useState<Date | null>(null);
-  const year = cursor.getFullYear();
-  const month = cursor.getMonth();
-  const first = new Date(year, month, 1);
-  const startWeekday = first.getDay();
+  const today = new Date();
+
+  const step = (dir: number) => {
+    if (period === "day") setCursor((c) => addDays(c, dir));
+    else if (period === "week") setCursor((c) => addDays(c, dir * 7));
+    else if (period === "all") setCursor((c) => new Date(c.getFullYear() + dir, c.getMonth(), 1));
+    else setCursor((c) => new Date(c.getFullYear(), c.getMonth() + dir, 1));
+  };
+  const itemsOn = (date: Date) =>
+    items.filter((it) => sameDay(new Date(it.at), date))
+      .sort((a, b) => a.at.localeCompare(b.at));
+
+  const heading = (() => {
+    if (period === "day") return cursor.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    if (period === "week") {
+      const s = startOfWeek(cursor), e = addDays(s, 6);
+      const opts = { month: "short", day: "numeric" } as const;
+      const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+      const left = s.toLocaleDateString(undefined, opts);
+      const right = sameMonth ? String(e.getDate()) : e.toLocaleDateString(undefined, opts);
+      return `${left} – ${right}, ${e.getFullYear()}`;
+    }
+    if (period === "all") return String(cursor.getFullYear());
+    return cursor.toLocaleString(undefined, { month: "long", year: "numeric" });
+  })();
+
+  const navLabel = period === "day" ? "day" : period === "week" ? "week" : period === "all" ? "year" : "month";
+
+  return (
+    <div className="rounded-3xl border border-pine/12 bg-paper p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-display text-xl font-semibold text-pine-deep">
+          {heading}{title ? ` · ${title}` : ""}
+        </h3>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setCursor(new Date())} className="mr-1 rounded-full border border-pine/15 px-3 py-1 text-xs font-semibold text-pine-deep hover:bg-pine/5">Today</button>
+          <button onClick={() => step(-1)} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label={`Previous ${navLabel}`}>‹</button>
+          <button onClick={() => step(1)} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label={`Next ${navLabel}`}>›</button>
+        </div>
+      </div>
+
+      {/* ---------------- DAY ---------------- */}
+      {period === "day" && (
+        <div className="mt-4">
+          <DayAgenda date={cursor} items={itemsOn(cursor)} big />
+        </div>
+      )}
+
+      {/* ---------------- WEEK ---------------- */}
+      {period === "week" && (
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-7">
+          {Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(cursor), i)).map((d) => {
+            const its = itemsOn(d);
+            const isToday = sameDay(today, d);
+            return (
+              <div key={d.toISOString()} className={`min-h-[8rem] rounded-xl border p-2 ${isToday ? "border-marigold bg-marigold-soft/15" : "border-pine/10 bg-pine/[0.015]"}`}>
+                <div className={`mb-1 text-[11px] font-semibold uppercase tracking-wide ${isToday ? "text-marigold-deep" : "text-ink/45"}`}>
+                  {WEEKDAYS[d.getDay()]} {d.getDate()}
+                </div>
+                <div className="space-y-1">
+                  {its.map((it) => (
+                    <button key={it.id} onClick={it.onOpen} title={it.title}
+                      className="block w-full truncate rounded px-1.5 py-1 text-left text-[11px] font-medium"
+                      style={{ backgroundColor: it.color.bg, color: it.color.fg }}>
+                      {it.title}
+                    </button>
+                  ))}
+                  {its.length === 0 && <div className="text-[11px] text-ink/25">—</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ---------------- MONTH ---------------- */}
+      {period === "month" && (
+        <MonthGrid cursor={cursor} today={today} itemsOn={itemsOn} onOpenDay={setOpenDay} />
+      )}
+
+      {/* ---------------- YEAR (all time) ---------------- */}
+      {period === "all" && (
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 12 }, (_, m) => (
+            <MiniMonth key={m} year={cursor.getFullYear()} month={m} today={today} itemsOn={itemsOn} onOpenDay={setOpenDay} />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-ink/55">{legend}</div>
+
+      {openDay && (
+        <Modal title={openDay.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} onClose={() => setOpenDay(null)}>
+          <DayAgenda date={openDay} items={itemsOn(openDay)} onNavigate={() => setOpenDay(null)} />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// Agenda list for a single day (used by Day view + day modal).
+function DayAgenda({ date, items, big, onNavigate }: {
+  date: Date; items: CalItem[]; big?: boolean; onNavigate?: () => void;
+}) {
+  if (items.length === 0)
+    return <p className={`text-ink/50 ${big ? "rounded-2xl border border-pine/10 bg-pine/[0.015] p-6 text-center text-sm" : "text-sm"}`}>Nothing scheduled for this day.</p>;
+  const events = items.filter((i) => i.kind === "event");
+  const tasks = items.filter((i) => i.kind === "task");
+  const Row = (it: CalItem) => (
+    <button key={it.id} onClick={() => { it.onOpen(); onNavigate?.(); }}
+      className="block w-full rounded-xl border border-pine/12 p-3 text-left hover:border-pine/30">
+      <div className="flex items-center gap-2">
+        <span className="h-2.5 w-2.5 shrink-0 rounded" style={{ backgroundColor: it.color.dot ?? it.color.bg }} />
+        <span className="font-medium text-ink">{it.title}</span>
+        <span className="ml-auto text-xs text-ink/50">{it.kind === "event" ? (it.allDay ? "Event · all day" : `Event · ${fmtDateTime(it.at)}`) : `Task · due ${fmtDateTime(it.at)}`}</span>
+      </div>
+    </button>
+  );
+  return (
+    <div className="space-y-4">
+      {events.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">Events</p>
+          <div className="mt-2 space-y-2">{events.map(Row)}</div>
+        </div>
+      )}
+      {tasks.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">Tasks due</p>
+          <div className="mt-2 space-y-2">{tasks.map(Row)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Full month grid (the classic view).
+function MonthGrid({ cursor, today, itemsOn, onOpenDay }: {
+  cursor: Date; today: Date; itemsOn: (d: Date) => CalItem[]; onOpenDay: (d: Date) => void;
+}) {
+  const year = cursor.getFullYear(), month = cursor.getMonth();
+  const startWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: (Date | null)[] = [];
   for (let i = 0; i < startWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
   while (cells.length % 7 !== 0) cells.push(null);
-  const today = new Date();
-
-  const myTasks = tasks.filter((t) => t.assigneeEmail.toLowerCase() === myEmail.toLowerCase() && taskPasses(t, archive, period));
-  const liveEvents = events.filter((e) => eventPasses(e, archive, period));
-  const dayTasksFor = (date: Date) => myTasks.filter((t) => sameDay(new Date(t.dueAt), date));
-  const dayEventsFor = (date: Date) => liveEvents.filter((e) => sameDay(new Date(e.startAt), date));
-
   return (
-    <div className="rounded-3xl border border-pine/12 bg-paper p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-xl font-semibold text-pine-deep">
-          {cursor.toLocaleString(undefined, { month: "long", year: "numeric" })}
-        </h3>
-        <div className="flex gap-1">
-          <button onClick={() => setCursor(new Date(year, month - 1, 1))} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label="Previous month">‹</button>
-          <button onClick={() => setCursor(new Date(year, month + 1, 1))} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label="Next month">›</button>
-        </div>
-      </div>
-
+    <>
       <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wide text-ink/40">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => <div key={d}>{d}</div>)}
+        {WEEKDAYS.map((d) => <div key={d}>{d}</div>)}
       </div>
       <div className="mt-1 grid grid-cols-7 gap-1">
         {cells.map((date, i) => {
           if (!date) return <div key={i} className="aspect-square rounded-lg" />;
-          const dayTasks = dayTasksFor(date);
-          const dayEvents = dayEventsFor(date);
+          const its = itemsOn(date);
           const isToday = sameDay(today, date);
-          const total = dayTasks.length + dayEvents.length;
           return (
-            <button key={i} type="button" onClick={() => setOpenDay(date)}
+            <button key={i} type="button" onClick={() => onOpenDay(date)}
               className={`aspect-square rounded-lg border p-1 text-left transition-colors hover:border-pine/40 ${isToday ? "border-marigold bg-marigold-soft/20" : "border-pine/8 bg-pine/[0.015]"}`}>
               <div className={`text-[11px] font-semibold ${isToday ? "text-marigold-deep" : "text-ink/55"}`}>{date.getDate()}</div>
               <div className="mt-0.5 space-y-0.5">
-                {dayEvents.slice(0, 1).map((e) => (
-                  <div key={e.id} className="truncate rounded px-1 text-[9px] font-medium" style={{ backgroundColor: CAL_EVENT.bg, color: CAL_EVENT.fg }} title={e.title}>{e.title}</div>
+                {its.slice(0, 3).map((it) => (
+                  <div key={it.id} className="truncate rounded px-1 text-[9px] font-medium" style={{ backgroundColor: it.color.bg, color: it.color.fg }} title={it.title}>{it.title}</div>
                 ))}
-                {dayTasks.slice(0, 2).map((t) => {
-                  const c = taskKind(t, myEmail) === "to" ? CAL_TO : CAL_BY;
-                  return (
-                    <div key={t.id} className="truncate rounded px-1 text-[9px] font-medium" style={{ backgroundColor: c.bg, color: c.fg }} title={t.title}>{t.title}</div>
-                  );
-                })}
-                {total > 3 && <div className="text-[9px] text-ink/40">+{total - 3} more</div>}
+                {its.length > 3 && <div className="text-[9px] text-ink/40">+{its.length - 3} more</div>}
               </div>
             </button>
           );
         })}
       </div>
-      <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-ink/50">
-        <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded" style={{ backgroundColor: CAL_EVENT.bg }} /> Event</span>
-        <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded" style={{ backgroundColor: CAL_TO.bg }} /> Task</span>
-      </div>
+    </>
+  );
+}
 
-      {openDay && (
-        <Modal title={openDay.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} onClose={() => setOpenDay(null)}>
-          {(() => {
-            const dEvents = dayEventsFor(openDay);
-            const dTasks = dayTasksFor(openDay);
-            if (dEvents.length + dTasks.length === 0)
-              return <p className="text-sm text-ink/50">Nothing scheduled for this day.</p>;
-            return (
-              <div className="space-y-4">
-                {dEvents.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">Events</p>
-                    <div className="mt-2 space-y-2">
-                      {dEvents.map((e) => (
-                        <button key={e.id} onClick={() => { onOpenEvent(e.id); setOpenDay(null); }} className="block w-full rounded-xl border border-pine/12 p-3 text-left hover:border-pine/30">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 shrink-0 rounded" style={{ backgroundColor: CAL_EVENT.bg }} />
-                            <span className="font-medium text-ink">{e.title}</span>
-                            <span className="ml-auto text-xs text-ink/50">{e.allDay ? "All day" : fmtDateTime(e.startAt)}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {dTasks.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">Tasks due</p>
-                    <div className="mt-2 space-y-2">
-                      {dTasks.map((t) => {
-                        const k = taskKind(t, myEmail);
-                        const c = k === "to" ? CAL_TO : CAL_BY;
-                        return (
-                          <button key={t.id} onClick={() => { onOpenTask(t.id); setOpenDay(null); }} className="block w-full rounded-xl border border-pine/12 p-3 text-left hover:border-pine/30">
-                            <div className="flex items-center gap-2">
-                              <span className="h-2.5 w-2.5 shrink-0 rounded" style={{ backgroundColor: c.bg }} />
-                              <span className="font-medium text-ink">{t.title}</span>
-                              <span className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ backgroundColor: c.bg, color: c.fg }}>{k === "to" ? "To me" : "By me"}</span>
-                            </div>
-                            <p className="mt-1 text-xs text-ink/50">
-                              {t.status === "complete" ? "Complete" : t.status === "pending" ? "Pending approval" : "Not yet complete"} · Due {fmtDateTime(t.dueAt)}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-        </Modal>
-      )}
+// Compact month (used in the Year view): dots on days that have items.
+function MiniMonth({ year, month, today, itemsOn, onOpenDay }: {
+  year: number; month: number; today: Date; itemsOn: (d: Date) => CalItem[]; onOpenDay: (d: Date) => void;
+}) {
+  const startWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  return (
+    <div className="rounded-2xl border border-pine/10 bg-pine/[0.015] p-3">
+      <p className="mb-2 text-sm font-semibold text-pine-deep">{new Date(year, month, 1).toLocaleString(undefined, { month: "long" })}</p>
+      <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] text-ink/35">
+        {WEEKDAYS.map((d) => <div key={d}>{d[0]}</div>)}
+      </div>
+      <div className="mt-0.5 grid grid-cols-7 gap-0.5">
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} />;
+          const date = new Date(year, month, d);
+          const its = itemsOn(date);
+          const isToday = sameDay(today, date);
+          return (
+            <button key={i} onClick={() => its.length && onOpenDay(date)} disabled={!its.length}
+              title={its.length ? `${its.length} item${its.length === 1 ? "" : "s"}` : undefined}
+              className={`relative grid aspect-square place-items-center rounded text-[10px] ${isToday ? "bg-marigold-soft/40 font-bold text-marigold-deep" : its.length ? "font-semibold text-ink hover:bg-pine/10" : "text-ink/40"}`}>
+              {d}
+              {its.length > 0 && <span className="absolute bottom-0.5 h-1 w-1 rounded-full" style={{ backgroundColor: its[0].color.dot ?? its[0].color.bg }} />}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
+}
+
+
+function CalendarMonth({ tasks, events, myEmail, archive, period, onOpenTask, onOpenEvent }: {
+  tasks: Task[]; events: ClubEvent[]; myEmail: string; archive: "active" | "all"; period: TimeWindow;
+  onOpenTask: (id: string) => void; onOpenEvent: (id: string) => void;
+}) {
+  const items: CalItem[] = useMemo(() => {
+    const okT = (t: Task) => archive === "all" || (!t.archived && t.status !== "complete");
+    const okE = (e: ClubEvent) => archive === "all" || (!e.archived && !eventHasPassed(e));
+    const mine = tasks.filter((t) => t.assigneeEmail.toLowerCase() === myEmail.toLowerCase() && okT(t));
+    return [
+      ...events.filter(okE).map((e) => ({ id: `e:${e.id}`, kind: "event" as const, title: e.title, at: e.startAt, allDay: e.allDay, color: CAL_EVENT, onOpen: () => onOpenEvent(e.id) })),
+      ...mine.map((t) => ({ id: `t:${t.id}`, kind: "task" as const, title: t.title, at: t.dueAt, color: taskKind(t, myEmail) === "to" ? CAL_TO : CAL_BY, onOpen: () => onOpenTask(t.id) })),
+    ];
+  }, [tasks, events, myEmail, archive, onOpenTask, onOpenEvent]);
+
+  const legend = (
+    <>
+      <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded" style={{ backgroundColor: CAL_EVENT.bg }} /> Event</span>
+      <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded" style={{ backgroundColor: CAL_TO.bg }} /> Task to me</span>
+      <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded" style={{ backgroundColor: CAL_BY.bg }} /> Task by me</span>
+    </>
+  );
+  return <CalendarView title="" items={items} period={period} legend={legend} />;
 }
 
 // ------------------------------------------------------------------- modal shell
@@ -1529,105 +1662,25 @@ function ClubCalendar({ tasks, events, archive, period, onOpenTask, onOpenEvent 
   tasks: OTask[]; events: OEvent[]; archive: "active" | "all"; period: TimeWindow;
   onOpenTask: (id: string) => void; onOpenEvent: (id: string) => void;
 }) {
-  const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const [openDay, setOpenDay] = useState<Date | null>(null);
-  const year = cursor.getFullYear();
-  const month = cursor.getMonth();
-  const startWeekday = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (Date | null)[] = [];
-  for (let i = 0; i < startWeekday; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
-  while (cells.length % 7 !== 0) cells.push(null);
-  const today = new Date();
+  const items: CalItem[] = useMemo(() => {
+    const okT = (t: OTask) => archive === "all" || (!t.archived && t.status !== "complete");
+    const okE = (e: OEvent) => archive === "all" || (!e.archived && !eventHasPassed(e));
+    return [
+      ...events.filter(okE).map((e) => ({ id: `e:${e.id}`, kind: "event" as const, title: e.title, at: e.startAt, allDay: e.allDay, color: LANE_COLOR[e.lane], onOpen: () => onOpenEvent(e.id) })),
+      ...tasks.filter(okT).map((t) => ({ id: `t:${t.id}`, kind: "task" as const, title: t.title, at: t.dueAt, color: LANE_COLOR[t.lane], onOpen: () => onOpenTask(t.id) })),
+    ];
+  }, [tasks, events, archive, onOpenTask, onOpenEvent]);
 
-  const liveTasks = tasks.filter((t) => taskPasses(t, archive, period));
-  const liveEvents = events.filter((e) => eventPasses(e, archive, period));
-  const dayTasks = (date: Date) => liveTasks.filter((t) => sameDay(new Date(t.dueAt), date));
-  const dayEvents = (date: Date) => liveEvents.filter((e) => sameDay(new Date(e.startAt), date));
-
-  return (
-    <div className="rounded-3xl border border-pine/12 bg-paper p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-xl font-semibold text-pine-deep">
-          {cursor.toLocaleString(undefined, { month: "long", year: "numeric" })} · whole club
-        </h3>
-        <div className="flex gap-1">
-          <button onClick={() => setCursor(new Date(year, month - 1, 1))} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label="Previous month">‹</button>
-          <button onClick={() => setCursor(new Date(year, month + 1, 1))} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label="Next month">›</button>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wide text-ink/40">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => <div key={d}>{d}</div>)}
-      </div>
-      <div className="mt-1 grid grid-cols-7 gap-1">
-        {cells.map((date, i) => {
-          if (!date) return <div key={i} className="aspect-square rounded-lg" />;
-          const dts = dayTasks(date);
-          const des = dayEvents(date);
-          const isToday = sameDay(today, date);
-          const total = dts.length + des.length;
-          const chips = [
-            ...des.map((e) => ({ id: e.id, title: e.title, c: LANE_COLOR[e.lane] })),
-            ...dts.map((t) => ({ id: t.id, title: t.title, c: LANE_COLOR[t.lane] })),
-          ];
-          return (
-            <button key={i} type="button" onClick={() => setOpenDay(date)}
-              className={`aspect-square rounded-lg border p-1 text-left transition-colors hover:border-pine/40 ${isToday ? "border-marigold bg-marigold-soft/20" : "border-pine/8 bg-pine/[0.015]"}`}>
-              <div className={`text-[11px] font-semibold ${isToday ? "text-marigold-deep" : "text-ink/55"}`}>{date.getDate()}</div>
-              <div className="mt-0.5 space-y-0.5">
-                {chips.slice(0, 3).map((ch) => (
-                  <div key={ch.id} className="truncate rounded px-1 text-[9px] font-medium" style={{ backgroundColor: ch.c.bg, color: ch.c.fg }} title={ch.title}>{ch.title}</div>
-                ))}
-                {total > 3 && <div className="text-[9px] text-ink/40">+{total - 3} more</div>}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-ink/55">
-        {LANE_ORDER.map((l) => (
-          <span key={l} className="inline-flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded" style={{ backgroundColor: LANE_COLOR[l].dot }} /> {LANE_LABEL[l]}
-          </span>
-        ))}
-      </div>
-
-      {openDay && (
-        <Modal title={openDay.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} onClose={() => setOpenDay(null)}>
-          {(() => {
-            const des = dayEvents(openDay);
-            const dts = dayTasks(openDay);
-            if (des.length + dts.length === 0) return <p className="text-sm text-ink/50">Nothing scheduled for this day.</p>;
-            return (
-              <div className="space-y-2">
-                {des.map((e) => (
-                  <button key={e.id} onClick={() => { onOpenEvent(e.id); setOpenDay(null); }} className="block w-full rounded-xl border border-pine/12 p-3 text-left hover:border-pine/30">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded" style={{ backgroundColor: LANE_COLOR[e.lane].dot }} />
-                      <span className="font-medium text-ink">{e.title}</span>
-                      <span className="ml-auto text-xs text-ink/50">Event · {e.allDay ? "all day" : fmtDateTime(e.startAt)}</span>
-                    </div>
-                  </button>
-                ))}
-                {dts.map((t) => (
-                  <button key={t.id} onClick={() => { onOpenTask(t.id); setOpenDay(null); }} className="block w-full rounded-xl border border-pine/12 p-3 text-left hover:border-pine/30">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded" style={{ backgroundColor: LANE_COLOR[t.lane].dot }} />
-                      <span className="font-medium text-ink">{t.title}</span>
-                      <span className="ml-auto text-xs text-ink/50">Task · due {fmtDateTime(t.dueAt)}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
-        </Modal>
-      )}
-    </div>
+  const legend = (
+    <>
+      {LANE_ORDER.map((l) => (
+        <span key={l} className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded" style={{ backgroundColor: LANE_COLOR[l].dot }} /> {LANE_LABEL[l]}
+        </span>
+      ))}
+    </>
   );
+  return <CalendarView title="whole club" items={items} period={period} legend={legend} />;
 }
 
 function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask, onOpenEvent }: {
