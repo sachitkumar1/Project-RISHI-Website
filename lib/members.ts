@@ -234,7 +234,7 @@ export function memberYear(email?: string | null): string {
  * are only visible to their owner and to the account itself. Everyone else
  * never sees or can select them in task/event pickers.
  */
-const TEST_ACCOUNT_OWNER = "sachitk@berkeley.edu";
+const TEST_ACCOUNT_OWNER = "kumarsachit2007@gmail.com";
 export function canSeeMember(viewerEmail: string | null | undefined, target: Member): boolean {
   if (!target.hidden) return true;
   const v = (viewerEmail ?? "").trim().toLowerCase();
