@@ -130,14 +130,16 @@ export default function DashboardPage() {
             </Link>
           </Reveal>
 
-          {/* Announcements card */}
+          {/* Announcements (top) + Newsletters (bottom) — one tile, equal halves */}
           <Reveal delay={0.1}>
-            <AnnouncementsPanel />
-          </Reveal>
-
-          {/* Newsletters card */}
-          <Reveal delay={0.2}>
-            <NewsletterPanel />
+            <div className="grid h-full grid-rows-2 gap-4">
+              <div className="min-h-0">
+                <AnnouncementsPanel />
+              </div>
+              <div className="min-h-0">
+                <NewsletterPanel />
+              </div>
+            </div>
           </Reveal>
         </div>
       </section>
