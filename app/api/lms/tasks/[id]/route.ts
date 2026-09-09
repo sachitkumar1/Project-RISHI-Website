@@ -112,11 +112,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         { status: 400 }
       );
     const note = trimOrNull(body.note);
+    // A lead doing their OWN assigned task completes it straight away — no
+    // approval step. Everyone else goes to "pending" for a manager to approve.
+    const doerIsLead = !!findMember(me.email)?.roles.lead;
+    if (doerIsLead) {
+      let updated = await submitTask(task, { text, link }); // record any submission
+      updated = await approveTask(updated, me.email); // → complete directly
+      if (note) updated = await addTaskComment(updated, me.email, note, null);
+      await syncGroupArchive(updated).catch(() => {});
+      return syncedJson({ task: updated });
+    }
     let updated = await submitTask(task, { text, link });
     if (note) updated = await addTaskComment(updated, me.email, note, null);
-    if (!task.assigneeEmail || task.assignerEmail.toLowerCase() !== task.assigneeEmail.toLowerCase()) {
-      await notifyTaskSubmitted(updated, note).catch(() => {});
-    }
+    // Email the managers (assigner + co-leads/co-NMT): awaiting their approval.
+    await notifyTaskSubmitted(updated, note).catch(() => {});
     return syncedJson({ task: updated });
   }
 

@@ -94,7 +94,10 @@ export function canRejectTask(actor: Member, task: Task): boolean {
  * do this — never the doer of a task assigned to them by someone else.
  */
 export function canUnmarkTask(actor: Member, task: Task): boolean {
-  return canManageTask(actor, task);
+  // Managers can always unmark (revert an approval). The doer may retract their
+  // OWN submission while it's still pending (changed their mind before approval).
+  if (canManageTask(actor, task)) return true;
+  return eq(task.assigneeEmail, actor.email) && task.status === "pending";
 }
 
 // --------------------------------------------------------------- event create

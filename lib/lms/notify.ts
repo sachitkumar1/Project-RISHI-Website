@@ -16,6 +16,7 @@ import {
   NOTIFY_FROM_NAME,
 } from "@/lib/lms/gmail";
 import { addNotification } from "@/lib/lms/notifications";
+import { peerEmails } from "@/lib/lms/permissions";
 import type { ClubEvent, Task } from "@/lib/lms/types";
 import { PROJECT_GROUP_LABELS } from "@/lib/lms/types";
 
@@ -105,12 +106,20 @@ export async function notifyTaskAssigned(task: Task): Promise<void> {
 /** The doer marked it done → email/notify the assigner (pending their approval). */
 export async function notifyTaskSubmitted(task: Task, note?: string | null): Promise<void> {
   const doer = nameOf(task.assigneeEmail);
-  const subject = `${doer} Requests Approval for ${task.title}`;
+  const subject = `${doer} completed ${task.title} — awaiting your approval`;
   const body = withNote(
-    `${doer} has marked the task "${task.title}" as complete. It is now pending your approval.`,
+    `${doer} completed "${task.title}". It is awaiting your approval.`,
     note,
   );
-  await notify(task.assignerEmail, subject, body, "task_submitted", task.id);
+  // Notify the task's managers: its assigner plus that assigner's co-leads /
+  // co-NMT-leaders — the people responsible for approving it.
+  const assigner = findMember(task.assignerEmail);
+  const managers = assigner ? peerEmails(assigner) : [task.assignerEmail.trim().toLowerCase()];
+  const doerEmail = task.assigneeEmail.trim().toLowerCase();
+  for (const email of managers) {
+    if (email === doerEmail) continue; // never notify the doer of their own submission
+    await notify(email, subject, body, "task_submitted", task.id).catch(() => {});
+  }
 }
 
 /** Completion approved → email/notify the doer. */

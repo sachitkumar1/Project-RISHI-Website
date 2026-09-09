@@ -574,7 +574,7 @@ export default function LmsBoard() {
       )}
 
       {detailTask && (
-        <TaskDetail task={detailTask} myEmail={myEmail} nameOf={nameOf} avatarOf={avatarOf}
+        <TaskDetail task={detailTask} myEmail={myEmail} nameOf={nameOf} avatarOf={avatarOf} meLead={!!meta?.me.roles.lead}
           onClose={() => setDetailTaskId(null)}
           onAction={(action, extra) => act(detailTask.id, action, extra)}
           onEdit={() => { setEditingTask(detailTask); setDetailTaskId(null); }}
@@ -865,9 +865,9 @@ function GroupCard({ group, byline, onOpen, onArchive }: { group: TaskGroup; byl
 
 // --------------------------------------------------------------- task detail popup
 function TaskDetail({
-  task, myEmail, nameOf, avatarOf, onClose, onAction, onEdit, onDelete, onComposeEmail, onNudge, nudgeLocked,
+  task, myEmail, nameOf, avatarOf, meLead, onClose, onAction, onEdit, onDelete, onComposeEmail, onNudge, nudgeLocked,
 }: {
-  task: Task; myEmail: string;
+  task: Task; myEmail: string; meLead: boolean;
   nameOf: (e: string) => string; avatarOf: (e: string) => string | null;
   onClose: () => void;
   onAction: (action: string, extra?: Record<string, unknown>) => void | Promise<void>;
@@ -882,7 +882,7 @@ function TaskDetail({
   const isSelfAssigned = isAssignee && task.assigneeEmail.toLowerCase() === task.assignerEmail.toLowerCase();
   // The doer may submit proof of work only on a require-submission task they
   // didn't assign themselves. They never mark complete or unmark.
-  const canDoerSubmit = isAssignee && !isSelfAssigned && task.requireSubmission;
+  const canDoerMark = isAssignee && !canManage; // a pure doer (self-assigned/manager path handled below)
   const [subText, setSubText] = useState(task.submissionText ?? "");
   const [subLink, setSubLink] = useState(task.submissionLink ?? "");
   const [note, setNote] = useState("");
@@ -926,20 +926,26 @@ function TaskDetail({
         {/* Submission — proof of work. A doer can submit (for review) only on a
             require-submission task they didn't assign themselves; everyone else
             sees it read-only. */}
-        {(task.submissionText || task.submissionLink || canDoerSubmit) && (
+        {(task.submissionText || task.submissionLink || (canDoerMark && task.status !== "complete")) && (
           <div className="rounded-2xl border border-pine/12 p-4">
-            <p className="text-sm font-semibold text-ink">Submission</p>
-            {canDoerSubmit && task.status === "not_complete" ? (
+            <p className="text-sm font-semibold text-ink">
+              {canDoerMark && task.status === "not_complete" ? "Mark this task complete" : "Submission"}
+            </p>
+            {canDoerMark && task.status === "not_complete" ? (
               <div className="mt-2 space-y-2">
                 <textarea className={inputCls} rows={3} value={subText} onChange={(e) => setSubText(e.target.value)}
-                  placeholder="Write a note about your work (optional unless required)…" />
+                  placeholder={task.requireSubmission ? "Write a note about your work (required)…" : "Add a note about your work (optional)…"} />
                 <input className={inputCls} value={subLink} onChange={(e) => setSubLink(e.target.value)}
-                  placeholder="Add a link (optional unless required)…" />
+                  placeholder={task.requireSubmission ? "Add a link (required if no note)…" : "Add a link (optional)…"} />
                 <button disabled={busy} onClick={() => run("submit", { submissionText: subText, submissionLink: subLink })}
                   className="rounded-full bg-pine px-4 py-2 text-xs font-semibold text-paper disabled:opacity-60">
-                  {busy ? "Saving…" : "Submit for review"}
+                  {busy ? "Saving…" : "Mark complete"}
                 </button>
-                <p className="text-xs text-ink/45">Your assigner reviews this and marks the task complete.</p>
+                <p className="text-xs text-ink/45">
+                  {meLead
+                    ? "As a lead, this completes the task immediately."
+                    : "This sends it to your assigner (and their co-leads) for approval."}
+                </p>
               </div>
             ) : (
               <div className="mt-2 space-y-1 text-sm text-ink/75">
@@ -950,6 +956,14 @@ function TaskDetail({
                 {!task.submissionText && !task.submissionLink && <p className="text-ink/40">Nothing submitted yet.</p>}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Doer's own task is pending approval */}
+        {canDoerMark && task.status === "pending" && (
+          <div className="rounded-2xl border border-marigold/40 bg-marigold-soft/20 p-4 text-sm text-marigold-deep">
+            You marked this complete — it's awaiting your assigner's approval.
+            <button disabled={busy} onClick={() => run("unmark")} className="ml-2 font-semibold underline">Undo</button>
           </div>
         )}
 
