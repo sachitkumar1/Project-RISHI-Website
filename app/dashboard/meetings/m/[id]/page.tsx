@@ -17,10 +17,11 @@ type Meeting = {
   location: string; notetaker: string; snack: string;
   attendees: string[]; blocks: Block[]; createdBy: string;
 };
-type Task = { id: string; groupId: string; title: string; assigneeEmail: string; assigneeName: string; dueAt: string; status: string; archived: boolean };
+type Task = { id: string; groupId: string; title: string; description: string; assigneeEmail: string; assigneeName: string; dueAt: string; status: string; archived: boolean };
 type DirEntry = { loginEmail: string; name: string; group: string };
 
 const STATUS_LABEL: Record<string, string> = { not_complete: "Not complete", pending: "Pending approval", complete: "Complete" };
+const STATUS_ORDER: Record<string, number> = { not_complete: 0, pending: 1, complete: 2 };
 const STATUS_STYLE: Record<string, string> = {
   not_complete: "bg-ink/8 text-ink/60", pending: "bg-marigold-soft/50 text-marigold-deep", complete: "bg-pine/15 text-pine-deep",
 };
@@ -47,7 +48,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
   const load = useCallback(() => {
     return fetch(`/api/lms/meetings/${id}`)
       .then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d?.error || "Couldn't load."); return d; })
-      .then((d) => { setM(d.meeting); setTasks(d.tasks.filter((t: Task) => !t.archived)); setCanEdit(d.canEdit); setCanManage(d.canManage); })
+      .then((d) => { setM(d.meeting); setTasks((d.tasks as Task[]).slice().sort((a, b) => (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0) || a.dueAt.localeCompare(b.dueAt))); setCanEdit(d.canEdit); setCanManage(d.canManage); })
       .catch((e) => setError(e instanceof Error ? e.message : "Something went wrong."))
       .finally(() => setLoading(false));
   }, [id]);
@@ -62,7 +63,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
       const d = await r.json();
       if (dirtyRef.current || Date.now() - lastEditRef.current < 1500) return; // re-check after await
       setM(d.meeting);
-      setTasks(d.tasks.filter((t: Task) => !t.archived));
+      setTasks((d.tasks as Task[]).slice().sort((a, b) => (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0) || a.dueAt.localeCompare(b.dueAt)));
       setCanEdit(d.canEdit); setCanManage(d.canManage);
       setLiveNote(true); setTimeout(() => setLiveNote(false), 1200);
     } catch { /* ignore */ }
@@ -200,13 +201,14 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
             ) : (
               <table className="w-full text-left text-sm">
                 <thead><tr className="border-b border-pine/10 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/50">
-                  <th className="px-4 py-3 font-semibold">Task</th><th className="px-4 py-3 font-semibold">Assigned to</th>
+                  <th className="px-4 py-3 font-semibold">Task</th><th className="px-4 py-3 font-semibold">Description</th><th className="px-4 py-3 font-semibold">Assigned to</th>
                   <th className="px-4 py-3 font-semibold">Due</th><th className="px-4 py-3 font-semibold">Status</th>
                 </tr></thead>
                 <tbody>
                   {tasks.map((t) => (
                     <tr key={t.id} className="border-b border-pine/8">
                       <td className="px-4 py-3 font-medium text-ink">{t.title}</td>
+                      <td className="max-w-xs px-4 py-3 text-ink/60"><span className="line-clamp-2 whitespace-pre-wrap">{t.description || <span className="text-ink/30">—</span>}</span></td>
                       <td className="px-4 py-3 text-ink/70">{t.assigneeName}</td>
                       <td className="px-4 py-3 text-ink/70">{new Date(t.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td>
                       <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[t.status] ?? "bg-ink/8"}`}>{STATUS_LABEL[t.status] ?? t.status}</span></td>
@@ -216,7 +218,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
               </table>
             )}
           </div>
-          {tasks.length > 0 && <p className="mt-2 text-xs text-ink/40"></p>}
+          {tasks.length > 0 && <p className="mt-2 text-xs text-ink/40">These are live dashboard tasks — statuses update as people submit and get approved.</p>}
         </div>
 
         {canManage && (
