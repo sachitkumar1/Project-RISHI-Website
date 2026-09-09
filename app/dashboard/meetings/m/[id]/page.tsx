@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Contours from "@/components/Contours";
 import MeetingOutline, { type Block } from "@/components/MeetingOutline";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
+import { TaskForm, type Meta } from "@/components/LmsBoard";
 
 const GROUP_LABEL: Record<string, string> = {
   E: "Education", R: "Water & Sanitation", W: "Women's Empowerment", H: "Health",
@@ -37,6 +38,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
   const [saveState, setSaveState] = useState<"" | "saving" | "saved">("");
   const [dir, setDir] = useState<DirEntry[]>([]);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [meta, setMeta] = useState<Meta | null>(null);
   const [liveNote, setLiveNote] = useState(false); // brief "updated" flash
   const clientId = useRef(Math.random().toString(36).slice(2)).current;
   const dirtyRef = useRef(false);        // unsaved local edits pending
@@ -81,6 +83,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
     return () => { sb.removeChannel(ch); };
   }, [id, applyRemote, clientId]);
   useEffect(() => { fetch("/api/lms/directory").then((r) => (r.ok ? r.json() : null)).then((d) => d && setDir(d.entries)).catch(() => {}); }, []);
+  useEffect(() => { fetch("/api/lms/meta").then((r) => (r.ok ? r.json() : null)).then((d) => d && setMeta(d as Meta)).catch(() => {}); }, []);
 
   // ---- autosave (debounced) ----
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -227,9 +230,10 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
         )}
       </section>
 
-      {assignOpen && (
-        <AssignModal group={m.group} groupMembers={groupMembers} onClose={() => setAssignOpen(false)}
-          onDone={() => { setAssignOpen(false); load(); }} meetingId={id} />
+      {assignOpen && meta && (
+        <TaskForm meta={meta} meetingId={id}
+          onClose={() => setAssignOpen(false)}
+          onCreated={() => { setAssignOpen(false); load(); }} />
       )}
 
       <style jsx>{`.field { width: 100%; border-radius: 0.75rem; border: 1px solid rgba(20,54,40,0.15); padding: 0.5rem 0.75rem; font-size: 0.875rem; outline: none; background: #fff; }`}</style>
@@ -247,62 +251,5 @@ function Shell({ children }: { children: React.ReactNode }) {
       <section className="bg-pine pt-[var(--header-h)]"><div className="container-rishi py-10"><Link href="/dashboard/meetings" className="text-sm font-semibold text-paper/80 hover:text-paper">← Meetings</Link></div></section>
       <section className="container-rishi py-10">{children}</section>
     </>
-  );
-}
-
-function AssignModal({ group, groupMembers, meetingId, onClose, onDone }: {
-  group: string; groupMembers: DirEntry[]; meetingId: string; onClose: () => void; onDone: () => void;
-}) {
-  const [title, setTitle] = useState("");
-  const [picked, setPicked] = useState<string[]>([]);
-  const [due, setDue] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function submit() {
-    setErr(null);
-    if (!title.trim()) return setErr("Add a task title.");
-    if (picked.length === 0) return setErr("Pick at least one person.");
-    if (!due) return setErr("Pick a due date.");
-    setBusy(true);
-    try {
-      const r = await fetch("/api/lms/tasks", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, assigneeEmails: picked, dueAt: new Date(due).toISOString(), meetingId }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d?.error || "Couldn't assign.");
-      onDone();
-    } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't assign."); setBusy(false); }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[1100] grid place-items-center bg-ink/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-3xl bg-paper p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="font-display text-xl font-semibold text-pine-deep">Assign a task</h3>
-        <p className="mt-1 text-xs text-ink/50">Creates a real dashboard task linked to this meeting.</p>
-        <label className="mt-4 block"><span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Task</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What needs doing?" className="mt-1.5 w-full rounded-xl border border-pine/20 px-4 py-2.5 text-sm outline-none focus:border-pine" /></label>
-        <div className="mt-3"><span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Assign to</span>
-          <div className="mt-1.5 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-pine/15 p-2">
-            {groupMembers.length === 0 && <p className="p-2 text-xs text-ink/40">No members found for this group.</p>}
-            {groupMembers.map((d) => (
-              <label key={d.loginEmail} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-pine/5">
-                <input type="checkbox" checked={picked.includes(d.loginEmail)}
-                  onChange={(e) => setPicked((p) => e.target.checked ? [...p, d.loginEmail] : p.filter((x) => x !== d.loginEmail))} />
-                {d.name}
-              </label>
-            ))}
-          </div>
-        </div>
-        <label className="mt-3 block"><span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Due</span>
-          <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className="mt-1.5 w-full rounded-xl border border-pine/20 px-4 py-2.5 text-sm outline-none focus:border-pine" /></label>
-        {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
-        <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-full border border-pine/20 px-4 py-2 text-sm font-semibold text-pine-deep hover:bg-pine/5">Cancel</button>
-          <button onClick={submit} disabled={busy} className="rounded-full bg-pine px-5 py-2 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-60">{busy ? "Assigning…" : "Assign"}</button>
-        </div>
-      </div>
-    </div>
   );
 }

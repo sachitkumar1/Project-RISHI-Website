@@ -18,7 +18,7 @@ type Roles = {
   internal: boolean; vpp: boolean; exec: boolean;
 };
 type Lite = { email: string; name: string; group: Group; avatar?: string | null };
-type Meta = {
+export type Meta = {
   me: { email: string; name: string; group: Group; roles: Roles };
   can: { assignTasks: boolean; createEvents: boolean };
   assignableMembers: Lite[];
@@ -1399,7 +1399,7 @@ function MemberPicker({ members, selected, onToggle, single }: {
 }
 
 // -------------------------------------------------------------------- task form
-function TaskForm({ meta, editing, editGroupAssignees, onClose, onCreated }: { meta: Meta; editing?: Task | null; editGroupAssignees?: string[]; onClose: () => void; onCreated: () => void }) {
+export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose, onCreated }: { meta: Meta; editing?: Task | null; editGroupAssignees?: string[]; meetingId?: string; onClose: () => void; onCreated: () => void }) {
   const isEdit = !!editing;
   const [title, setTitle] = useState(editing?.title ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
@@ -1452,7 +1452,7 @@ function TaskForm({ meta, editing, editGroupAssignees, onClose, onCreated }: { m
       } else {
         await api("/api/lms/tasks", {
           method: "POST",
-          body: JSON.stringify({ title, description, dueAt: dueIso, requireSubmission, requiresFile: false, tags, emailTemplate, assigneeEmails: resolveAssignees() }),
+          body: JSON.stringify({ title, description, dueAt: dueIso, requireSubmission, requiresFile: false, tags, emailTemplate, assigneeEmails: resolveAssignees(), meetingId }),
         });
       }
       onCreated();
