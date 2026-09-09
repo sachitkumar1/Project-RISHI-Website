@@ -19,7 +19,7 @@ export default function MeetingsHome() {
             Back to dashboard
           </Link>
           <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">Meetings</h1>
-          <p className="mt-2 max-w-2xl text-paper/70">Agendas, notes, and tasks for every project group — all in one place. Pick a group to browse its meetings.</p>
+          <p className="mt-2 max-w-2xl text-paper/70"></p>
         </div>
       </section>
 

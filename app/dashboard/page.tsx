@@ -126,7 +126,7 @@ export default function DashboardPage() {
                 Meetings
                 <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </span>
-              <p className="mt-1 text-sm opacity-70">Agendas, notes & tasks by project group</p>
+              <p className="mt-1 text-sm opacity-70"></p>
             </Link>
           </Reveal>
 
