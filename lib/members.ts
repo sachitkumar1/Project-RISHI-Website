@@ -66,7 +66,7 @@ export function roles(flags: Partial<RoleFlags>): RoleFlags {
  * dashboard always works even if Sheets/Supabase are down.
  */
 export const BASE_MEMBERS: Member[] = [
-  { email: "sachitk@berkeley.edu", firstName: "Sachit", lastName: "Kumar", phone: "9494069649", group: "E", roles: roles({financeDirector: true, webmaster: true }) },
+  { email: "sachitk@berkeley.edu", firstName: "Sachit", lastName: "Kumar", phone: "9494069649", group: "E", roles: roles({ exec: true, financeDirector: true, webmaster: true }) },
   { email: "palakprabhakar1@berkeley.edu", firstName: "Palak", lastName: "Prabhakar", phone: "5106937982", group: "W", roles: roles({ lead: true }) },
   { email: "thanuj@berkeley.edu", firstName: "Thanuj", lastName: "Komatireddy", phone: "8186407964", group: "H", roles: roles({ exec: true, financeDirector: true }) },
   { email: "riaprathinidhi1@berkeley.edu", firstName: "Ria", lastName: "Prathinidhi", phone: "2246071782", group: "R", roles: roles({ lead: true }) },
@@ -82,7 +82,7 @@ export const BASE_MEMBERS: Member[] = [
   { email: "maiabergesv@berkeley.edu", firstName: "Maia", lastName: "Berges", phone: "2025158791", group: "R", roles: roles({ lead: true }) },
   { email: "sachitkumar2025@gmail.com", firstName: "SachitLead", lastName: "Kumar", phone: "", group: "W", roles: roles({ lead: true }), hidden: true },
   { email: "sachitkumar2020@gmail.com", firstName: "SachitInternal", lastName: "Kumar", phone: "", group: "W", roles: roles({ internal: true }), hidden: true },
-  { email: "kumarsachit2007@gmail.com", firstName: "SachitNMT", lastName: "Kumar", phone: "", group: "E", roles: roles({ nmtLeader: true, lead: true, internal: true, vpp: true, exec: true, outreach: true, newbie: true, financeDirector: true, webmaster: true }), hidden: true },
+  { email: "kumarsachit2007@gmail.com", firstName: "SachitNMT", lastName: "Kumar", phone: "", group: "E", roles: roles({ nmtLeader: true, newbie: true, lead: true, internal: true, vpp: true, exec: true, outreach: true, webmaster: true, financeDirector: true, internationalDirector: true, president: true, vpProjects: true, vpInternal: true }), hidden: true },
   { email: "anonymousposter1029@gmail.com", firstName: "SachitNewbie", lastName: "Kumar", phone: "", group: "W", roles: roles({ newbie: true }), hidden: true },
   { email: "ryancr@berkeley.edu", firstName: "Ryan", lastName: "Raphael", phone: "6696661405", group: "R", roles: roles({ vpp: true, exec: true, vpInternal: true }) },
   { email: "narayannirali@berkeley.edu", firstName: "Nirali", lastName: "Narayan", phone: "7205488016", group: "R", roles: roles({ nmtLeader: true }) },
@@ -114,7 +114,7 @@ export const BASE_MEMBERS: Member[] = [
   { email: "sahaanamehta@berkeley.edu", firstName: "Sahaana", lastName: "Mehta", phone: "3109976323", group: "R", roles: roles({  }) },
   //{ email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "5107172645", group: "H", roles: roles({  }) },
   { email: "shipra_jha1@berkeley.edu", firstName: "Shipra", lastName: "Jha", phone: "8473458295", group: "H", roles: roles({  }) },
-  { email: "surabhikhanna@berkeley.edu", firstName: "Surabhi", lastName: "Khanna", phone: "5594005999", group: "E", roles: roles({ lead: true }) },
+  { email: "surabhikhanna@berkeley.edu", firstName: "Surabhi", lastName: "Khanna", phone: "5594005999", group: "E", roles: roles({  }) },
   { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "8588475623", group: "R", roles: roles({  }) }
 ];
 

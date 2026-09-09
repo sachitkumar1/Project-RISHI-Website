@@ -179,6 +179,7 @@ export default function LmsBoard() {
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [openGroupKey, setOpenGroupKey] = useState<string | null>(null);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  const [overviewGroupKey, setOverviewGroupKey] = useState<string | null>(null);
   const [detailEventId, setDetailEventId] = useState<string | null>(null);
   const [overviewOn, setOverviewOn] = useState(false);
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -312,6 +313,10 @@ export default function LmsBoard() {
   const openGroupRows = useMemo(
     () => (openGroupKey ? tasks.filter((t) => (t.groupId || t.id) === openGroupKey) : []),
     [tasks, openGroupKey]
+  );
+  const overviewGroupRows = useMemo(
+    () => (overviewGroupKey ? (overview?.tasks ?? []).filter((t) => (t.groupId || t.id) === overviewGroupKey) : []),
+    [overview, overviewGroupKey]
   );
   const detailTask = useMemo(
     () => tasks.find((t) => t.id === detailTaskId) ?? overview?.tasks.find((t) => t.id === detailTaskId) ?? null,
@@ -447,7 +452,7 @@ export default function LmsBoard() {
       <div className="mt-8">
         {overviewOn && overview ? (
           <ClubCalendar tasks={overview.tasks} events={overview.events} archive={ovArchive} period={ovWindow}
-            onOpenTask={(id) => setDetailTaskId(id)} onOpenEvent={(id) => setDetailEventId(id)} />
+            onOpenTaskGroup={(gid) => setOverviewGroupKey(gid)} onOpenEvent={(id) => setDetailEventId(id)} />
         ) : (
           <CalendarMonth tasks={tasks} events={events} myEmail={myEmail} archive={myArchive} period={myWindow}
             onOpenTask={(id) => setDetailTaskId(id)} onOpenEvent={(id) => setDetailEventId(id)} />
@@ -657,6 +662,24 @@ export default function LmsBoard() {
               ))}
             </div>
           )}
+        </Modal>
+      )}
+
+      {overviewGroupKey && overviewGroupRows.length > 0 && (
+        <Modal title={overviewGroupRows[0].title} onClose={() => setOverviewGroupKey(null)}>
+          <p className="text-sm text-ink/55">Assigned to {overviewGroupRows.length} {overviewGroupRows.length === 1 ? "person" : "people"} · due {fmtDateTime(overviewGroupRows[0].dueAt)}</p>
+          {overviewGroupRows[0].description && <p className="mt-3 whitespace-pre-wrap text-sm text-ink/75">{overviewGroupRows[0].description}</p>}
+          <div className="mt-4 space-y-2">
+            {overviewGroupRows.map((r) => (
+              <button key={r.id} onClick={() => { setDetailTaskId(r.id); setOverviewGroupKey(null); }}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-pine/12 px-4 py-2.5 text-left hover:border-pine/40">
+                <span className="font-medium text-ink">{nameOf(r.assigneeEmail)}</span>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.status === "complete" ? "bg-pine/15 text-pine-deep" : r.status === "pending" ? "bg-marigold-soft/50 text-marigold-deep" : "bg-ink/8 text-ink/60"}`}>
+                  {r.status === "complete" ? "Complete" : r.status === "pending" ? "Pending approval" : "Not complete"}
+                </span>
+              </button>
+            ))}
+          </div>
         </Modal>
       )}
 
@@ -1088,74 +1111,82 @@ function CalendarView({ title, items, period, legend }: {
 }) {
   const [cursor, setCursor] = useState(() => new Date());
   const [openDay, setOpenDay] = useState<Date | null>(null);
+  const [view, setView] = useState<TimeWindow>(period);
+  useEffect(() => { setView(period); }, [period]);
+  const drilled = view !== period;
   const today = new Date();
 
   const step = (dir: number) => {
-    if (period === "day") setCursor((c) => addDays(c, dir));
-    else if (period === "week") setCursor((c) => addDays(c, dir * 7));
-    else if (period === "all") setCursor((c) => new Date(c.getFullYear() + dir, c.getMonth(), 1));
+    if (view === "day") setCursor((c) => addDays(c, dir));
+    else if (view === "week") setCursor((c) => addDays(c, dir * 7));
+    else if (view === "all") setCursor((c) => new Date(c.getFullYear() + dir, c.getMonth(), 1));
     else setCursor((c) => new Date(c.getFullYear(), c.getMonth() + dir, 1));
   };
   const itemsOn = (date: Date) =>
-    items.filter((it) => sameDay(new Date(it.at), date))
-      .sort((a, b) => a.at.localeCompare(b.at));
+    items.filter((it) => sameDay(new Date(it.at), date)).sort((a, b) => a.at.localeCompare(b.at));
+  const drillToMonth = (year: number, month: number) => { setCursor(new Date(year, month, 1)); setView("month"); };
 
   const heading = (() => {
-    if (period === "day") return cursor.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-    if (period === "week") {
-      const s = startOfWeek(cursor), e = addDays(s, 6);
+    if (view === "day") return cursor.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    if (view === "week") {
+      const sd = startOfWeek(cursor), e = addDays(sd, 6);
       const opts = { month: "short", day: "numeric" } as const;
-      const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
-      const left = s.toLocaleDateString(undefined, opts);
+      const sameMonth = sd.getMonth() === e.getMonth() && sd.getFullYear() === e.getFullYear();
+      const left = sd.toLocaleDateString(undefined, opts);
       const right = sameMonth ? String(e.getDate()) : e.toLocaleDateString(undefined, opts);
-      return `${left} – ${right}, ${e.getFullYear()}`;
+      return `${left} - ${right}, ${e.getFullYear()}`;
     }
-    if (period === "all") return String(cursor.getFullYear());
+    if (view === "all") return String(cursor.getFullYear());
     return cursor.toLocaleString(undefined, { month: "long", year: "numeric" });
   })();
 
-  const navLabel = period === "day" ? "day" : period === "week" ? "week" : period === "all" ? "year" : "month";
+  const navLabel = view === "day" ? "day" : view === "week" ? "week" : view === "all" ? "year" : "month";
 
   return (
     <div className="rounded-3xl border border-pine/12 bg-paper p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-display text-xl font-semibold text-pine-deep">
-          {heading}{title ? ` · ${title}` : ""}
-        </h3>
+        <div className="flex items-center gap-2">
+          {drilled && (
+            <button onClick={() => setView(period)} className="rounded-full border border-pine/20 px-3 py-1 text-xs font-semibold text-pine-deep hover:bg-pine/5" title="Back">
+              &lsaquo; {period === "all" ? "Year" : period}
+            </button>
+          )}
+          <h3 className="font-display text-xl font-semibold text-pine-deep">
+            {heading}{title ? ` - ${title}` : ""}
+          </h3>
+        </div>
         <div className="flex items-center gap-1">
           <button onClick={() => setCursor(new Date())} className="mr-1 rounded-full border border-pine/15 px-3 py-1 text-xs font-semibold text-pine-deep hover:bg-pine/5">Today</button>
-          <button onClick={() => step(-1)} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label={`Previous ${navLabel}`}>‹</button>
-          <button onClick={() => step(1)} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label={`Next ${navLabel}`}>›</button>
+          <button onClick={() => step(-1)} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label={`Previous ${navLabel}`}>&lsaquo;</button>
+          <button onClick={() => step(1)} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label={`Next ${navLabel}`}>&rsaquo;</button>
         </div>
       </div>
 
-      {/* ---------------- DAY ---------------- */}
-      {period === "day" && (
-        <div className="mt-4">
-          <DayAgenda date={cursor} items={itemsOn(cursor)} big />
-        </div>
+      {view === "day" && (
+        <div className="mt-4"><DayAgenda date={cursor} items={itemsOn(cursor)} big /></div>
       )}
 
-      {/* ---------------- WEEK ---------------- */}
-      {period === "week" && (
+      {view === "week" && (
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-7">
           {Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(cursor), i)).map((d) => {
             const its = itemsOn(d);
             const isToday = sameDay(today, d);
             return (
-              <div key={d.toISOString()} className={`min-h-[8rem] rounded-xl border p-2 ${isToday ? "border-marigold bg-marigold-soft/15" : "border-pine/10 bg-pine/[0.015]"}`}>
+              <div key={d.toISOString()} onClick={() => setOpenDay(d)} role="button" tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter") setOpenDay(d); }} title="Open this day"
+                className={`min-h-[8rem] cursor-pointer rounded-xl border p-2 transition-colors hover:border-pine/40 ${isToday ? "border-marigold bg-marigold-soft/15" : "border-pine/10 bg-pine/[0.015]"}`}>
                 <div className={`mb-1 text-[11px] font-semibold uppercase tracking-wide ${isToday ? "text-marigold-deep" : "text-ink/45"}`}>
                   {WEEKDAYS[d.getDay()]} {d.getDate()}
                 </div>
                 <div className="space-y-1">
                   {its.map((it) => (
-                    <button key={it.id} onClick={it.onOpen} title={it.title}
+                    <button key={it.id} onClick={(e) => { e.stopPropagation(); it.onOpen(); }} title={it.title}
                       className="block w-full truncate rounded px-1.5 py-1 text-left text-[11px] font-medium"
                       style={{ backgroundColor: it.color.bg, color: it.color.fg }}>
                       {it.title}
                     </button>
                   ))}
-                  {its.length === 0 && <div className="text-[11px] text-ink/25">—</div>}
+                  {its.length === 0 && <div className="text-[11px] text-ink/25">-</div>}
                 </div>
               </div>
             );
@@ -1163,16 +1194,14 @@ function CalendarView({ title, items, period, legend }: {
         </div>
       )}
 
-      {/* ---------------- MONTH ---------------- */}
-      {period === "month" && (
+      {view === "month" && (
         <MonthGrid cursor={cursor} today={today} itemsOn={itemsOn} onOpenDay={setOpenDay} />
       )}
 
-      {/* ---------------- YEAR (all time) ---------------- */}
-      {period === "all" && (
+      {view === "all" && (
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 12 }, (_, m) => (
-            <MiniMonth key={m} year={cursor.getFullYear()} month={m} today={today} itemsOn={itemsOn} onOpenDay={setOpenDay} />
+            <MiniMonth key={m} year={cursor.getFullYear()} month={m} today={today} itemsOn={itemsOn} onDrill={drillToMonth} />
           ))}
         </div>
       )}
@@ -1188,7 +1217,6 @@ function CalendarView({ title, items, period, legend }: {
   );
 }
 
-// Agenda list for a single day (used by Day view + day modal).
 function DayAgenda({ date, items, big, onNavigate }: {
   date: Date; items: CalItem[]; big?: boolean; onNavigate?: () => void;
 }) {
@@ -1264,8 +1292,8 @@ function MonthGrid({ cursor, today, itemsOn, onOpenDay }: {
 }
 
 // Compact month (used in the Year view): dots on days that have items.
-function MiniMonth({ year, month, today, itemsOn, onOpenDay }: {
-  year: number; month: number; today: Date; itemsOn: (d: Date) => CalItem[]; onOpenDay: (d: Date) => void;
+function MiniMonth({ year, month, today, itemsOn, onDrill }: {
+  year: number; month: number; today: Date; itemsOn: (d: Date) => CalItem[]; onDrill: (year: number, month: number) => void;
 }) {
   const startWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1273,7 +1301,8 @@ function MiniMonth({ year, month, today, itemsOn, onOpenDay }: {
   for (let i = 0; i < startWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   return (
-    <div className="rounded-2xl border border-pine/10 bg-pine/[0.015] p-3">
+    <button type="button" onClick={() => onDrill(year, month)} title={`Open ${new Date(year, month, 1).toLocaleString(undefined, { month: "long" })}`}
+      className="rounded-2xl border border-pine/10 bg-pine/[0.015] p-3 text-left transition-colors hover:border-pine/40 hover:bg-pine/[0.04]">
       <p className="mb-2 text-sm font-semibold text-pine-deep">{new Date(year, month, 1).toLocaleString(undefined, { month: "long" })}</p>
       <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] text-ink/35">
         {WEEKDAYS.map((d) => <div key={d}>{d[0]}</div>)}
@@ -1285,16 +1314,15 @@ function MiniMonth({ year, month, today, itemsOn, onOpenDay }: {
           const its = itemsOn(date);
           const isToday = sameDay(today, date);
           return (
-            <button key={i} onClick={() => its.length && onOpenDay(date)} disabled={!its.length}
-              title={its.length ? `${its.length} item${its.length === 1 ? "" : "s"}` : undefined}
-              className={`relative grid aspect-square place-items-center rounded text-[10px] ${isToday ? "bg-marigold-soft/40 font-bold text-marigold-deep" : its.length ? "font-semibold text-ink hover:bg-pine/10" : "text-ink/40"}`}>
+            <div key={i}
+              className={`relative grid aspect-square place-items-center rounded text-[10px] ${isToday ? "bg-marigold-soft/40 font-bold text-marigold-deep" : its.length ? "font-semibold text-ink" : "text-ink/40"}`}>
               {d}
               {its.length > 0 && <span className="absolute bottom-0.5 h-1 w-1 rounded-full" style={{ backgroundColor: its[0].color.dot ?? its[0].color.bg }} />}
-            </button>
+            </div>
           );
         })}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -1658,18 +1686,25 @@ function SegToggle({ label, value, onChange, options }: {
 // ============================================================================
 function laneOfTask(t: OTask): Lane { return t.lane; }
 
-function ClubCalendar({ tasks, events, archive, period, onOpenTask, onOpenEvent }: {
+function ClubCalendar({ tasks, events, archive, period, onOpenTaskGroup, onOpenEvent }: {
   tasks: OTask[]; events: OEvent[]; archive: "active" | "all"; period: TimeWindow;
-  onOpenTask: (id: string) => void; onOpenEvent: (id: string) => void;
+  onOpenTaskGroup: (groupId: string) => void; onOpenEvent: (id: string) => void;
 }) {
   const items: CalItem[] = useMemo(() => {
     const okT = (t: OTask) => archive === "all" || (!t.archived && t.status !== "complete");
     const okE = (e: OEvent) => archive === "all" || (!e.archived && !eventHasPassed(e));
+    // Collapse per-assignee task rows: one calendar entry per task group.
+    const seen = new Set<string>();
+    const taskItems = tasks.filter(okT).filter((t) => {
+      const k = t.groupId || t.id;
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    }).map((t) => ({ id: `t:${t.groupId || t.id}`, kind: "task" as const, title: t.title, at: t.dueAt, color: LANE_COLOR[t.lane], onOpen: () => onOpenTaskGroup(t.groupId || t.id) }));
     return [
       ...events.filter(okE).map((e) => ({ id: `e:${e.id}`, kind: "event" as const, title: e.title, at: e.startAt, allDay: e.allDay, color: LANE_COLOR[e.lane], onOpen: () => onOpenEvent(e.id) })),
-      ...tasks.filter(okT).map((t) => ({ id: `t:${t.id}`, kind: "task" as const, title: t.title, at: t.dueAt, color: LANE_COLOR[t.lane], onOpen: () => onOpenTask(t.id) })),
+      ...taskItems,
     ];
-  }, [tasks, events, archive, onOpenTask, onOpenEvent]);
+  }, [tasks, events, archive, onOpenTaskGroup, onOpenEvent]);
 
   const legend = (
     <>
