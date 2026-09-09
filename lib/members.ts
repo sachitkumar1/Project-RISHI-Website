@@ -66,7 +66,7 @@ export function roles(flags: Partial<RoleFlags>): RoleFlags {
  * dashboard always works even if Sheets/Supabase are down.
  */
 export const BASE_MEMBERS: Member[] = [
-  { email: "sachitk@berkeley.edu", firstName: "Sachit", lastName: "Kumar", phone: "9494069649", group: "E", roles: roles({ exec: true, financeDirector: true, webmaster: true }) },
+  { email: "sachitk@berkeley.edu", firstName: "Sachit", lastName: "Kumar", phone: "9494069649", group: "E", roles: roles({ exec: true, financeDirector: true}) },
   { email: "palakprabhakar1@berkeley.edu", firstName: "Palak", lastName: "Prabhakar", phone: "5106937982", group: "W", roles: roles({ lead: true }) },
   { email: "thanuj@berkeley.edu", firstName: "Thanuj", lastName: "Komatireddy", phone: "8186407964", group: "H", roles: roles({ exec: true, financeDirector: true }) },
   { email: "riaprathinidhi1@berkeley.edu", firstName: "Ria", lastName: "Prathinidhi", phone: "2246071782", group: "R", roles: roles({ lead: true }) },
