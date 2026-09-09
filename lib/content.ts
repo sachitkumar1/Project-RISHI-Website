@@ -340,8 +340,8 @@ export const APPLY = {
   timeline: [
     { label: "Tabling", value: "8/26 – 9/10" },
     { label: "Coffee Chats", value: "8/31 – 9/11" },
-    { label: "Info Session #1", value: "Mon, September 7th", time: "8 – 10 PM" },
-    { label: "Info Session #2", value: "Thu, September 10th", time: "8 – 10 PM" },
+    { label: "Info Session #1", value: "Wed, September 9th", time: "8 – 10 PM @ Eshleman 544" },
+    { label: "Info Session #2", value: "Thu, September 10th", time: "8 – 10 PM @ Dwinelle 243" },
     { label: "Applications Due", value: "Fri, September 11th", time: "8:00 AM" },
     { label: "Interviews", value: "9/12 – 9/13 · Invite only" },
   ],
