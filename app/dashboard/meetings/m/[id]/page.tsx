@@ -216,7 +216,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
               </table>
             )}
           </div>
-          {tasks.length > 0 && <p className="mt-2 text-xs text-ink/40">These are live dashboard tasks — statuses update as people submit and get approved.</p>}
+          {tasks.length > 0 && <p className="mt-2 text-xs text-ink/40"></p>}
         </div>
 
         {canManage && (

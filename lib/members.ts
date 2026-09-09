@@ -221,6 +221,15 @@ export const MEMBER_YEARS: Record<string, string> = {
   "thanuj@berkeley.edu": "Sophomore",
   "yadukrishnaraghu@berkeley.edu": "Junior",
   "zahrahabib@berkeley.edu": "Sophomore",
+  "shipra_jha1@berkeley.edu": "Sophomore",
+  "aryaprince@berkeley.edu": "Junior",
+  "nish_upad@berkeley.edu": "Junior",
+  "rsudeora@berkeley.edu": "Senior",
+  "saavribiswal@berkeley.edu": "Senior",
+  "sahaanamehta@berkeley.edu": "Sophomore",
+  "surabhikhanna@berkeley.edu": "Junior",
+  "autkarsh@berkeley.edu": "Junior",
+  "viploverahate@berkeley.edu": "Senior"
 };
 
 export function memberYear(email?: string | null): string {

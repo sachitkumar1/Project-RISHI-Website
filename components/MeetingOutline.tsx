@@ -115,7 +115,7 @@ export default function MeetingOutline({
       >
         + Add line
       </button>
-      <p className="mt-1 text-[11px] text-ink/30">Enter for a new line · Tab / Shift-Tab to indent · the H button turns a line into a section heading</p>
+      <p className="mt-1 text-[11px] text-ink/30">Enter for a new line · Tab / Shift-Tab to indent · click on the • or H to switch between bullet/heading</p>
     </div>
   );
 }
