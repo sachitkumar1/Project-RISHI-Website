@@ -202,9 +202,10 @@ export async function listTasksForMember(member: Member): Promise<Task[]> {
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
 }
 
-export async function createTasks(input: NewTaskInput, assignerEmail: string): Promise<Task[]> {
+export async function createTasks(input: NewTaskInput, assignerEmail: string, meetingId?: string): Promise<Task[]> {
   const groupId = uid();
   const base = {
+    meeting_id: meetingId ?? null,
     group_id: groupId,
     title: input.title,
     description: input.description,
@@ -236,7 +237,7 @@ export async function createTasks(input: NewTaskInput, assignerEmail: string): P
       archived: false, createdAt: now(),
     }),
   );
-  created.forEach((t) => (t.requireSubmission = input.requireSubmission));
+  created.forEach((t) => { t.requireSubmission = input.requireSubmission; (t as Task & { meetingId?: string }).meetingId = meetingId; });
   mem.tasks.push(...created);
   return created;
 }
@@ -358,6 +359,15 @@ export async function setTaskArchived(id: string, archived: boolean): Promise<Ta
 }
 
 // ---- Part 8: whole-club listings (P/VP Full Club Overview) ----
+export async function listTasksForMeeting(meetingId: string): Promise<Task[]> {
+  if (usingSupabase) {
+    const { data, error } = await sb().from("lms_tasks").select("*").eq("meeting_id", meetingId);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map(taskFromRow);
+  }
+  return mem.tasks.filter((t) => (t as Task & { meetingId?: string }).meetingId === meetingId);
+}
+
 export async function listAllTasks(): Promise<Task[]> {
   if (usingSupabase) {
     const { data, error } = await sb().from("lms_tasks").select("*").order("due_at", { ascending: true });

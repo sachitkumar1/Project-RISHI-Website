@@ -290,3 +290,18 @@ export function canEmailFromClub(m: Member, recipientEmails: string[]): boolean 
   );
   return recipientEmails.every((e) => groupEmails.has(e.trim().toLowerCase()));
 }
+
+// ------------------------------------------------------------------- meetings
+/** Who can CREATE a meeting for a group: that group's leads, or any VP/President. */
+export function canCreateMeeting(m: Member, group: ProjectGroup): boolean {
+  if (m.roles.vpp) return true;
+  return m.roles.lead && m.group === group;
+}
+/** Who can EDIT a meeting's agenda/notes: any member of that group, or VP/P. */
+export function canEditMeeting(m: Member, group: ProjectGroup): boolean {
+  return m.group === group || m.roles.vpp;
+}
+/** Who can edit a group's meeting TEMPLATE: that group's leads, or VP/P. */
+export function canEditTemplate(m: Member, group: ProjectGroup): boolean {
+  return canCreateMeeting(m, group);
+}

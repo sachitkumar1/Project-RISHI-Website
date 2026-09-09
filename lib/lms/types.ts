@@ -146,3 +146,26 @@ export type Notification = {
   read: boolean;
   createdAt: string;
 };
+
+// ---- Meetings (per-group agendas + notes) ----
+export type MeetingBlock = {
+  id: string;
+  kind: "heading" | "bullet";
+  text: string;
+  indent: number; // 0..3, for nested bullets
+};
+export type Meeting = {
+  id: string;
+  group: ProjectGroup;
+  title: string;
+  date: string | null; // yyyy-mm-dd
+  location: string;
+  notetaker: string;
+  snack: string;
+  attendees: string[]; // member emails
+  blocks: MeetingBlock[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+export type MeetingTemplate = { group: ProjectGroup; blocks: MeetingBlock[] };

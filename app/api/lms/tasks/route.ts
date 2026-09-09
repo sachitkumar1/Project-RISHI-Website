@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     }
   }
 
+  const meetingId = typeof (body as { meetingId?: string }).meetingId === "string" ? (body as { meetingId?: string }).meetingId : undefined;
   const created = await createTasks(
     {
       title,
@@ -74,7 +75,8 @@ export async function POST(req: Request) {
           : null,
       assigneeEmails,
     },
-    me.email
+    me.email,
+    meetingId,
   );
 
   // Email + notify each assignee that a task was created for them (best-effort).
