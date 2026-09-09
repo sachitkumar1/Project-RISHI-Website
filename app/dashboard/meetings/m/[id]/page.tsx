@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Contours from "@/components/Contours";
 import MeetingOutline, { type Block } from "@/components/MeetingOutline";
+import { getBrowserSupabase } from "@/lib/supabase-browser";
 
 const GROUP_LABEL: Record<string, string> = {
   E: "Education", R: "Water & Sanitation", W: "Women's Empowerment", H: "Health",
@@ -36,6 +37,10 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
   const [saveState, setSaveState] = useState<"" | "saving" | "saved">("");
   const [dir, setDir] = useState<DirEntry[]>([]);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [liveNote, setLiveNote] = useState(false); // brief "updated" flash
+  const clientId = useRef(Math.random().toString(36).slice(2)).current;
+  const dirtyRef = useRef(false);        // unsaved local edits pending
+  const lastEditRef = useRef(0);         // timestamp of last local keystroke
 
   const load = useCallback(() => {
     return fetch(`/api/lms/meetings/${id}`)
@@ -45,7 +50,36 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Quiet refetch triggered by a live "changed" broadcast. Skips applying while
+  // the user is actively typing so it never overwrites in-progress edits.
+  const applyRemote = useCallback(async () => {
+    if (dirtyRef.current || Date.now() - lastEditRef.current < 1500) return;
+    try {
+      const r = await fetch(`/api/lms/meetings/${id}`);
+      if (!r.ok) return;
+      const d = await r.json();
+      if (dirtyRef.current || Date.now() - lastEditRef.current < 1500) return; // re-check after await
+      setM(d.meeting);
+      setTasks(d.tasks.filter((t: Task) => !t.archived));
+      setCanEdit(d.canEdit); setCanManage(d.canManage);
+      setLiveNote(true); setTimeout(() => setLiveNote(false), 1200);
+    } catch { /* ignore */ }
+  }, [id]);
+
   useEffect(() => { load(); }, [load]);
+
+  // ---- live updates via Supabase Realtime broadcast ----
+  useEffect(() => {
+    const sb = getBrowserSupabase();
+    if (!sb) return; // not configured -> no live updates, page still works
+    const ch = sb.channel(`meeting:${id}`, { config: { broadcast: { self: false } } });
+    ch.on("broadcast", { event: "updated" }, (msg) => {
+      const by = (msg?.payload as { by?: string } | undefined)?.by;
+      if (by && by === clientId) return; // ignore our own change
+      applyRemote();
+    }).subscribe();
+    return () => { sb.removeChannel(ch); };
+  }, [id, applyRemote, clientId]);
   useEffect(() => { fetch("/api/lms/directory").then((r) => (r.ok ? r.json() : null)).then((d) => d && setDir(d.entries)).catch(() => {}); }, []);
 
   // ---- autosave (debounced) ----
@@ -55,14 +89,19 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       try {
-        const body: Record<string, unknown> = { ...patch };
+        const body: Record<string, unknown> = { ...patch, clientId };
         await fetch(`/api/lms/meetings/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        dirtyRef.current = false;
         setSaveState("saved"); setTimeout(() => setSaveState((s) => (s === "saved" ? "" : s)), 1500);
       } catch { setSaveState(""); }
     }, 700);
-  }, [id]);
+  }, [id, clientId]);
 
-  const update = (patch: Partial<Meeting>) => { setM((cur) => (cur ? { ...cur, ...patch } : cur)); save(patch); };
+  const update = (patch: Partial<Meeting>) => {
+    dirtyRef.current = true; lastEditRef.current = Date.now();
+    setM((cur) => (cur ? { ...cur, ...patch } : cur));
+    save(patch);
+  };
 
   if (loading) return <Shell><p className="text-ink/50">Loading…</p></Shell>;
   if (error || !m) return <Shell><p className="text-red-600">{error ?? "Not found."}</p></Shell>;
@@ -82,7 +121,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
               {label} meetings
             </Link>
-            {saveState && <span className="text-xs text-paper/60">{saveState === "saving" ? "Saving…" : "Saved"}</span>}
+            {liveNote ? <span className="text-xs text-marigold-soft">Updated live</span> : saveState ? <span className="text-xs text-paper/60">{saveState === "saving" ? "Saving…" : "Saved"}</span> : null}
           </div>
           {canEdit ? (
             <input value={m.title} onChange={(e) => update({ title: e.target.value })} placeholder="Meeting title"

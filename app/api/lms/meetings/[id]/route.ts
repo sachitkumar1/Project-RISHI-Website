@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { canCreateMeeting, canEditMeeting, canManageTask } from "@/lib/lms/permissions";
 import { deleteMeeting, getMeeting, updateMeeting, type MeetingPatch } from "@/lib/lms/meetings";
+import { broadcastMeetingChange } from "@/lib/lms/realtime";
 import { listTasksForMeeting } from "@/lib/lms/store";
 import { memberFullName, findMember } from "@/lib/members";
 
@@ -33,9 +34,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!canEditMeeting(me, meeting.group))
     return NextResponse.json({ error: "Only this group's members can edit this meeting." }, { status: 403 });
 
-  let body: MeetingPatch;
+  let body: MeetingPatch & { clientId?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Bad request" }, { status: 400 }); }
-  const updated = await updateMeeting(params.id, body);
+  const { clientId, ...patch } = body;
+  const updated = await updateMeeting(params.id, patch);
+  // Ping everyone viewing this meeting so they refetch and see the change live.
+  await broadcastMeetingChange(params.id, updated?.updatedAt ?? new Date().toISOString(), clientId).catch(() => {});
   return NextResponse.json({ meeting: updated });
 }
 

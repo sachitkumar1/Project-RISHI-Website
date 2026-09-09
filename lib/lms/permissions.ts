@@ -192,6 +192,13 @@ export function canManageTask(actor: Member, task: Task): boolean {
   return peerEmails(actor).includes(task.assignerEmail.trim().toLowerCase());
 }
 
+/** Who may comment on a task: the people RELEVANT to it — its managers (the
+ *  assigner plus their co-leads / co-NMT-leaders) and the person it's assigned
+ *  to. Nobody else. */
+export function canCommentOnTask(actor: Member, task: Task): boolean {
+  return canManageTask(actor, task) || eq(task.assigneeEmail, actor.email);
+}
+
 /** Can `actor` edit / delete / archive this event? */
 export function canManageEvent(actor: Member, event: ClubEvent): boolean {
   return peerEmails(actor).includes(event.creatorEmail.trim().toLowerCase());

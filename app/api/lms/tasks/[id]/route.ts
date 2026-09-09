@@ -5,6 +5,7 @@ import {
   canApproveTask,
   canAssignTaskTo,
   canManageTask,
+  canCommentOnTask,
   canRejectTask,
   canSubmitTask,
   canUnmarkTask,
@@ -157,10 +158,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   // ---- comment / reply (either party) ----
   if (body.action === "comment") {
-    const isParty =
-      canManageTask(me, task) || task.assigneeEmail.toLowerCase() === me.email.toLowerCase();
-    if (!isParty)
-      return NextResponse.json({ error: "You can't comment on this task." }, { status: 403 });
+    if (!canCommentOnTask(me, task))
+      return NextResponse.json({ error: "Only people involved in this task can comment." }, { status: 403 });
     const text = str(body.body).trim();
     if (!text) return NextResponse.json({ error: "Comment can't be empty." }, { status: 400 });
     const parentId = trimOrNull(body.parentId);

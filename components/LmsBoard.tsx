@@ -876,6 +876,7 @@ function TaskDetail({
 }) {
   const isAssignee = task.assigneeEmail.toLowerCase() === myEmail.toLowerCase();
   const canManage = !!task.canManage;
+  const canComment = canManage || isAssignee; // managers (assigner + co-leads/NMT) + the assignee
   // A self-assigned task has no separate doer: the one person manages it via the
   // manager controls below, so we never show the doer-only submission/complete UI.
   const isSelfAssigned = isAssignee && task.assigneeEmail.toLowerCase() === task.assignerEmail.toLowerCase();
@@ -1018,7 +1019,7 @@ function TaskDetail({
               <div key={c.id} className="rounded-xl border border-pine/10 p-3">
                 <p className="text-xs font-semibold text-ink/80">{nameOf(c.authorEmail)} <span className="font-normal text-ink/40">· {fmtDateTime(c.at)}</span></p>
                 <p className="mt-1 whitespace-pre-wrap text-sm text-ink/75">{c.body}</p>
-                <button onClick={() => setReplyTo(replyTo === c.id ? null : c.id)} className="mt-1 text-[11px] font-medium text-pine-deep hover:underline">Reply</button>
+                {canComment && <button onClick={() => setReplyTo(replyTo === c.id ? null : c.id)} className="mt-1 text-[11px] font-medium text-pine-deep hover:underline">Reply</button>}
                 <div className="mt-2 space-y-2 border-l border-pine/10 pl-3">
                   {repliesOf(c.id).map((r) => (
                     <div key={r.id}>
@@ -1037,12 +1038,16 @@ function TaskDetail({
               </div>
             ))}
           </div>
-          {replyTo === null && (
-            <div className="mt-3 flex gap-2">
-              <input className={inputCls} style={{ marginTop: 0 }} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Add a comment…" />
-              <button disabled={busy || !comment.trim()} onClick={async () => { await run("comment", { body: comment, parentId: null }); setComment(""); }}
-                className="rounded-xl bg-pine px-3 text-sm font-semibold text-paper disabled:opacity-50">Send</button>
-            </div>
+          {canComment ? (
+            replyTo === null && (
+              <div className="mt-3 flex gap-2">
+                <input className={inputCls} style={{ marginTop: 0 }} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Add a comment…" />
+                <button disabled={busy || !comment.trim()} onClick={async () => { await run("comment", { body: comment, parentId: null }); setComment(""); }}
+                  className="rounded-xl bg-pine px-3 text-sm font-semibold text-paper disabled:opacity-50">Send</button>
+              </div>
+            )
+          ) : (
+            <p className="mt-3 text-xs text-ink/40">Only the people involved in this task can comment.</p>
           )}
         </div>
       </div>
