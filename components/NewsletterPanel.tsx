@@ -44,7 +44,7 @@ function EnvelopeIcon({ unread, className = "" }: { unread: boolean; className?:
   );
 }
 
-export default function NewsletterPanel() {
+export default function NewsletterPanel({ compact = false }: { compact?: boolean }) {
   const [items, setItems] = useState<Item[]>([]);
   const [openItem, setOpenItem] = useState<Item | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -131,28 +131,28 @@ export default function NewsletterPanel() {
   }
 
   return (
-    <div className="flex h-full flex-col rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
+    <div className={`flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-pine/15 bg-pine/[0.03] ${compact ? "p-4" : "p-8"}`}>
       <div className="flex items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pine text-paper">
-          <Newspaper className="h-6 w-6" />
+        <span className={`grid place-items-center rounded-2xl bg-pine text-paper ${compact ? "h-9 w-9" : "h-12 w-12"}`}>
+          <Newspaper className={compact ? "h-5 w-5" : "h-6 w-6"} />
         </span>
         <div>
-          <h2 className="font-display text-2xl font-semibold text-pine-deep">Newsletters</h2>
-          <p className="text-sm text-ink/55">{unread > 0 ? `${unread} unread` : "You're all caught up"}</p>
+          <h2 className={`font-display font-semibold text-pine-deep ${compact ? "text-lg" : "text-2xl"}`}>Newsletters</h2>
+          <p className={`${compact ? "text-[11px]" : "text-sm"} text-ink/55`}>{unread > 0 ? `${unread} unread` : "You're all caught up"}</p>
         </div>
       </div>
 
-      <div className="mt-5 -mx-2 max-h-72 flex-1 overflow-y-auto px-2">
-        {items.length === 0 && <p className="py-8 text-center text-sm text-ink/50">No newsletters yet.</p>}
+      <div className={`${compact ? "mt-1" : "mt-5"} -mx-2 min-h-0 max-h-72 flex-1 overflow-y-auto px-2`}>
+        {items.length === 0 && <p className={`${compact ? "py-1 text-[11px]" : "py-8 text-sm"} text-center text-ink/50`}>No newsletters yet.</p>}
         {items.map((item) => (
           <button
             key={item.id}
             onClick={() => open(item)}
-            className={`mb-2 flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition-colors ${
+            className={`mb-2 flex w-full items-start gap-3 rounded-2xl border ${compact ? "p-2" : "p-3"} text-left transition-colors ${
               !item.read ? "border-marigold/40 bg-marigold-soft/20" : "border-pine/10 bg-paper hover:bg-pine/[0.03]"
             }`}
           >
-            <Avatar src={item.authorAvatar} name={item.authorName} size={36} />
+            <Avatar src={item.authorAvatar} name={item.authorName} size={compact ? 28 : 36} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-ink/55">{item.authorName}</span>
@@ -168,7 +168,7 @@ export default function NewsletterPanel() {
       {canViewSubs && (
         <button
           onClick={() => setShowSubs(true)}
-          className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-pine/15 bg-paper py-2.5 text-xs font-semibold text-pine transition-colors hover:bg-pine/5"
+          className={`${compact ? "mt-1 py-1.5" : "mt-4 py-2.5"} flex shrink-0 items-center justify-center gap-2 rounded-xl border border-pine/15 bg-paper text-xs font-semibold text-pine transition-colors hover:bg-pine/5`}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />

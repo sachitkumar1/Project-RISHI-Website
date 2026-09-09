@@ -130,15 +130,18 @@ export default function DashboardPage() {
             </Link>
           </Reveal>
 
-          {/* Announcements (top) + Newsletters (bottom) — locked into one grid column */}
-          <div className="grid h-full min-h-0 grid-rows-2 gap-4">
-            <Reveal delay={0.1} className="h-full min-h-0">
-              <AnnouncementsPanel />
-            </Reveal>
-            <Reveal delay={0.15} className="h-full min-h-0">
-              <NewsletterPanel />
-            </Reveal>
-          </div>
+          {/* Announcements + Newsletters share the same row height as the other dashboard widgets.
+              Each panel gets exactly half of that height (minus the gap). */}
+          <Reveal delay={0.1} className="min-h-0 lg:relative">
+            <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:absolute lg:inset-0">
+              <div className="min-h-0 overflow-hidden">
+                <AnnouncementsPanel compact />
+              </div>
+              <div className="min-h-0 overflow-hidden">
+                <NewsletterPanel compact />
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
