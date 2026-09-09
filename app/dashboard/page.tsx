@@ -130,17 +130,15 @@ export default function DashboardPage() {
             </Link>
           </Reveal>
 
-          {/* Announcements (top) + Newsletters (bottom) — one tile, equal halves */}
-          <Reveal delay={0.1}>
-            <div className="grid h-full grid-rows-2 gap-4">
-              <div className="min-h-0">
-                <AnnouncementsPanel />
-              </div>
-              <div className="min-h-0">
-                <NewsletterPanel />
-              </div>
-            </div>
-          </Reveal>
+          {/* Announcements (top) + Newsletters (bottom) — locked into one grid column */}
+          <div className="grid h-full min-h-0 grid-rows-2 gap-4">
+            <Reveal delay={0.1} className="h-full min-h-0">
+              <AnnouncementsPanel />
+            </Reveal>
+            <Reveal delay={0.15} className="h-full min-h-0">
+              <NewsletterPanel />
+            </Reveal>
+          </div>
         </div>
       </section>
 
