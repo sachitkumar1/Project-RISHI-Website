@@ -159,8 +159,8 @@ function Toolbar({ editor }: { editor: Editor }) {
 
   return (
     <div className="flex flex-nowrap items-center gap-0.5 overflow-x-auto px-2 py-1.5">
-      <Tb on={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo"><I d="M9 14L4 9l5-5|4 9h11a5 5 0 0 1 0 10h-1" /></Tb>
-      <Tb on={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo"><I d="M15 14l5-5-5-5|20 9H9a5 5 0 0 0 0 10h1" /></Tb>
+      <Tb on={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo"><I d="M9 14L4 9l5-5|M4 9h11a5 5 0 0 1 0 10h-1" /></Tb>
+      <Tb on={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo"><I d="M15 14l5-5-5-5|M20 9H9a5 5 0 0 0 0 10h1" /></Tb>
       <Div />
       <select value={heading} title="Text style" onMouseDown={(e) => e.stopPropagation()}
         onChange={(e) => { const v = e.target.value; if (v === "p") editor.chain().focus().setParagraph().run(); else editor.chain().focus().toggleHeading({ level: Number(v) as 1 | 2 | 3 }).run(); }}
@@ -188,24 +188,24 @@ function Toolbar({ editor }: { editor: Editor }) {
         <span className="flex flex-col items-center leading-none"><span>A</span><span className="mt-0.5 block h-1 w-3.5 rounded-sm" style={{ background: (editor.getAttributes("textStyle").color as string) || "#141b12" }} /></span>
       </SwatchPopover>
       <SwatchPopover label="Highlight" swatches={HILITES} onPick={(c) => c === "transparent" ? editor.chain().focus().unsetHighlight().run() : editor.chain().focus().toggleHighlight({ color: c }).run()}>
-        <I d="M12 20l7-7-3-3-7 7v3z|16 10l3-3a1.5 1.5 0 0 0-2-2l-3 3" />
+        <I d="M12 20l7-7-3-3-7 7v3z|M16 10l3-3a1.5 1.5 0 0 0-2-2l-3 3" />
       </SwatchPopover>
       <Div />
-      <Tb on={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Bulleted list"><I d="M8 6h13|8 12h13|8 18h13|3 6h.01|3 12h.01|3 18h.01" /></Tb>
-      <Tb on={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Numbered list"><I d="M10 6h11|10 12h11|10 18h11|4 6h1v4|4 10h2|6 18H4l2-2.5V15H4" sw={1.7} /></Tb>
-      <Tb on={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive("taskList")} title="Checklist"><I d="M9 11l3 3L22 4|21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></Tb>
+      <Tb on={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Bulleted list"><I d="M8 6h13|M8 12h13|M8 18h13|M3 6h.01|M3 12h.01|M3 18h.01" /></Tb>
+      <Tb on={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Numbered list"><I d="M10 6h11|M10 12h11|M10 18h11|M4 6h1v4|M4 10h2|M6 18H4l2-2.5V15H4" sw={1.7} /></Tb>
+      <Tb on={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive("taskList")} title="Checklist"><I d="M9 11l3 3L22 4|M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></Tb>
       <Tb on={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")} title="Quote">&#10077;</Tb>
       <Tb on={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive("codeBlock")} title="Code block">{"{ }"}</Tb>
       <Div />
-      <Tb on={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })} title="Align left"><I d="M3 6h18|3 12h12|3 18h15" /></Tb>
-      <Tb on={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })} title="Align center"><I d="M3 6h18|6 12h12|4 18h16" /></Tb>
-      <Tb on={() => editor.chain().focus().setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })} title="Align right"><I d="M3 6h18|9 12h12|6 18h15" /></Tb>
+      <Tb on={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })} title="Align left"><I d="M3 6h18|M3 12h12|M3 18h15" /></Tb>
+      <Tb on={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })} title="Align center"><I d="M3 6h18|M6 12h12|M4 18h16" /></Tb>
+      <Tb on={() => editor.chain().focus().setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })} title="Align right"><I d="M3 6h18|M9 12h12|M6 18h15" /></Tb>
       <Div />
-      <Tb on={setLink} active={editor.isActive("link")} title="Insert link"><I d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1|14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></Tb>
-      <Tb on={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert table"><I d="M3 3h18v18H3z|3 9h18|3 15h18|9 3v18|15 3v18" sw={1.6} /></Tb>
-      <Tb on={addImage} title="Image from URL"><I d="M3 3h18v18H3z|8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z|21 15l-5-5L5 21" sw={1.6} /></Tb>
+      <Tb on={setLink} active={editor.isActive("link")} title="Insert link"><I d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1|M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></Tb>
+      <Tb on={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert table"><I d="M3 3h18v18H3z|M3 9h18|M3 15h18|M9 3v18|M15 3v18" sw={1.6} /></Tb>
+      <Tb on={addImage} title="Image from URL"><I d="M3 3h18v18H3z|M8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z|M21 15l-5-5L5 21" sw={1.6} /></Tb>
       <label title="Upload image" className="grid h-8 min-w-8 shrink-0 cursor-pointer place-items-center rounded px-1.5 text-ink/70 hover:bg-pine/8">
-        <I d="M12 15V4|7 9l5-5 5 5|4 20h16" />
+        <I d="M12 15V4|M7 9l5-5 5 5|M4 20h16" />
         <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); e.target.value = ""; }} />
       </label>
       <Tb on={() => editor.chain().focus().setHorizontalRule().run()} title="Divider"><I d="M4 12h16" /></Tb>
@@ -275,8 +275,8 @@ export default function MeetingEditor({
       <Tb on={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Bold"><b>B</b></Tb>
       <Tb on={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="Italic"><i>I</i></Tb>
       <Tb on={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive("underline")} title="Underline"><u>U</u></Tb>
-      <Tb on={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive("highlight")} title="Highlight"><I d="M12 20l7-7-3-3-7 7v3z|16 10l3-3a1.5 1.5 0 0 0-2-2l-3 3" /></Tb>
-      <Tb on={() => { const url = window.prompt("Link URL", "https://"); if (url) editor.chain().focus().setLink({ href: url }).run(); }} active={editor.isActive("link")} title="Link"><I d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1|14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></Tb>
+      <Tb on={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive("highlight")} title="Highlight"><I d="M12 20l7-7-3-3-7 7v3z|M16 10l3-3a1.5 1.5 0 0 0-2-2l-3 3" /></Tb>
+      <Tb on={() => { const url = window.prompt("Link URL", "https://"); if (url) editor.chain().focus().setLink({ href: url }).run(); }} active={editor.isActive("link")} title="Link"><I d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1|M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></Tb>
     </BubbleMenu>
   );
 
