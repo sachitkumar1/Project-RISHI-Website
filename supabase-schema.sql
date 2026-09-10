@@ -285,4 +285,49 @@ create table if not exists lms_roster (
 alter table lms_roster enable row level security;
 grant all privileges on table lms_roster to service_role;
 
+-- Run once in the Supabase SQL editor. Safe to re-run.
+-- Stores the roster-source toggle (members.ts-only vs Google Sheet).
+create table if not exists lms_settings (
+  key         text primary key,
+  value       text not null,
+  updated_at  timestamptz not null default now()
+);
+alter table lms_settings enable row level security;
+grant all privileges on table lms_settings to service_role;
+
+
+-- Meetings: per-group agendas + notes, integrated with tasks. Safe to re-run.
+create table if not exists lms_meetings (
+  id          uuid primary key default gen_random_uuid(),
+  group_code  text not null,                       -- E | R | W | H
+  title       text not null default '',
+  meeting_date date,
+  location    text not null default '',
+  notetaker   text not null default '',
+  snack       text not null default '',
+  attendees   jsonb not null default '[]'::jsonb,   -- string[] of member emails
+  blocks      jsonb not null default '[]'::jsonb,   -- outline: agenda + notes
+  created_by  text not null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists lms_meetings_group_idx on lms_meetings (group_code, meeting_date desc);
+
+create table if not exists lms_meeting_templates (
+  group_code  text primary key,                    -- E | R | W | H
+  blocks      jsonb not null default '[]'::jsonb,
+  updated_at  timestamptz not null default now()
+);
+
+-- Link tasks created inside a meeting back to that meeting.
+alter table lms_tasks add column if not exists meeting_id uuid;
+
+alter table lms_meetings enable row level security;
+alter table lms_meeting_templates enable row level security;
+grant all privileges on table lms_meetings to service_role;
+grant all privileges on table lms_meeting_templates to service_role;
+
+-- Rich-text meeting content (TipTap HTML). Safe to re-run.
+alter table lms_meetings          add column if not exists body text;
+alter table lms_meeting_templates add column if not exists body text;
 

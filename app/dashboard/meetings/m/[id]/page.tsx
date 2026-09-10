@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Contours from "@/components/Contours";
-import MeetingOutline, { type Block } from "@/components/MeetingOutline";
+import MeetingEditor from "@/components/MeetingEditor";
+import type { Block } from "@/components/MeetingOutline";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
 import { TaskForm, type Meta } from "@/components/LmsBoard";
 
@@ -15,7 +16,7 @@ const GROUP_LABEL: Record<string, string> = {
 type Meeting = {
   id: string; group: string; title: string; date: string | null;
   location: string; notetaker: string; snack: string;
-  attendees: string[]; blocks: Block[]; createdBy: string;
+  attendees: string[]; blocks: Block[]; body: string; createdBy: string;
 };
 type Task = { id: string; groupId: string; title: string; description: string; assigneeEmail: string; assigneeName: string; dueAt: string; status: string; archived: boolean };
 type DirEntry = { loginEmail: string; name: string; group: string };
@@ -39,6 +40,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
   const [saveState, setSaveState] = useState<"" | "saving" | "saved">("");
   const [dir, setDir] = useState<DirEntry[]>([]);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [fsEditor, setFsEditor] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [liveNote, setLiveNote] = useState(false); // brief "updated" flash
   const clientId = useRef(Math.random().toString(36).slice(2)).current;
@@ -176,11 +178,14 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* ---- agenda + notes outline ---- */}
+        {/* ---- agenda + notes (rich editor) ---- */}
         <div className="mt-8">
           <h2 className="font-display text-2xl font-semibold text-pine-deep">Agenda & notes</h2>
-          <div className="mt-3 rounded-3xl border border-pine/12 bg-paper p-6">
-            <MeetingOutline blocks={m.blocks} editable={canEdit} onChange={(next) => update({ blocks: next })} />
+          <div className="mt-3">
+            <MeetingEditor html={m.body} editable={canEdit}
+              placeholder="Write the agenda… use the toolbar for headings, tables, checklists, links and more."
+              onChange={(html) => update({ body: html })}
+              fullscreen={fsEditor} onToggleFullscreen={() => setFsEditor((v) => !v)} />
           </div>
           {!canEdit && <p className="mt-2 text-xs text-ink/40">Only {label} members can edit this meeting.</p>}
         </div>
@@ -218,7 +223,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
               </table>
             )}
           </div>
-          {tasks.length > 0 && <p className="mt-2 text-xs text-ink/40"></p>}
+          {tasks.length > 0 && <p className="mt-2 text-xs text-ink/40">These are live dashboard tasks — statuses update as people submit and get approved.</p>}
         </div>
 
         {canManage && (

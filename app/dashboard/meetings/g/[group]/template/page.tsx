@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Contours from "@/components/Contours";
-import MeetingOutline, { type Block } from "@/components/MeetingOutline";
+import MeetingEditor from "@/components/MeetingEditor";
 
 const GROUP_LABEL: Record<string, string> = {
   E: "Education", R: "Water & Sanitation", W: "Women's Empowerment", H: "Health",
@@ -15,7 +15,8 @@ export default function TemplateEditor({ params }: { params: { group: string } }
   const router = useRouter();
   const label = GROUP_LABEL[group] ?? group;
 
-  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [body, setBody] = useState<string>("");
+  const [fs, setFs] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,7 +25,7 @@ export default function TemplateEditor({ params }: { params: { group: string } }
   useEffect(() => {
     fetch(`/api/lms/meetings/template?group=${group}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => { setBlocks(d.template.blocks); setCanEdit(d.canEdit); })
+      .then((d) => { setBody(d.template.body ?? ""); setCanEdit(d.canEdit); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [group]);
@@ -34,7 +35,7 @@ export default function TemplateEditor({ params }: { params: { group: string } }
     try {
       const r = await fetch("/api/lms/meetings/template", {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ group, blocks }),
+        body: JSON.stringify({ group, body }),
       });
       if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || "Couldn't save.");
       setMsg("Template saved — new meetings will start from this.");
@@ -61,9 +62,8 @@ export default function TemplateEditor({ params }: { params: { group: string } }
         {!loading && !canEdit && <p className="rounded-2xl border border-pine/12 bg-pine/[0.02] p-6 text-sm text-ink/55">Only {label} leads can edit this template.</p>}
         {!loading && canEdit && (
           <>
-            <div className="rounded-3xl border border-pine/12 bg-paper p-6">
-              <MeetingOutline blocks={blocks} editable onChange={setBlocks} />
-            </div>
+            <MeetingEditor html={body} editable placeholder="Build the standing agenda for this group…"
+              onChange={setBody} fullscreen={fs} onToggleFullscreen={() => setFs((v) => !v)} />
             <div className="mt-4 flex items-center gap-3">
               <button onClick={save} disabled={saving} className="rounded-full bg-pine px-5 py-2.5 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-60">{saving ? "Saving…" : "Save template"}</button>
               <button onClick={() => router.push(`/dashboard/meetings/g/${group}`)} className="rounded-full border border-pine/20 px-5 py-2.5 text-sm font-semibold text-pine-deep hover:bg-pine/5">Done</button>

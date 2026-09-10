@@ -25,6 +25,7 @@ const now = () => new Date().toISOString();
 const lc = (e: string) => e.trim().toLowerCase();
 
 const mem = { meetings: [] as Meeting[], templates: new Map<string, MeetingBlock[]>() };
+const memTemplateBody = new Map<string, string>();
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const fromRow = (r: any): Meeting => ({
@@ -37,11 +38,31 @@ const fromRow = (r: any): Meeting => ({
   snack: r.snack ?? "",
   attendees: Array.isArray(r.attendees) ? r.attendees : [],
   blocks: Array.isArray(r.blocks) ? r.blocks : [],
+  body: typeof r.body === "string" && r.body.length > 0 ? r.body : blocksToHtml(Array.isArray(r.blocks) ? r.blocks : []),
   createdBy: r.created_by,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+/** Convert a legacy outline (headings + bullets) into HTML for the rich editor. */
+function blocksToHtml(blocks: MeetingBlock[]): string {
+  if (!blocks || blocks.length === 0) return "";
+  const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const out: string[] = [];
+  let listOpen = false;
+  const closeList = () => { if (listOpen) { out.push("</ul>"); listOpen = false; } };
+  for (const b of blocks) {
+    if (b.kind === "heading") { closeList(); out.push(`<h2>${esc(b.text || "")}</h2>`); }
+    else {
+      if (!listOpen) { out.push("<ul>"); listOpen = true; }
+      const pad = "\u00a0".repeat((b.indent || 0) * 4);
+      out.push(`<li>${pad}${esc(b.text || "")}</li>`);
+    }
+  }
+  closeList();
+  return out.join("");
+}
 
 // A tiny starter outline for a group with no template yet.
 function starterBlocks(): MeetingBlock[] {
@@ -61,21 +82,24 @@ export async function getTemplate(group: ProjectGroup): Promise<MeetingTemplate>
     const { data, error } = await sb()
       .from("lms_meeting_templates").select("*").eq("group_code", group).maybeSingle();
     if (error) throw new Error(error.message);
-    return { group, blocks: (data?.blocks as MeetingBlock[]) ?? starterBlocks() };
+    const blocks = (data?.blocks as MeetingBlock[]) ?? starterBlocks();
+    const body = typeof data?.body === "string" && data.body.length > 0 ? data.body : blocksToHtml(blocks);
+    return { group, blocks, body };
   }
-  return { group, blocks: mem.templates.get(group) ?? starterBlocks() };
+  const blocks = mem.templates.get(group) ?? starterBlocks();
+  return { group, blocks, body: memTemplateBody.get(group) ?? blocksToHtml(blocks) };
 }
 
-export async function setTemplate(group: ProjectGroup, blocks: MeetingBlock[]): Promise<void> {
+export async function setTemplate(group: ProjectGroup, blocks: MeetingBlock[], body: string): Promise<void> {
   if (usingSupabase) {
     const { error } = await sb().from("lms_meeting_templates").upsert(
-      { group_code: group, blocks, updated_at: now() },
+      { group_code: group, blocks, body, updated_at: now() },
       { onConflict: "group_code" },
     );
     if (error) throw new Error(error.message);
     return;
   }
-  mem.templates.set(group, blocks);
+  mem.templates.set(group, blocks); memTemplateBody.set(group, body);
 }
 
 // ---------------------------------------------------------------- meetings
@@ -111,6 +135,7 @@ export async function createMeeting(
   const tpl = await getTemplate(group);
   // fresh ids for the copied template blocks
   const blocks = tpl.blocks.map((b) => ({ ...b, id: uid() }));
+  const body = tpl.body ?? "";
   const row = {
     id: uid(),
     group_code: group,
@@ -121,6 +146,7 @@ export async function createMeeting(
     snack: "",
     attendees: fields.attendees ?? [],
     blocks,
+    body,
     created_by: lc(createdBy),
     created_at: now(),
     updated_at: now(),
@@ -136,7 +162,7 @@ export async function createMeeting(
 }
 
 export type MeetingPatch = Partial<
-  Pick<Meeting, "title" | "date" | "location" | "notetaker" | "snack" | "attendees" | "blocks">
+  Pick<Meeting, "title" | "date" | "location" | "notetaker" | "snack" | "attendees" | "blocks" | "body">
 >;
 
 export async function updateMeeting(id: string, patch: MeetingPatch): Promise<Meeting | null> {
@@ -149,6 +175,7 @@ export async function updateMeeting(id: string, patch: MeetingPatch): Promise<Me
     if (patch.snack !== undefined) row.snack = patch.snack;
     if (patch.attendees !== undefined) row.attendees = patch.attendees;
     if (patch.blocks !== undefined) row.blocks = patch.blocks;
+    if (patch.body !== undefined) row.body = patch.body;
     const { data, error } = await sb().from("lms_meetings").update(row).eq("id", id).select("*").maybeSingle();
     if (error) throw new Error(error.message);
     return data ? fromRow(data) : null;

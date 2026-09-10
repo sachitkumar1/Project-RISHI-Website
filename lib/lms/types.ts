@@ -163,9 +163,10 @@ export type Meeting = {
   notetaker: string;
   snack: string;
   attendees: string[]; // member emails
-  blocks: MeetingBlock[];
+  blocks: MeetingBlock[]; // legacy outline (kept for back-compat)
+  body: string;          // rich HTML content (TipTap)
   createdBy: string;
   createdAt: string;
   updatedAt: string;
 };
-export type MeetingTemplate = { group: ProjectGroup; blocks: MeetingBlock[] };
+export type MeetingTemplate = { group: ProjectGroup; blocks: MeetingBlock[]; body: string };
