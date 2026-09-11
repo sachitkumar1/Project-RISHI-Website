@@ -36,7 +36,7 @@ export const LINKS = {
   // Released later this cycle — leave "" and the Apply page shows "Released soon".
   application: "https://forms.gle/bnuwBqNuZLqyuf7g8",
   coffeeChats: "https://airtable.com/appRzFKM7Q0VNlrUp/shrDvG2cFmgRKPKhp",
-  donate: "/donate", // TODO point at your real donation processor
+  donate: "/donate", // instructive page -> Stripe donation link
   instagram: "https://www.instagram.com/ucbprojectrishi/?hl=en",
   facebook: "https://www.facebook.com/ucbprojectrishi/",
   nationalSite: "http://www.projectrishi.org/",

@@ -8,8 +8,7 @@ export const metadata: Metadata = {
   description: "Support Project RISHI's work in Bharog Baneri.",
 };
 
-const VENMO_URL = "https://venmo.com/u/projectrishical";
-const VENMO_HANDLE = "@projectrishical";
+const STRIPE_URL = "https://donate.stripe.com/6oEeYJ5CX6Ay5a03cl";
 
 export default function DonatePage() {
   return (
@@ -30,63 +29,40 @@ export default function DonatePage() {
           </p>
         </Reveal>
 
-        {/* Venmo donation block */}
-        <Reveal delay={0.12} className="mt-12 w-full max-w-3xl">
-          <div className="grid gap-5 text-left sm:grid-cols-[1.15fr_0.85fr]">
-            {/* CTA card */}
-            <div className="flex flex-col rounded-3xl border border-paper/15 bg-paper/[0.06] p-8">
-              <p className="font-display text-2xl font-semibold text-paper">
-                Donate with Venmo
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-paper/70">
-                The fastest way to give. Send any amount in a few taps — it goes
-                straight to supporting our work on the ground.
-              </p>
+        {/* Stripe donation block */}
+        <Reveal delay={0.12} className="mt-12 w-full max-w-xl">
+          <div className="rounded-3xl border border-paper/15 bg-paper/[0.06] p-8 text-left">
+            <p className="font-display text-2xl font-semibold text-paper">Donate online</p>
+            <p className="mt-2 text-sm leading-relaxed text-paper/70">
+              Give securely by card in a few taps. Donations are processed through
+              the ASUC (Associated Students of the University of California), which
+              sponsors us as a UC Berkeley student organization.
+            </p>
 
-              <a
-                href={VENMO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 font-semibold text-white shadow-sm transition-transform duration-200 hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-                style={{ backgroundColor: "#008CFF" }}
-              >
-                Donate via Venmo
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M7 17L17 7M9 7h8v8" />
-                </svg>
-              </a>
-
-              <div className="mt-5 flex items-center gap-2 text-sm">
-                <span className="text-paper/55">Our handle:</span>
+            {/* The one instruction people must follow */}
+            <div className="mt-5 rounded-2xl border border-marigold/40 bg-marigold-soft/10 p-4">
+              <p className="text-sm text-paper/90">
+                On the payment page, under{" "}
+                <span className="font-semibold">“Student Organization”</span>, be sure to
+                type{" "}
                 <span className="font-display text-base font-semibold text-marigold-soft">
-                  {VENMO_HANDLE}
-                </span>
-              </div>
+                  Project RISHI
+                </span>{" "}
+                so your gift reaches us.
+              </p>
             </div>
 
-            {/* QR card */}
-            <div className="flex flex-col items-center justify-center rounded-3xl bg-paper p-6 text-center text-ink">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/venmo-qr.svg"
-                alt={`QR code to donate to Project RISHI on Venmo (${VENMO_HANDLE})`}
-                width={168}
-                height={168}
-                className="h-40 w-40 rounded-xl"
-              />
-              <p className="mt-3 text-sm font-semibold text-ink/80">Scan to donate</p>
-              <p className="text-xs text-ink/50">Point your phone camera here</p>
-            </div>
+            <a
+              href={STRIPE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-marigold px-6 py-3.5 font-semibold text-pine-deep shadow-sm transition-transform duration-200 hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            >
+              Donate now
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M7 17L17 7M9 7h8v8" />
+              </svg>
+            </a>
           </div>
 
           {/* Secondary option */}
