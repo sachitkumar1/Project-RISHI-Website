@@ -332,8 +332,13 @@ alter table lms_meetings          add column if not exists body text;
 alter table lms_meeting_templates add column if not exists body text;
 
 -- ============================================================================
---  Project RISHI — Files section
---  Run this whole file once in the Supabase SQL editor. Safe to re-run.
+--  Project RISHI — Files section (complete migration)
+--  Run this whole file in the Supabase SQL editor. Safe to re-run, and safe to
+--  run over a database where the earlier migration-files.sql was already
+--  applied — it repairs the drive_id constraint that made the sync fail.
+--
+--  Supersedes migration-files.sql and migration-files-fix.sql. If you run this,
+--  you don't need either of those.
 -- ============================================================================
 
 -- ---- The file index --------------------------------------------------------
@@ -367,10 +372,24 @@ create table if not exists lms_files (
   created_at         timestamptz not null default now()
 );
 
-create unique index if not exists lms_files_drive_id_key on lms_files (drive_id) where drive_id is not null;
-create index if not exists lms_files_parent_idx  on lms_files (parent_id) where deleted = false;
-create index if not exists lms_files_year_idx    on lms_files (year)      where deleted = false;
-create index if not exists lms_files_name_idx    on lms_files (lower(name));
+-- ---- Uniqueness on drive_id ------------------------------------------------
+-- This MUST be a constraint, not a partial unique index. Postgres won't infer a
+-- partial index for "on conflict (drive_id)" unless the statement repeats the
+-- index predicate, which PostgREST cannot send — so the sync's upserts failed
+-- with 42P10 and wrote nothing. A plain unique constraint allows multiple NULLs,
+-- so uploaded files (which have no drive_id) are unaffected.
+drop index if exists lms_files_drive_id_key;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'lms_files_drive_id_unique') then
+    alter table lms_files add constraint lms_files_drive_id_unique unique (drive_id);
+  end if;
+end $$;
+
+create index if not exists lms_files_parent_idx on lms_files (parent_id) where deleted = false;
+create index if not exists lms_files_year_idx   on lms_files (year)      where deleted = false;
+create index if not exists lms_files_name_idx   on lms_files (lower(name));
 
 alter table lms_files enable row level security;
 grant all privileges on table lms_files to service_role;
@@ -403,9 +422,85 @@ insert into lms_file_visibility (folder_id, audience) values
   ('1sCZOKG9UGp4NLqZ6ngvSkZDCk7av-wXY', 'exec')    -- 2025-2026 / Project Groups / Education / Finance
   on conflict (folder_id) do nothing;
 
+-- ---- Verify ----------------------------------------------------------------
+-- Should return exactly one row, with contype = 'u'. If it returns nothing, the
+-- constraint wasn't created and the sync will still write nothing.
+select conname, contype from pg_constraint where conname = 'lms_files_drive_id_unique';
+
 -- ============================================================================
---  ONE MANUAL STEP IN THE SUPABASE DASHBOARD
+--  ONE MANUAL STEP IN THE SUPABASE DASHBOARD (you've already done this)
 --  Storage → New bucket → name it exactly:  lms-files
 --  Leave "Public bucket" OFF. Uploads are served through short-lived signed
 --  URLs minted by the server, so the bucket must stay private.
 -- ============================================================================
+
+-- ============================================================================
+--  Project RISHI — Task submissions + searchable file contents
+--  Run this AFTER migration-files.sql. Safe to re-run.
+-- ============================================================================
+
+-- ---- Re-index edited files -------------------------------------------------
+-- When a Drive file's modified_at changes, its stored text is stale. Clearing
+-- content_text/content_indexed_at puts it back in the indexer's queue.
+-- This lives in the database because PostgREST filters compare a column to a
+-- literal, never to another column, so the sync can't express it.
+create or replace function lms_files_reindex_on_change() returns trigger as $$
+begin
+  if new.modified_at is distinct from old.modified_at then
+    new.content_text := null;
+    new.content_indexed_at := null;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists lms_files_reindex on lms_files;
+create trigger lms_files_reindex
+  before update on lms_files
+  for each row execute function lms_files_reindex_on_change();
+
+-- Speeds up "search inside files" (ilike on content_text).
+create extension if not exists pg_trgm;
+create index if not exists lms_files_content_trgm
+  on lms_files using gin (content_text gin_trgm_ops);
+
+-- ---- Task submission folders ----------------------------------------------
+-- Synthetic folders: they exist only here, never in Drive. source = 'task'
+-- keeps them clear of the Drive sync, which only ever touches source = 'drive'.
+--
+--   Tasks/
+--     Education/ Water & Sanitation/ Women's Empowerment/ Health/ NMT/
+--       <task title>/ <uploaded files>
+insert into lms_files (source, drive_id, parent_id, name, mime_type, kind, path, deleted) values
+  ('task', 'tasks',     null,    'Tasks',                 'application/vnd.google-apps.folder', 'folder', '',      false),
+  ('task', 'tasks:E',   'tasks', 'Education',             'application/vnd.google-apps.folder', 'folder', 'Tasks', false),
+  ('task', 'tasks:R',   'tasks', 'Water & Sanitation',    'application/vnd.google-apps.folder', 'folder', 'Tasks', false),
+  ('task', 'tasks:W',   'tasks', 'Women''s Empowerment',  'application/vnd.google-apps.folder', 'folder', 'Tasks', false),
+  ('task', 'tasks:H',   'tasks', 'Health',                'application/vnd.google-apps.folder', 'folder', 'Tasks', false),
+  ('task', 'tasks:NMT', 'tasks', 'NMT',                   'application/vnd.google-apps.folder', 'folder', 'Tasks', false)
+  on conflict (drive_id) do nothing;
+
+-- ---- Who sees task submissions --------------------------------------------
+-- Each project-group folder is visible ONLY to the leads of that one group
+-- ('group_leads'), not to leads generally. NMT is visible only to NMT leaders.
+-- The 'Tasks' root is open to leads so the branch is reachable; its children
+-- are what actually gate access. VP/President see everything, as everywhere.
+insert into lms_file_visibility (folder_id, audience, groups) values
+  ('tasks',     'leads',       '{}'),
+  ('tasks:E',   'group_leads', '{E}'),
+  ('tasks:R',   'group_leads', '{R}'),
+  ('tasks:W',   'group_leads', '{W}'),
+  ('tasks:H',   'group_leads', '{H}'),
+  ('tasks:NMT', 'nmt',         '{}')
+  on conflict (folder_id) do update
+    set audience = excluded.audience,
+        groups   = excluded.groups,
+        updated_at = now();
+
+-- ---- Verify ----------------------------------------------------------------
+-- Expect 6 folder rows and 6 visibility rows.
+select
+  (select count(*) from lms_files where source = 'task' and kind = 'folder' and parent_id is not distinct from null
+     or (source = 'task' and drive_id like 'tasks:%')) as task_folders,
+  (select count(*) from lms_file_visibility where folder_id like 'tasks%') as task_rules;
+

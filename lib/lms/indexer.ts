@@ -58,18 +58,21 @@ const INDEXABLE: Record<string, string | null> = {
 };
 
 /**
- * Folders whose contents should NOT be text-indexed, by folder id. Empty by
- * design — everything is indexed, and search results already respect each
- * folder's audience, so restricted material stays restricted.
+ * Folders whose contents are never text-indexed, by folder id.
  *
- * It exists because indexing copies a document's full text into the database.
- * For most club files that's unremarkable. If you'd rather a folder's text
- * never be stored at all, add its id here and the files inside it are listed
- * and previewable as normal but their contents are never read. The 25-26
- * reimbursement receipts folder is the one place this might be wanted:
- *   "1BjOszalxfCkTFLxqhcYvaEuvw3lEsCAfxjGsyLKfXCQ"
+ * Indexing copies a document's full text into the database. Search already
+ * respects each folder's audience, so restricted material stays restricted —
+ * but that governs who can FIND it, not whether it's stored. For material
+ * where storing the text at all is the concern, list the folder here: its
+ * files are still listed, previewable and openable, their contents are just
+ * never read.
  */
-export const CONTENT_INDEX_SKIP_FOLDERS = new Set<string>([]);
+export const CONTENT_INDEX_SKIP_FOLDERS = new Set<string>([
+  // 25-26 financial reimbursement receipts. The submission form requires
+  // screenshots showing the last four digits of a card or bank account, so the
+  // text of these files is deliberately never stored.
+  "1jmi7wpkSwy4seFixVgPg6cDM36IyrPqXQJRfinsurogUyXjd51ffgUTu5Fgvj-7O-pvvECcp",
+]);
 
 export const isIndexable = (mime: string) => mime in INDEXABLE;
 

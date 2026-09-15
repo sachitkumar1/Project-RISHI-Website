@@ -334,7 +334,7 @@ export default function FilesBrowser() {
           {deepSearch ? " in names and file contents" : " in names"}
           {deepSearch && (
             <span className="block text-xs text-ink/45">
-              Only Docs, Sheets, Slides and text files have searchable contents.
+              Searches inside Docs, Sheets, Slides, PDFs and text files.
             </span>
           )}
         </p>

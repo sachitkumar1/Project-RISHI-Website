@@ -168,7 +168,8 @@ export default function FilesSettingsPanel() {
             {status.index.pending > 0
               ? `, ${status.index.pending} still queued — the hourly job works through them.`
               : "."}{" "}
-            Only Docs, Sheets, Slides and text files can be indexed; PDFs, images and video can&apos;t.
+            Docs, Sheets, Slides, PDFs and text files are indexed. Images, video, Forms and
+            shortcuts have no text to read, and a few folders are excluded on purpose.
           </p>
         </div>
       )}
