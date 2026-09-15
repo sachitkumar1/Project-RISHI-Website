@@ -46,7 +46,7 @@ export async function POST() {
   if (result.ok) {
     // Pull text for a first batch right away so "search in files" starts
     // working immediately rather than only after the next cron run.
-    const index = await indexContent(60);
+    const index = await indexContent();
     return NextResponse.json({ ...result, index });
   }
   if (!result.ok)

@@ -78,55 +78,82 @@ export type IndexResult = {
   remaining?: number;
 };
 
+/** How many extractions run at once. Drive tolerates this comfortably. */
+const CONCURRENCY = 8;
+
 /**
- * Index files that have no content yet, or whose Drive copy changed since we
- * last read it. Processes a bounded batch so a cron run can't hang: call it
- * repeatedly until `remaining` is 0.
+ * Pull text for every file that still needs it, working until the queue is
+ * empty or the time budget runs out.
+ *
+ * The budget is 35s, not 60: the Drive walk runs first and Vercel kills the
+ * whole request at 60s. A measured full first run took ~51s end to end, so the
+ * headroom matters. Being cut short is safe anyway — each file is stamped as
+ * it completes, so the next run resumes rather than restarting.
+ *
+ * Non-indexable files are retired up front in a single statement, so the loop
+ * only ever touches files that can actually yield text. In practice one run
+ * now covers the whole library rather than chipping away 60 rows at a time.
  */
-export async function indexContent(limit = 60): Promise<IndexResult> {
+export async function indexContent(budgetMs = 35_000): Promise<IndexResult> {
   if (!usingSupabase) return { ok: false, error: "Supabase isn't configured." };
 
   const auth = await getDriveAccessToken();
   if ("error" in auth) return { ok: false, error: auth.error };
 
-  // Files needing work: never indexed, or modified after their last index.
-  const { data: rows, error } = await sb()
+  const deadline = Date.now() + budgetMs;
+  const stamp = new Date().toISOString();
+
+  // ---- 1. Retire everything that can never have text, in ONE statement ----
+  // Photos, PDFs, videos, shortcuts and Forms make up most of the library.
+  // Walking them 60 at a time through individual updates wasted whole runs.
+  const { data: dropped } = await sb()
     .from("lms_files")
-    .select("id,drive_id,mime_type,modified_at,content_indexed_at")
+    .update({ content_indexed_at: stamp })
     .eq("source", "drive")
     .eq("kind", "file")
     .eq("deleted", false)
     .is("content_indexed_at", null)
-    .limit(limit);
-  if (error) return { ok: false, error: error.message };
+    .not("mime_type", "in", `(${Object.keys(INDEXABLE).map((m) => `"${m}"`).join(",")})`)
+    .select("id");
+  const skipped = dropped?.length ?? 0;
 
+  // ---- 2. Extract the rest, several at a time, until the budget runs out ----
   let indexed = 0,
-    skipped = 0,
-    failed = 0;
+    failed = 0,
+    examined = 0;
 
-  for (const r of rows ?? []) {
-    const mime = r.mime_type ?? "";
-    const stamp = new Date().toISOString();
+  while (Date.now() < deadline) {
+    const { data: rows, error } = await sb()
+      .from("lms_files")
+      .select("id,drive_id,mime_type")
+      .eq("source", "drive")
+      .eq("kind", "file")
+      .eq("deleted", false)
+      .is("content_indexed_at", null)
+      .in("mime_type", Object.keys(INDEXABLE))
+      .limit(CONCURRENCY);
+    if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) break; // queue drained
 
-    if (!isIndexable(mime) || !r.drive_id) {
-      // Mark it seen so it drops out of the queue permanently.
-      await sb().from("lms_files").update({ content_indexed_at: stamp }).eq("id", r.id);
-      skipped++;
-      continue;
-    }
-
-    try {
-      const text = await extract(auth.token, r.drive_id, mime);
-      await sb()
-        .from("lms_files")
-        .update({ content_text: text, content_indexed_at: stamp })
-        .eq("id", r.id);
-      if (text) indexed++;
-      else skipped++;
-    } catch (e) {
-      console.warn(`indexer: ${r.drive_id} failed —`, (e as Error).message);
-      failed++;
-    }
+    examined += rows.length;
+    await Promise.all(
+      rows.map(async (r) => {
+        const at = new Date().toISOString();
+        try {
+          const text = r.drive_id ? await extract(auth.token, r.drive_id, r.mime_type ?? "") : null;
+          await sb()
+            .from("lms_files")
+            .update({ content_text: text, content_indexed_at: at })
+            .eq("id", r.id);
+          if (text) indexed++;
+        } catch (e) {
+          console.warn(`indexer: ${r.drive_id} failed —`, (e as Error).message);
+          // Stamp it so one broken file can't wedge the queue forever.
+          await sb().from("lms_files").update({ content_indexed_at: at }).eq("id", r.id);
+          failed++;
+        }
+      }),
+    );
   }
 
   const { count } = await sb()
@@ -137,7 +164,7 @@ export async function indexContent(limit = 60): Promise<IndexResult> {
     .eq("deleted", false)
     .is("content_indexed_at", null);
 
-  return { ok: true, examined: rows?.length ?? 0, indexed, skipped, failed, remaining: count ?? 0 };
+  return { ok: true, examined, indexed, skipped, failed, remaining: count ?? 0 };
 }
 
 /** How much of the library currently has searchable text, for Settings. */

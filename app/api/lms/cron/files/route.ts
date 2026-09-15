@@ -44,7 +44,7 @@ async function run(req: Request) {
   // Then extract text from whatever still needs it, so "search in files" keeps
   // up. Bounded per run — anything left over is picked up by the next one, and
   // `remaining` says how much is outstanding.
-  const index = await indexContent(60);
+  const index = await indexContent();
 
   return NextResponse.json({ ...result, index, ms: Date.now() - started });
 }
