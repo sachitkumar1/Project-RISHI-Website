@@ -289,7 +289,7 @@ export default function FilesBrowser() {
               }`}
               title="Match file and folder names only"
             >
-              Names
+              Names Only
             </button>
             <button
               onClick={() => setDeepSearch(true)}
@@ -298,7 +298,7 @@ export default function FilesBrowser() {
               }`}
               title="Also search the text inside documents"
             >
-              In files
+              Include In-File Text
             </button>
           </div>
 
