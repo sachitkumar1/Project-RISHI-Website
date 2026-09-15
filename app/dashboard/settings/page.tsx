@@ -8,6 +8,7 @@ import Reveal from "@/components/Reveal";
 import Contours from "@/components/Contours";
 import Avatar from "@/components/Avatar";
 import ProfilePhotoModal from "@/components/ProfilePhotoModal";
+import FilesSettingsPanel from "@/components/FilesSettingsPanel";
 
 type Profile = {
   email: string;
@@ -312,6 +313,9 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+
+            {/* Files (Drive mirror + per-folder visibility) — webmaster only */}
+            <FilesSettingsPanel />
 
             {/* Email sending (Gmail) */}
             {gmail && (

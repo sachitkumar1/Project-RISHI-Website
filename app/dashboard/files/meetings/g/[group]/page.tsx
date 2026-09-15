@@ -41,7 +41,7 @@ export default function GroupMeetings({ params }: { params: { group: string } })
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || "Couldn't create the meeting.");
-      router.push(`/dashboard/meetings/m/${d.meeting.id}`);
+      router.push(`/dashboard/files/meetings/m/${d.meeting.id}`);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Couldn't create the meeting.");
       setCreating(false);
@@ -57,7 +57,7 @@ export default function GroupMeetings({ params }: { params: { group: string } })
       <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
         <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
         <div className="container-rishi relative z-10 py-12">
-          <Link href="/dashboard/meetings" className="inline-flex items-center gap-2 text-sm font-semibold text-paper/80 hover:text-paper">
+          <Link href="/dashboard/files/meetings" className="inline-flex items-center gap-2 text-sm font-semibold text-paper/80 hover:text-paper">
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
             All groups
           </Link>
@@ -72,7 +72,7 @@ export default function GroupMeetings({ params }: { params: { group: string } })
               className="rounded-full bg-pine px-5 py-2.5 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-60">
               {creating ? "Creating…" : "+ New meeting"}
             </button>
-            <Link href={`/dashboard/meetings/g/${group}/template`}
+            <Link href={`/dashboard/files/meetings/g/${group}/template`}
               className="rounded-full border border-pine/25 px-5 py-2.5 text-sm font-semibold text-pine-deep hover:bg-pine/5">
               Edit template
             </Link>
@@ -89,7 +89,7 @@ export default function GroupMeetings({ params }: { params: { group: string } })
 
         <div className="space-y-3">
           {meetings.map((m) => (
-            <Link key={m.id} href={`/dashboard/meetings/m/${m.id}`}
+            <Link key={m.id} href={`/dashboard/files/meetings/m/${m.id}`}
               className="flex items-center gap-4 rounded-2xl border border-pine/12 bg-paper p-5 transition-colors hover:border-pine/40">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-pine/[0.06] text-pine-deep">
                 <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>

@@ -331,3 +331,81 @@ grant all privileges on table lms_meeting_templates to service_role;
 alter table lms_meetings          add column if not exists body text;
 alter table lms_meeting_templates add column if not exists body text;
 
+-- ============================================================================
+--  Project RISHI — Files section
+--  Run this whole file once in the Supabase SQL editor. Safe to re-run.
+-- ============================================================================
+
+-- ---- The file index --------------------------------------------------------
+-- One row per folder/file. Two sources share the table so the browser can show
+-- Drive-mirrored items and site uploads in a single tree:
+--   source = 'drive'   → mirrored from Google Drive (metadata only, no bytes)
+--   source = 'upload'  → uploaded through the site, bytes in Supabase Storage
+create table if not exists lms_files (
+  id                 uuid primary key default gen_random_uuid(),
+  source             text not null default 'drive',   -- drive | upload
+  drive_id           text,                            -- Drive file/folder id (null for uploads)
+  parent_id          text,                            -- parent folder's drive_id (null = a year root)
+  name               text not null,
+  mime_type          text not null default '',
+  kind               text not null default 'file',    -- folder | file | shortcut
+  size_bytes         bigint,
+  web_view_link      text,
+  year               text,                            -- '2025-2026' | '2026-2027'
+  path               text not null default '',        -- breadcrumb path, e.g. 'Exec/Finance'
+  modified_at        timestamptz,
+  owner_email        text,
+  -- uploads only
+  storage_path       text,
+  uploaded_by        text,
+  -- reserved for the future in-site search agent: extracted plain text
+  content_text       text,
+  content_indexed_at timestamptz,
+  -- a sync never hard-deletes; it flips this instead
+  deleted            boolean not null default false,
+  synced_at          timestamptz,
+  created_at         timestamptz not null default now()
+);
+
+create unique index if not exists lms_files_drive_id_key on lms_files (drive_id) where drive_id is not null;
+create index if not exists lms_files_parent_idx  on lms_files (parent_id) where deleted = false;
+create index if not exists lms_files_year_idx    on lms_files (year)      where deleted = false;
+create index if not exists lms_files_name_idx    on lms_files (lower(name));
+
+alter table lms_files enable row level security;
+grant all privileges on table lms_files to service_role;
+
+-- ---- Per-folder visibility -------------------------------------------------
+-- audience: all | leads | exec | vpp | groups   ('groups' uses the groups column)
+-- A folder with no row inherits its parent's audience; a year root with no row
+-- falls back to the 'files_default_audience' setting below.
+create table if not exists lms_file_visibility (
+  folder_id  text primary key,
+  audience   text not null default 'all',
+  groups     text[] not null default '{}',   -- E | R | W | H
+  updated_at timestamptz not null default now()
+);
+alter table lms_file_visibility enable row level security;
+grant all privileges on table lms_file_visibility to service_role;
+
+-- Club-wide default for anything not explicitly set.
+insert into lms_settings (key, value)
+  values ('files_default_audience', 'all')
+  on conflict (key) do nothing;
+
+-- ---- Seeded restrictions ---------------------------------------------------
+-- The Exec trees hold reimbursement forms, budgets, and grant applications, so
+-- they start restricted to Exec. Everything else starts visible to all members.
+-- Change any of this from Dashboard → Settings → Files.
+insert into lms_file_visibility (folder_id, audience) values
+  ('1IcLQgHgXuwH8PLAVCK13GeKurojrNxb_', 'exec'),   -- 2025-2026 / Exec
+  ('18Xr84xvX2e36IhMZvMkuDO2AVWp5euOp', 'exec'),   -- 2026-2027 / Exec
+  ('1sCZOKG9UGp4NLqZ6ngvSkZDCk7av-wXY', 'exec')    -- 2025-2026 / Project Groups / Education / Finance
+  on conflict (folder_id) do nothing;
+
+-- ============================================================================
+--  ONE MANUAL STEP IN THE SUPABASE DASHBOARD
+--  Storage → New bucket → name it exactly:  lms-files
+--  Leave "Public bucket" OFF. Uploads are served through short-lived signed
+--  URLs minted by the server, so the bucket must stay private.
+-- ============================================================================

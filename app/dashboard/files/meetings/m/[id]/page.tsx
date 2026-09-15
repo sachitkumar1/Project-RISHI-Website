@@ -123,7 +123,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
         <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
         <div className="container-rishi relative z-10 py-10">
           <div className="flex items-center justify-between">
-            <Link href={`/dashboard/meetings/g/${m.group}`} className="inline-flex items-center gap-2 text-sm font-semibold text-paper/80 hover:text-paper">
+            <Link href={`/dashboard/files/meetings/g/${m.group}`} className="inline-flex items-center gap-2 text-sm font-semibold text-paper/80 hover:text-paper">
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
               {label} meetings
             </Link>
@@ -231,7 +231,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
             <button onClick={async () => {
               if (!confirm("Delete this meeting? This can't be undone. (Tasks assigned from it stay in the task system.)")) return;
               const r = await fetch(`/api/lms/meetings/${id}`, { method: "DELETE" });
-              if (r.ok) router.push(`/dashboard/meetings/g/${m.group}`); else alert("Couldn't delete.");
+              if (r.ok) router.push(`/dashboard/files/meetings/g/${m.group}`); else alert("Couldn't delete.");
             }} className="text-sm font-semibold text-red-500 hover:text-red-600">Delete meeting</button>
           </div>
         )}
@@ -255,7 +255,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <section className="bg-pine pt-[var(--header-h)]"><div className="container-rishi py-10"><Link href="/dashboard/meetings" className="text-sm font-semibold text-paper/80 hover:text-paper">← Meetings</Link></div></section>
+      <section className="bg-pine pt-[var(--header-h)]"><div className="container-rishi py-10"><Link href="/dashboard/files/meetings" className="text-sm font-semibold text-paper/80 hover:text-paper">← Meetings</Link></div></section>
       <section className="container-rishi py-10">{children}</section>
     </>
   );

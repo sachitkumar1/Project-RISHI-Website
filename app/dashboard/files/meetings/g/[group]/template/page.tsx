@@ -48,7 +48,7 @@ export default function TemplateEditor({ params }: { params: { group: string } }
       <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
         <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
         <div className="container-rishi relative z-10 py-10">
-          <Link href={`/dashboard/meetings/g/${group}`} className="inline-flex items-center gap-2 text-sm font-semibold text-paper/80 hover:text-paper">
+          <Link href={`/dashboard/files/meetings/g/${group}`} className="inline-flex items-center gap-2 text-sm font-semibold text-paper/80 hover:text-paper">
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
             {label} meetings
           </Link>
@@ -66,7 +66,7 @@ export default function TemplateEditor({ params }: { params: { group: string } }
               onChange={setBody} fullscreen={fs} onToggleFullscreen={() => setFs((v) => !v)} />
             <div className="mt-4 flex items-center gap-3">
               <button onClick={save} disabled={saving} className="rounded-full bg-pine px-5 py-2.5 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-60">{saving ? "Saving…" : "Save template"}</button>
-              <button onClick={() => router.push(`/dashboard/meetings/g/${group}`)} className="rounded-full border border-pine/20 px-5 py-2.5 text-sm font-semibold text-pine-deep hover:bg-pine/5">Done</button>
+              <button onClick={() => router.push(`/dashboard/files/meetings/g/${group}`)} className="rounded-full border border-pine/20 px-5 py-2.5 text-sm font-semibold text-pine-deep hover:bg-pine/5">Done</button>
               {msg && <span className="text-sm text-ink/70">{msg}</span>}
             </div>
           </>
