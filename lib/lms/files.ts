@@ -371,6 +371,7 @@ export async function listFolder(m: Member, folderKey: string | null): Promise<F
 }
 
 export type SearchMode = "names" | "contents";
+export type SearchOpts = { wholeWord?: boolean; caseSensitive?: boolean };
 
 /**
  * Search everything the member is allowed to see.
@@ -389,16 +390,24 @@ export async function searchFiles(
   m: Member,
   q: string,
   mode: SearchMode = "names",
-  limit = 60,
+  limit = 200,
+  opts: SearchOpts = {},
 ): Promise<FileNode[]> {
-  const needle = q.trim().toLowerCase();
-  if (needle.length < 2) return [];
+  const raw = q.trim();
+  if (raw.length < 2) return [];
+  const needle = raw.toLowerCase();
 
   const idx = await loadIndex();
   const fallback = await getDefaultAudience();
   const visible = (n: FileNode) => canSee(m, idx, n.parentId, fallback);
 
-  const byName = idx.nodes.filter((n) => n.name.toLowerCase().includes(needle)).filter(visible);
+  // Whole-word and case-sensitivity are applied here rather than in SQL: the
+  // database narrows the candidates with a cheap substring match, and this
+  // refines them precisely. Doing it the other way would need a regex query
+  // across every stored document.
+  const matcher = buildMatcher(raw, opts);
+
+  const byName = idx.nodes.filter((n) => matcher(n.name)).filter(visible);
   if (mode === "names" || !usingSupabase) return byName.slice(0, limit);
 
   // Content hits, excluding anything already matched by name.
@@ -415,17 +424,41 @@ export async function searchFiles(
   const contentHits: FileNode[] = [];
   for (const row of data ?? []) {
     if (seen.has(row.id)) continue;
+    const text = row.content_text ?? "";
+    if (!matcher(text)) continue; // the SQL match was loose; this is the real test
     const node = toNode(row);
     if (!visible(node)) continue;
-    contentHits.push({ ...node, snippet: snippetAround(row.content_text ?? "", needle) });
+    contentHits.push({ ...node, snippet: snippetAround(text, raw, opts) });
   }
 
   return [...byName, ...contentHits].slice(0, limit);
 }
 
+/** Escape a string so it can sit inside a regular expression literally. */
+const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Build the test a file has to pass. Whole-word uses lookarounds rather than
+ * \b so that terms starting or ending in punctuation still behave.
+ */
+function buildMatcher(term: string, opts: SearchOpts): (text: string) => boolean {
+  const flags = opts.caseSensitive ? "" : "i";
+  const body = escapeRe(term);
+  const pattern = opts.wholeWord ? `(?<![\\w])${body}(?![\\w])` : body;
+  let re: RegExp;
+  try {
+    re = new RegExp(pattern, flags);
+  } catch {
+    re = new RegExp(escapeRe(term), flags); // lookbehind unsupported — fall back
+  }
+  return (text: string) => re.test(text ?? "");
+}
+
 /** ~160 characters of context around the first match, trimmed to word edges. */
-function snippetAround(text: string, needle: string): string {
-  const at = text.toLowerCase().indexOf(needle);
+function snippetAround(text: string, term: string, opts: SearchOpts = {}): string {
+  const needle = opts.caseSensitive ? term : term.toLowerCase();
+  const hay = opts.caseSensitive ? text : text.toLowerCase();
+  const at = hay.indexOf(needle);
   if (at < 0) return "";
   const start = Math.max(0, at - 60);
   const end = Math.min(text.length, at + needle.length + 100);

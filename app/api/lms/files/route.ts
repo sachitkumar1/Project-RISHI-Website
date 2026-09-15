@@ -25,7 +25,11 @@ export async function GET(req: Request) {
   try {
     if (q) {
       const mode: SearchMode = url.searchParams.get("mode") === "contents" ? "contents" : "names";
-      return NextResponse.json({ results: await searchFiles(me, q, mode), mode });
+      const opts = {
+        wholeWord: url.searchParams.get("whole") === "1",
+        caseSensitive: url.searchParams.get("case") === "1",
+      };
+      return NextResponse.json({ results: await searchFiles(me, q, mode, 200, opts), mode });
     }
 
     const folder = url.searchParams.get("folder");

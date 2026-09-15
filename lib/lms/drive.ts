@@ -40,23 +40,55 @@ function sb(): SupabaseClient {
 }
 
 // ---------------------------------------------------------------- what to index
-/** The two folders inside "UC Berkeley Project RISHI" that the site mirrors. */
-export const YEAR_ROOTS: { id: string; year: string; name: string }[] = [
+/** The club's top-level Drive folder. Every school-year folder lives inside it. */
+export const PARENT_FOLDER_ID = "1Huum1_5MYHMR-Ap3b_LJVhcVAPFOpKmg";
+
+/**
+ * Year folders we know about without asking Drive. These are the two the
+ * service account was first shared on; anything else is discovered at sync time
+ * (see discoverYearRoots), so sharing another year with GOOGLE_SA_EMAIL is all
+ * it takes for it to appear — no code change, no redeploy.
+ */
+export const KNOWN_YEAR_ROOTS: { id: string; year: string; name: string }[] = [
   { id: "143aYpyAABNvMFDw6J5kRAbltJTk-MDKf", year: "2025-2026", name: "2025-2026 Project RISHI" },
   { id: "1avvwirYScoTAoQFu3vc2luYrpb8YDS2n", year: "2026-2027", name: "2026-2027 Project RISHI" },
 ];
 
+/** Kept for callers that just want a list to show in Settings. */
+export const YEAR_ROOTS = KNOWN_YEAR_ROOTS;
+
 /**
- * Drive items the sync skips entirely. A folder listed here is skipped along
- * with everything inside it. These are excluded at Sachit's request — the GM
- * slide decks and the India trip video are large and not wanted on the site.
- * To bring one back, delete its line and re-sync.
+ * Find every school-year folder the service account can reach.
+ *
+ * Reads the parent folder when it's shared, and merges in the known two so a
+ * parent that isn't shared can never make existing years vanish. A folder
+ * counts as a year if its name starts with something like "2019-2020".
  */
-export const EXCLUDED_IDS = new Set<string>([
-  "1X0NkU_dNuqS6MfP75p0_VNrwMweZT8Hb", // 2025-2026 / GM Slides   (incl. its "Fall 25" subfolder)
-  "1pAWTV6qfMKoDsq8bVWmHRd_Us-tfQTfb", // 2026-2027 / GM Slides
-  "1nMhAdV9CeAJogQT_U9mi2hnQLqDkUkj5", // 2025-2026 / IndiaTripVideoFinal.MOV
-]);
+async function discoverYearRoots(token: string): Promise<{ id: string; year: string; name: string }[]> {
+  const found = new Map<string, { id: string; year: string; name: string }>();
+  for (const r of KNOWN_YEAR_ROOTS) found.set(r.id, r);
+
+  try {
+    for (const c of await listChildren(token, PARENT_FOLDER_ID)) {
+      if (c.mimeType !== FOLDER_MIME) continue;
+      const m = c.name.match(/(\d{4})\s*[-–—]\s*(\d{4})/);
+      if (!m) continue;
+      found.set(c.id, { id: c.id, year: `${m[1]}-${m[2]}`, name: c.name });
+    }
+  } catch (e) {
+    // The parent not being shared is the normal case today, not an error.
+    console.warn("drive: couldn't read the parent folder —", (e as Error).message);
+  }
+  return Array.from(found.values()).sort((a, b) => b.year.localeCompare(a.year));
+}
+
+/**
+ * Drive items the sync skips entirely; a folder here is skipped with everything
+ * inside it. Empty on purpose — the mirror stores metadata, not bytes, so even
+ * the GM decks and trip videos cost no Supabase storage. Add an id here only to
+ * keep something off the site deliberately.
+ */
+export const EXCLUDED_IDS = new Set<string>([]);
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const SHORTCUT_MIME = "application/vnd.google-apps.shortcut";
@@ -258,8 +290,10 @@ export async function syncDrive(): Promise<DriveSyncResult> {
   const rows: IndexRow[] = [];
   const seen = new Set<string>();
 
+  const roots = await discoverYearRoots(auth.token);
+
   try {
-    for (const root of YEAR_ROOTS) {
+    for (const root of roots) {
       // The year folder itself is the top of the tree the browser shows.
       rows.push({
         source: "drive",

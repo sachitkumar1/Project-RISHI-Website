@@ -105,6 +105,17 @@ function Icon({ n }: { n: Node }) {
         <path d="M10 9l5 3-5 3z" />
       </svg>
     );
+  if (m === "application/pdf")
+    return (
+      // Drive-style PDF mark: a page with "PDF" ruled across it.
+      <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+        <path d="M14 3v5h5" />
+        <path d="M8 13h1.2a1 1 0 0 1 0 2H8v-2zm0 2v2" strokeWidth="1.4" />
+        <path d="M12 13v4h1a1.4 1.4 0 0 0 1.4-1.4v-1.2A1.4 1.4 0 0 0 13 13h-1z" strokeWidth="1.4" />
+        <path d="M16.6 17v-4h1.9m-1.9 2h1.5" strokeWidth="1.4" />
+      </svg>
+    );
   if (m.startsWith("image/"))
     return (
       <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -121,6 +132,82 @@ function Icon({ n }: { n: Node }) {
   );
 }
 
+
+/** Results with no school year (task submissions, site uploads) sort last. */
+const UNDATED = "__undated__";
+
+/** Split search hits into school years, newest first, undated at the bottom. */
+function groupByYear(nodes: Node[]): [string, Node[]][] {
+  const by = new Map<string, Node[]>();
+  for (const n of nodes) {
+    const k = n.year || UNDATED;
+    const arr = by.get(k);
+    if (arr) arr.push(n);
+    else by.set(k, [n]);
+  }
+  return Array.from(by.entries()).sort(([a], [b]) => {
+    if (a === UNDATED) return 1;
+    if (b === UNDATED) return -1;
+    return b.localeCompare(a);
+  });
+}
+
+/** One tile in the browser. `big` is used for the current school year. */
+function FileCard({ n, onOpen, onDelete, showPath, big }: {
+  n: Node; onOpen: (n: Node) => void; onDelete: (n: Node) => void;
+  showPath?: boolean; big?: boolean;
+}) {
+  return (
+    <li className="group/item relative">
+      {n.canDelete && (
+        <button
+          onClick={() => void onDelete(n)}
+          className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-paper/80 text-ink/40 opacity-0 transition-opacity hover:bg-marigold/30 hover:text-ink focus:opacity-100 group-hover/item:opacity-100"
+          aria-label={`Delete ${n.name}`}
+          title="Delete this file"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+          </svg>
+        </button>
+      )}
+      <button
+        onClick={() => onOpen(n)}
+        className={`group flex w-full items-start gap-3 rounded-2xl border border-pine/15 bg-pine/[0.03] text-left transition-colors hover:border-pine hover:bg-pine hover:text-paper ${big ? "p-6" : "p-4"}`}
+      >
+        <span className={`mt-0.5 grid shrink-0 place-items-center rounded-xl ${big ? "h-12 w-12" : "h-9 w-9"} ${
+          n.kind === "folder" ? "bg-marigold text-pine-deep" : "bg-pine/10 text-pine group-hover:bg-paper/15 group-hover:text-paper"
+        }`}>
+          <Icon n={n} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className={`block truncate font-semibold leading-snug ${big ? "font-display text-2xl" : ""}`}>{n.name}</span>
+          <span className="mt-0.5 block truncate text-xs opacity-60">
+            {[
+              fileLabel(n),
+              showPath ? [n.year, n.path].filter(Boolean).join("/") : dateLabel(n.modifiedAt),
+              sizeLabel(n.sizeBytes),
+            ].filter(Boolean).join(" · ")}
+          </span>
+          {n.snippet && (
+            <span className="mt-1.5 block line-clamp-2 text-xs italic opacity-70">{n.snippet}</span>
+          )}
+          {n.kind === "folder" && n.audience && n.audience !== "all" && (
+            <span className="mt-1.5 inline-block rounded-full bg-pine/10 px-2 py-0.5 text-[11px] font-semibold text-pine group-hover:bg-paper/20 group-hover:text-paper">
+              {n.audience === "groups" ? `${(n.audienceGroups ?? []).join(", ")} only` : AUDIENCE_LABEL[n.audience]}
+            </span>
+          )}
+          {n.source === "upload" && (
+            <span className="mt-1.5 ml-1 inline-block rounded-full bg-marigold/25 px-2 py-0.5 text-[11px] font-semibold text-pine-deep">
+              Added here
+            </span>
+          )}
+        </span>
+      </button>
+    </li>
+  );
+}
+
 export default function FilesBrowser() {
   const [folderKey, setFolderKey] = useState<string | null>(null);
   const [view, setView] = useState<View | null>(null);
@@ -129,6 +216,8 @@ export default function FilesBrowser() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Node[] | null>(null);
   const [deepSearch, setDeepSearch] = useState(true); // default: search inside files too
+  const [wholeWord, setWholeWord] = useState(false);
+  const [caseSensitive, setCaseSensitive] = useState(false);
   const [preview, setPreview] = useState<Node | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -176,7 +265,8 @@ export default function FilesBrowser() {
     const t = setTimeout(async () => {
       try {
         const mode = deepSearch ? "&mode=contents" : "";
-        const r = await fetch(`/api/lms/files?q=${encodeURIComponent(q.trim())}${mode}`);
+        const flags = `${wholeWord ? "&whole=1" : ""}${caseSensitive ? "&case=1" : ""}`;
+        const r = await fetch(`/api/lms/files?q=${encodeURIComponent(q.trim())}${mode}${flags}`);
         const d = await r.json();
         setResults(r.ok ? (d.results ?? []) : []);
       } catch {
@@ -184,7 +274,7 @@ export default function FilesBrowser() {
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [q, deepSearch]);
+  }, [q, deepSearch, wholeWord, caseSensitive]);
 
   async function open(n: Node) {
     if (n.kind === "folder") {
@@ -243,6 +333,16 @@ export default function FilesBrowser() {
   }
 
   const items = results ?? view?.children ?? [];
+  const atRoot = !results && !!view && view.folder === null;
+  // At the top level the newest school year leads; older years are grouped
+  // under "Past years". Anything that isn't a year folder (Tasks) stays up top.
+  const rootYears = atRoot ? items.filter((n) => /^\d{4}-\d{4}/.test(n.name)) : [];
+  const newestYear = rootYears.map((n) => n.name.slice(0, 9)).sort().pop() ?? "";
+  // Only the newest year gets the large tile; Tasks and anything else that
+  // isn't a school year sits at normal size beneath it.
+  const currentRoots = atRoot ? rootYears.filter((n) => n.name.startsWith(newestYear)) : [];
+  const otherRoots = atRoot ? items.filter((n) => !rootYears.includes(n)) : [];
+  const pastRoots = atRoot ? rootYears.filter((n) => !n.name.startsWith(newestYear)) : [];
   const crumbs = view?.breadcrumbs ?? [];
 
   const empty = useMemo(() => {
@@ -343,15 +443,27 @@ export default function FilesBrowser() {
       )}
 
       {results && (
-        <p className="mt-4 text-sm text-ink/60">
-          {results.length} result{results.length === 1 ? "" : "s"} for “{q.trim()}”
-          {deepSearch ? " in names and file contents" : " in names"}
+        <div className="mt-4">
+          <p className="text-sm text-ink/60">
+            {results.length} result{results.length === 1 ? "" : "s"} for “{q.trim()}”
+            {deepSearch ? " in names and file contents" : " in names"}
+          </p>
           {deepSearch && (
-            <span className="block text-xs text-ink/45">
-              Searches inside Docs, Sheets, Slides, PDFs and text files.
-            </span>
+            <>
+              <p className="text-xs text-ink/45">Searches inside Docs, Sheets, Slides, PDFs and text files.</p>
+              <div className="mt-2 flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 text-xs text-ink/60">
+                  <input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} />
+                  Whole words only
+                </label>
+                <label className="flex items-center gap-2 text-xs text-ink/60">
+                  <input type="checkbox" checked={caseSensitive} onChange={(e) => setCaseSensitive(e.target.checked)} />
+                  Case sensitive
+                </label>
+              </div>
+            </>
           )}
-        </p>
+        </div>
       )}
 
       {/* Listing */}
@@ -366,60 +478,57 @@ export default function FilesBrowser() {
           <p className="rounded-3xl border border-dashed border-pine/20 px-6 py-12 text-center text-sm text-ink/55">
             {empty}
           </p>
+        ) : results ? (
+          /* Search spans every year at once; the results are split by year so a
+             hit from 2017 is never mistaken for this year's. Newest first. */
+          <div className="space-y-8">
+            {groupByYear(results).map(([year, hits]) => (
+              <section key={year}>
+                <h3 className="font-display text-lg font-semibold text-pine-deep">
+                  {year === UNDATED ? "Other results" : `${year} Results`}
+                  <span className="ml-2 text-xs font-normal text-ink/40">{hits.length}</span>
+                </h3>
+                <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {hits.map((n) => (
+                    <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} showPath />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        ) : atRoot ? (
+          /* The current year is what people want almost every time, so it gets
+             the space. Everything older is still one click away, just quieter. */
+          <div className="space-y-8">
+            {currentRoots.length > 0 && (
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {currentRoots.map((n) => (
+                  <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} big />
+                ))}
+              </ul>
+            )}
+            {otherRoots.length > 0 && (
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {otherRoots.map((n) => (
+                  <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} />
+                ))}
+              </ul>
+            )}
+            {pastRoots.length > 0 && (
+              <section>
+                <h3 className="font-display text-base font-semibold text-ink/55">Past years</h3>
+                <ul className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {pastRoots.map((n) => (
+                    <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} />
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((n) => (
-              <li key={n.id} className="group/item relative">
-                {n.canDelete && (
-                  <button
-                    onClick={() => void remove(n)}
-                    className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-paper/80 text-ink/40 opacity-0 transition-opacity hover:bg-marigold/30 hover:text-ink focus:opacity-100 group-hover/item:opacity-100"
-                    aria-label={`Delete ${n.name}`}
-                    title="Delete this file"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
-                    </svg>
-                  </button>
-                )}
-                <button
-                  onClick={() => void open(n)}
-                  className="group flex w-full items-start gap-3 rounded-2xl border border-pine/15 bg-pine/[0.03] p-4 text-left transition-colors hover:border-pine hover:bg-pine hover:text-paper"
-                >
-                  <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
-                    n.kind === "folder" ? "bg-marigold text-pine-deep" : "bg-pine/10 text-pine group-hover:bg-paper/15 group-hover:text-paper"
-                  }`}>
-                    <Icon n={n} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold leading-snug">{n.name}</span>
-                    <span className="mt-0.5 block truncate text-xs opacity-60">
-                      {[
-                        fileLabel(n),
-                        results ? [n.year, n.path].filter(Boolean).join("/") : dateLabel(n.modifiedAt),
-                        sizeLabel(n.sizeBytes),
-                      ].filter(Boolean).join(" · ")}
-                    </span>
-                    {n.snippet && (
-                      <span className="mt-1.5 block line-clamp-2 text-xs italic opacity-70">
-                        {n.snippet}
-                      </span>
-                    )}
-                    {n.kind === "folder" && n.audience && n.audience !== "all" && (
-                      <span className="mt-1.5 inline-block rounded-full bg-pine/10 px-2 py-0.5 text-[11px] font-semibold text-pine group-hover:bg-paper/20 group-hover:text-paper">
-                        {n.audience === "groups"
-                          ? `${(n.audienceGroups ?? []).join(", ")} only`
-                          : AUDIENCE_LABEL[n.audience]}
-                      </span>
-                    )}
-                    {n.source === "upload" && (
-                      <span className="mt-1.5 ml-1 inline-block rounded-full bg-marigold/25 px-2 py-0.5 text-[11px] font-semibold text-pine-deep">
-                        Added here
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </li>
+              <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} />
             ))}
           </ul>
         )}
