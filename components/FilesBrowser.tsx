@@ -356,7 +356,7 @@ export default function FilesBrowser() {
   return (
     <div>
       {/* Breadcrumbs + search */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div data-tour="file-search" className="flex flex-wrap items-center justify-between gap-4">
         <nav className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm" aria-label="Folder path">
           <button
             onClick={() => { setFolderKey(null); setQ(""); setResults(null); }}
@@ -468,7 +468,7 @@ export default function FilesBrowser() {
       )}
 
       {/* Listing */}
-      <div className="mt-5">
+      <div data-tour="file-list" className="mt-5">
         {loading ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2, 3, 4, 5].map((i) => (

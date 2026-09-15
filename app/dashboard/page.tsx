@@ -67,9 +67,9 @@ export default function DashboardPage() {
       <section className="container-rishi py-16">
         <div className="mb-6 flex items-center justify-between gap-4">
           <h2 className="font-display text-2xl font-semibold text-pine-deep">Your dashboard</h2>
-          <CreateMenu />
+          <span data-tour="create"><CreateMenu /></span>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div data-tour="tiles" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Member Directory (2/3 height) + RISHI Lineage (1/3 height) */}
           <Reveal>
             <div className="grid h-full grid-rows-[2fr_1fr] gap-4">
@@ -114,6 +114,7 @@ export default function DashboardPage() {
           {/* Files card (meeting notes live inside it) */}
           <Reveal delay={0.05}>
             <Link
+              data-tour="files-tile"
               href="/dashboard/files"
               className="group flex h-full flex-col justify-between rounded-3xl border border-pine/15 bg-pine/[0.03] p-6 transition-colors hover:border-pine hover:bg-pine hover:text-paper"
             >
