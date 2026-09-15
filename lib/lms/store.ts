@@ -251,7 +251,7 @@ export async function getTask(id: string): Promise<Task | null> {
   return mem.tasks.find((t) => t.id === id) ?? null;
 }
 
-async function patchTask(id: string, fields: Record<string, unknown>): Promise<Task> {
+export async function patchTask(id: string, fields: Record<string, unknown>): Promise<Task> {
   if (usingSupabase) {
     const { data, error } = await sb().from("lms_tasks").update(fields).eq("id", id).select("*").single();
     if (error) throw new Error(error.message);

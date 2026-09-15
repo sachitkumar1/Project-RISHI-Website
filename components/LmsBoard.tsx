@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
+import { hasRealDueDate, isImportMarker, isPlaceholderEmail, placeholderName } from "@/lib/lms/importedTasks";
 import RichTextEditor from "@/components/editor/RichTextEditor";
 import MessageComposer from "@/components/MessageComposer";
 
@@ -35,7 +36,7 @@ type HistoryEntry = { id: string; action: HistoryAction; actorEmail: string; at:
 type Comment = { id: string; authorEmail: string; body: string; at: string; parentId: string | null };
 type Task = {
   id: string; groupId: string; title: string; description: string; tags: string[];
-  dueAt: string; requiresFile: boolean; requireSubmission: boolean; assignerEmail: string;
+  dueAt: string | null; requiresFile: boolean; requireSubmission: boolean; assignerEmail: string;
   assigneeEmail: string; status: "not_complete" | "pending" | "complete";
   submittedAt: string | null; submissionText: string | null; submissionLink: string | null;
   history: HistoryEntry[]; comments: Comment[]; archived: boolean; createdAt: string;
@@ -105,8 +106,11 @@ const taskKind = (t: Task, email: string): "to" | "by" =>
 // ---- Full Club Overview (P/VP) ----
 type TimeWindow = "day" | "week" | "month" | "all";
 // Is an item's date within the selected window, anchored on today?
-function inTimeWindow(iso: string, window: TimeWindow): boolean {
+function inTimeWindow(iso: string | null, window: TimeWindow): boolean {
   if (window === "all") return true;
+  // An undated task belongs to no particular day/week/month, so it only shows
+  // under "all" rather than being forced into the current window.
+  if (!iso) return false;
   const d = new Date(iso);
   const now = new Date();
   if (window === "day")
@@ -127,7 +131,7 @@ function eventHasPassed(e: { startAt: string; endAt?: string | null; allDay?: bo
 // "Active" = outstanding. A task is outstanding until it's complete or archived;
 // an event is outstanding until it has passed or been archived. "All" = no filter.
 // Both are additionally constrained to the selected time window.
-function taskPasses(t: { archived: boolean; status: string; dueAt: string }, archive: "active" | "all", period: TimeWindow): boolean {
+function taskPasses(t: { archived: boolean; status: string; dueAt: string | null }, archive: "active" | "all", period: TimeWindow): boolean {
   const outstanding = !t.archived && t.status !== "complete";
   return (archive === "all" || outstanding) && inTimeWindow(t.dueAt, period);
 }
@@ -260,7 +264,9 @@ export default function LmsBoard() {
   const nameOf = useCallback(
     (email: string) =>
       meta?.allMembers.find((m) => m.email.toLowerCase() === email.toLowerCase())?.name ??
-      overview?.members[email.toLowerCase()]?.name ?? email,
+      overview?.members[email.toLowerCase()]?.name ??
+      // People named in an imported agenda who have no account here.
+      (isPlaceholderEmail(email) ? placeholderName(email) : email),
     [meta, overview]
   );
   const avatarOf = useCallback(
@@ -275,7 +281,7 @@ export default function LmsBoard() {
     [tasks, myEmail]
   );
   const activeToMe = useMemo(
-    () => assignedToMe.filter((t) => taskPasses(t, myArchive, myWindow)).sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
+    () => assignedToMe.filter((t) => taskPasses(t, myArchive, myWindow)).sort((a, b) => (a.dueAt ?? "9999").localeCompare(b.dueAt ?? "9999")),
     [assignedToMe, myArchive, myWindow]
   );
   const activeByMeGroups = useMemo(() => {
@@ -296,7 +302,7 @@ export default function LmsBoard() {
   const pastTaskGroups = useMemo(
     () => groupByBatch(tasks)
       .filter((g) => g.rows.every((r) => r.status === "complete" || r.archived))
-      .sort((a, b) => (b.head.submittedAt ?? b.head.dueAt).localeCompare(a.head.submittedAt ?? a.head.dueAt)),
+      .sort((a, b) => (b.head.submittedAt ?? b.head.dueAt ?? "").localeCompare(a.head.submittedAt ?? a.head.dueAt ?? "")),
     [tasks]
   );
   const pastTaskCount = useMemo(() => pastTaskGroups.reduce((n, g) => n + g.rows.length, 0), [pastTaskGroups]);
@@ -609,7 +615,7 @@ export default function LmsBoard() {
                 const multi = g.rows.length > 1;
                 const doneCount = g.rows.filter((r) => r.status === "complete").length;
                 const anyArchived = g.rows.some((r) => r.archived);
-                const late = !multi && t.submittedAt && new Date(t.submittedAt) > new Date(t.dueAt);
+                const late = !multi && t.submittedAt && t.dueAt && new Date(t.submittedAt) > new Date(t.dueAt);
                 return (
                   <div key={g.key} className="rounded-xl border border-pine/12 p-3">
                     <div className="flex items-center justify-between gap-2">
@@ -623,7 +629,7 @@ export default function LmsBoard() {
                     <p className="mt-1 text-xs text-ink/50">
                       {multi
                         ? `Assigned to ${g.rows.length} people · ${doneCount} complete`
-                        : <>Due {fmtDateTime(t.dueAt)}{t.submittedAt && <span className={late ? "font-semibold text-red-600" : ""}> · Completed {fmtDateTime(t.submittedAt)}{late ? " (late)" : ""}</span>}</>}
+                        : <>{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}{t.submittedAt && <span className={late ? "font-semibold text-red-600" : ""}> · Completed {fmtDateTime(t.submittedAt)}{late ? " (late)" : ""}</span>}</>}
                     </p>
                     {g.rows.some((r) => r.canManage) && anyArchived && (
                       <div className="mt-2 flex gap-2">
@@ -667,7 +673,7 @@ export default function LmsBoard() {
 
       {overviewGroupKey && overviewGroupRows.length > 0 && (
         <Modal title={overviewGroupRows[0].title} onClose={() => setOverviewGroupKey(null)}>
-          <p className="text-sm text-ink/55">Assigned to {overviewGroupRows.length} {overviewGroupRows.length === 1 ? "person" : "people"} · due {fmtDateTime(overviewGroupRows[0].dueAt)}</p>
+          <p className="text-sm text-ink/55">Assigned to {overviewGroupRows.length} {overviewGroupRows.length === 1 ? "person" : "people"} · {overviewGroupRows[0].dueAt ? `due ${fmtDateTime(overviewGroupRows[0].dueAt)}` : "no due date"}</p>
           {overviewGroupRows[0].description && <p className="mt-3 whitespace-pre-wrap text-sm text-ink/75">{overviewGroupRows[0].description}</p>}
           <div className="mt-4 space-y-2">
             {overviewGroupRows.map((r) => (
@@ -686,7 +692,7 @@ export default function LmsBoard() {
       {openGroupKey && openGroupRows.length > 0 && (
         <Modal title={openGroupRows[0].title} onClose={() => setOpenGroupKey(null)}>
           <p className="text-sm text-ink/60">{openGroupRows[0].description || "Assigned to multiple people."}</p>
-          <p className="mt-1 text-xs text-ink/45">Due {fmtDateTime(openGroupRows[0].dueAt)}</p>
+          <p className="mt-1 text-xs text-ink/45">{openGroupRows[0].dueAt ? `Due ${fmtDateTime(openGroupRows[0].dueAt)}` : "No due date"}</p>
           <div className="mt-4 space-y-2">
             {openGroupRows.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2 rounded-xl border border-pine/12 p-3">
@@ -766,8 +772,8 @@ function TaskRow({
   byline?: string; onOpen: () => void; onComposeEmail?: () => void;
 }) {
   const overdue = task.submittedAt
-    ? new Date(task.submittedAt) > new Date(task.dueAt)
-    : new Date() > new Date(task.dueAt) && task.status !== "complete";
+    ? !!task.dueAt && new Date(task.submittedAt) > new Date(task.dueAt)
+    : !!task.dueAt && new Date() > new Date(task.dueAt) && task.status !== "complete";
 
   return (
     <div className="rounded-2xl border border-pine/12 bg-paper p-4 transition-colors hover:border-pine/30">
@@ -778,7 +784,7 @@ function TaskRow({
         </div>
         {task.description && <p className="mt-1 line-clamp-2 text-sm text-ink/70">{task.description}</p>}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {task.tags.map((tag) => (
+          {task.tags.filter((tag) => !isImportMarker(tag)).map((tag) => (
             <span key={tag} className="rounded-full bg-sage/15 px-2 py-0.5 text-[11px] font-medium text-pine-deep">#{tag}</span>
           ))}
           {task.requireSubmission && (
@@ -787,7 +793,7 @@ function TaskRow({
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="flex items-center gap-1.5 text-ink/50">
-            Due {fmtDateTime(task.dueAt)}
+            {task.dueAt ? `Due ${fmtDateTime(task.dueAt)}` : "No due date"}
             {role === "assigner" && assigneeName ? (
               <span className="inline-flex items-center gap-1.5">
                 <span>·</span>
@@ -856,7 +862,7 @@ function GroupCard({ group, byline, onOpen, onArchive }: { group: TaskGroup; byl
       </div>
       {t.description && <p className="mt-1 text-sm text-ink/70">{t.description}</p>}
       <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-        <span className="text-ink/50">Due {fmtDateTime(t.dueAt)} · {total} people{byline ? ` · ${byline}` : ""}</span>
+        <span className="text-ink/50">{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"} · {total} people{byline ? ` · ${byline}` : ""}</span>
         <button onClick={onOpen} className="rounded-full border border-pine/20 px-3 py-1 font-medium text-pine-deep hover:bg-pine/5">View / manage</button>
       </div>
     </div>
@@ -955,16 +961,16 @@ function TaskDetail({
           {task.archived && <span className="rounded-full bg-ink/10 px-2.5 py-1 text-xs font-medium text-ink/60">archived</span>}
         </div>
 
-        {task.description && <p className="text-sm text-ink/75">{task.description}</p>}
+        {task.description && <p className="whitespace-pre-line text-sm text-ink/75">{task.description}</p>}
 
         <div className="grid grid-cols-2 gap-3 text-xs text-ink/55">
-          <div><span className="font-semibold text-ink/70">Due</span><br />{fmtDateTime(task.dueAt)}</div>
+          <div><span className="font-semibold text-ink/70">Due</span><br />{task.dueAt ? fmtDateTime(task.dueAt) : "Not set"}</div>
           <div><span className="font-semibold text-ink/70">Assigned to</span><br />
             <span className="inline-flex items-center gap-1.5"><Avatar src={avatarOf(task.assigneeEmail)} name={nameOf(task.assigneeEmail)} size={18} />{nameOf(task.assigneeEmail)}</span>
           </div>
           <div><span className="font-semibold text-ink/70">Assigned by</span><br />{nameOf(task.assignerEmail)}</div>
           {task.tags.length > 0 && (
-            <div><span className="font-semibold text-ink/70">Tags</span><br />{task.tags.map((t) => `#${t}`).join(" ")}</div>
+            <div><span className="font-semibold text-ink/70">Tags</span><br />{task.tags.filter((t) => !isImportMarker(t)).map((t) => `#${t}`).join(" ") || "—"}</div>
           )}
         </div>
 
@@ -1450,7 +1456,7 @@ function CalendarMonth({ tasks, events, myEmail, archive, period, onOpenTask, on
     const mine = tasks.filter((t) => t.assigneeEmail.toLowerCase() === myEmail.toLowerCase() && okT(t));
     return [
       ...events.filter(okE).map((e) => ({ id: `e:${e.id}`, kind: "event" as const, title: e.title, at: e.startAt, allDay: e.allDay, color: CAL_EVENT, onOpen: () => onOpenEvent(e.id) })),
-      ...mine.map((t) => ({ id: `t:${t.id}`, kind: "task" as const, title: t.title, at: t.dueAt, color: taskKind(t, myEmail) === "to" ? CAL_TO : CAL_BY, onOpen: () => onOpenTask(t.id) })),
+      ...mine.filter((t) => t.dueAt).map((t) => ({ id: `t:${t.id}`, kind: "task" as const, title: t.title, at: t.dueAt as string, color: taskKind(t, myEmail) === "to" ? CAL_TO : CAL_BY, onOpen: () => onOpenTask(t.id) })),
     ];
   }, [tasks, events, myEmail, archive, onOpenTask, onOpenEvent]);
 
@@ -1511,7 +1517,7 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
   const isEdit = !!editing;
   const [title, setTitle] = useState(editing?.title ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
-  const [dueAt, setDueAt] = useState(editing ? toLocalInput(editing.dueAt) : "");
+  const [dueAt, setDueAt] = useState(editing?.dueAt ? toLocalInput(editing.dueAt) : "");
   const [requireSubmission, setRequireSubmission] = useState(editing?.requireSubmission ?? false);
   const [requiresFile, setRequiresFile] = useState(editing?.requiresFile ?? false);
   const [tags, setTags] = useState<string[]>(editing?.tags ?? []);
@@ -1819,11 +1825,11 @@ function ClubCalendar({ tasks, events, archive, period, onOpenTaskGroup, onOpenE
     const okE = (e: OEvent) => archive === "all" || (!e.archived && !eventHasPassed(e));
     // Collapse per-assignee task rows: one calendar entry per task group.
     const seen = new Set<string>();
-    const taskItems = tasks.filter(okT).filter((t) => {
+    const taskItems = tasks.filter(okT).filter((t) => t.dueAt).filter((t) => {
       const k = t.groupId || t.id;
       if (seen.has(k)) return false;
       seen.add(k); return true;
-    }).map((t) => ({ id: `t:${t.groupId || t.id}`, kind: "task" as const, title: t.title, at: t.dueAt, color: LANE_COLOR[t.lane], onOpen: () => onOpenTaskGroup(t.groupId || t.id) }));
+    }).map((t) => ({ id: `t:${t.groupId || t.id}`, kind: "task" as const, title: t.title, at: t.dueAt as string, color: LANE_COLOR[t.lane], onOpen: () => onOpenTaskGroup(t.groupId || t.id) }));
     return [
       ...events.filter(okE).map((e) => ({ id: `e:${e.id}`, kind: "event" as const, title: e.title, at: e.startAt, allDay: e.allDay, color: LANE_COLOR[e.lane], onOpen: () => onOpenEvent(e.id) })),
       ...taskItems,
@@ -1883,7 +1889,7 @@ function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask,
                       <p className="mt-1 text-xs text-ink/50">
                         by {nameOf(t.assignerEmail)} · {g.rows.length === 1 ? `to ${nameOf(t.assigneeEmail)}` : `${g.rows.length} people`} · {done}/{g.rows.length} done{archived ? " · archived" : ""}
                       </p>
-                      <p className="mt-0.5 text-xs text-ink/40">Due {fmtDateTime(t.dueAt)}</p>
+                      <p className="mt-0.5 text-xs text-ink/40">{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}</p>
                     </button>
                   );
                 })}

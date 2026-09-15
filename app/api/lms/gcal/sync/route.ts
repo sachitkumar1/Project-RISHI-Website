@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasRealDueDate } from "@/lib/lms/importedTasks";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { listEventsForMember, listTasksForMember } from "@/lib/lms/store";
 import { getConnection, setSyncedKeys, syncToCalendar, type GCalTime, type SyncItem } from "@/lib/lms/gcal";
@@ -30,7 +31,7 @@ export async function POST() {
   const events = (await listEventsForMember(me)).filter((e) => !e.archived);
 
   const items: SyncItem[] = [
-    ...tasks.map((t) => {
+    ...tasks.filter((t) => hasRealDueDate(t.tags)).map((t) => {
       // Point-in-time: starts at the due moment, 1-minute sliver (8:00-8:01).
       const start = new Date(t.dueAt);
       const end = new Date(start.getTime() + MINUTE);

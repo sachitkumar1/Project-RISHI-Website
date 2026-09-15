@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasRealDueDate, isPlaceholderEmail } from "@/lib/lms/importedTasks";
 import { listRemindableTasks, markRemindersSent } from "@/lib/lms/store";
 import { notifyTaskReminder } from "@/lib/lms/notify";
 
@@ -48,6 +49,10 @@ async function run(req: Request) {
   let sent = 0;
 
   for (const t of tasks) {
+    // Imported stand-ins: the due date isn't real and the address can't receive
+    // mail. Real tasks — including ones created by the agenda import — still
+    // get their normal reminders.
+    if (!hasRealDueDate(t.tags) || isPlaceholderEmail(t.assigneeEmail)) continue;
     const due = new Date(t.dueAt).getTime();
     const created = new Date(t.createdAt).getTime();
     const already = new Set(t.remindersSent ?? []);
