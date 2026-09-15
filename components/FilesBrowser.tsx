@@ -127,6 +127,7 @@ export default function FilesBrowser() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Node[] | null>(null);
   const [preview, setPreview] = useState<Node | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -149,6 +150,19 @@ export default function FilesBrowser() {
   useEffect(() => {
     void load(folderKey);
   }, [folderKey, load]);
+
+  // Esc collapses a full-screen preview first, then closes it — so the key
+  // never throws away more than one step at a time.
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (expanded) setExpanded(false);
+      else setPreview(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview, expanded]);
 
   // Debounced search across everything the member can see.
   useEffect(() => {
@@ -176,6 +190,7 @@ export default function FilesBrowser() {
       return;
     }
     if (previewUrl(n)) {
+      setExpanded(false);
       setPreview(n);
       return;
     }
@@ -349,20 +364,54 @@ export default function FilesBrowser() {
         )}
       </div>
 
-      {/* Preview */}
+      {/* Preview — opens as a panel, expands to fill the whole tab. */}
       {preview && (
         <div
-          className="fixed inset-0 z-50 flex flex-col bg-ink/70 p-4 sm:p-8"
-          onClick={() => setPreview(null)}
+          className={`fixed inset-0 z-50 flex flex-col bg-ink/70 ${expanded ? "p-0" : "p-4 sm:p-8"}`}
+          onClick={() => { setExpanded(false); setPreview(null); }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={preview.name}
         >
           <div
-            className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-paper shadow-2xl"
+            className={`flex w-full flex-col overflow-hidden bg-paper shadow-2xl ${
+              expanded ? "h-full max-w-none rounded-none" : "mx-auto h-full max-w-5xl rounded-3xl"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 border-b border-pine/10 px-5 py-3.5">
-              <h3 className="min-w-0 flex-1 truncate font-display text-lg font-semibold text-pine-deep">
-                {preview.name}
-              </h3>
+            <div className="flex items-start gap-3 border-b border-pine/10 px-5 py-3.5">
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate font-display text-lg font-semibold text-pine-deep">
+                  {preview.name}
+                </h3>
+                <p className="mt-0.5 truncate text-xs text-ink/55">
+                  {[
+                    fileLabel(preview),
+                    sizeLabel(preview.sizeBytes),
+                    preview.modifiedAt ? `Edited ${dateLabel(preview.modifiedAt)}` : "",
+                    [preview.year, preview.path].filter(Boolean).join(" / "),
+                    preview.uploadedBy ? `Added by ${preview.uploadedBy}` : "",
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className="shrink-0 rounded-full border border-pine/20 p-2 text-pine hover:bg-pine/5"
+                aria-label={expanded ? "Exit full screen" : "Expand to full screen"}
+                title={expanded ? "Exit full screen" : "Expand to full screen"}
+              >
+                {expanded ? (
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" />
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6" />
+                  </svg>
+                )}
+              </button>
+
               {preview.webViewLink && (
                 <a
                   href={preview.webViewLink}
@@ -373,8 +422,9 @@ export default function FilesBrowser() {
                   Open in Drive
                 </a>
               )}
+
               <button
-                onClick={() => setPreview(null)}
+                onClick={() => { setExpanded(false); setPreview(null); }}
                 className="shrink-0 rounded-full p-1.5 text-ink/50 hover:bg-pine/10 hover:text-ink"
                 aria-label="Close preview"
               >
@@ -383,6 +433,7 @@ export default function FilesBrowser() {
                 </svg>
               </button>
             </div>
+
             <iframe
               src={previewUrl(preview) ?? ""}
               title={preview.name}
