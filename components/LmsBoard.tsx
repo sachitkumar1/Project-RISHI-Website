@@ -889,6 +889,51 @@ function TaskDetail({
   const [comment, setComment] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Attachments live in the Files section (Files → Tasks → <group> → <task>),
+  // shared across every assignee of this task group.
+  const [files, setFiles] = useState<{ id: string; name: string; uploadedBy: string | null; sizeBytes: number | null }[]>([]);
+  const [fileErr, setFileErr] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const loadFiles = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/lms/tasks/${task.id}/upload`);
+      if (r.ok) setFiles((await r.json()).files ?? []);
+    } catch { /* attachments are supplementary; a failure here shouldn't break the task view */ }
+  }, [task.id]);
+
+  useEffect(() => { void loadFiles(); }, [loadFiles]);
+
+  const myFiles = files.filter((f) => (f.uploadedBy ?? "").toLowerCase() === myEmail.toLowerCase());
+
+  async function attach(f: File) {
+    setUploading(true); setFileErr("");
+    try {
+      const fd = new FormData(); fd.append("file", f);
+      const r = await fetch(`/api/lms/tasks/${task.id}/upload`, { method: "POST", body: fd });
+      const d = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(d?.error || "Upload failed.");
+      await loadFiles();
+    } catch (e) {
+      setFileErr(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function detach(id: string) {
+    setFileErr("");
+    try {
+      const r = await fetch(`/api/lms/tasks/${task.id}/upload?fileId=${id}`, { method: "DELETE" });
+      const d = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(d?.error || "Couldn't remove that file.");
+      await loadFiles();
+    } catch (e) {
+      setFileErr(e instanceof Error ? e.message : "Couldn't remove that file.");
+    }
+  }
 
   async function run(action: string, extra?: Record<string, unknown>) {
     setBusy(true);
@@ -937,10 +982,40 @@ function TaskDetail({
                   placeholder={task.requireSubmission ? "Write a note about your work (required)…" : "Add a note about your work (optional)…"} />
                 <input className={inputCls} value={subLink} onChange={(e) => setSubLink(e.target.value)}
                   placeholder={task.requireSubmission ? "Add a link (required if no note)…" : "Add a link (optional)…"} />
-                <button disabled={busy} onClick={() => run("submit", { submissionText: subText, submissionLink: subLink })}
+
+                <div className="rounded-xl border border-pine/12 p-3">
+                  <p className="text-xs font-semibold text-ink">
+                    {task.requiresFile ? "File upload (required)" : "Attach a file (optional)"}
+                  </p>
+                  {myFiles.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {myFiles.map((f) => (
+                        <li key={f.id} className="flex items-center gap-2 text-xs">
+                          <span className="min-w-0 flex-1 truncate text-ink/75">{f.name}</span>
+                          <button onClick={() => void detach(f.id)} className="shrink-0 text-ink/45 hover:text-ink">
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <input ref={fileRef} type="file" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) void attach(f); }} />
+                  <button disabled={uploading} onClick={() => fileRef.current?.click()}
+                    className="mt-2 rounded-full border border-pine/20 px-3 py-1.5 text-xs font-semibold text-pine hover:bg-pine/5 disabled:opacity-60">
+                    {uploading ? "Uploading…" : myFiles.length > 0 ? "Add another file" : "Choose a file"}
+                  </button>
+                  {fileErr && <p className="mt-2 text-xs text-marigold-deep">{fileErr}</p>}
+                </div>
+
+                <button disabled={busy || (task.requiresFile && myFiles.length === 0)}
+                  onClick={() => run("submit", { submissionText: subText, submissionLink: subLink })}
                   className="rounded-full bg-pine px-4 py-2 text-xs font-semibold text-paper disabled:opacity-60">
                   {busy ? "Saving…" : "Mark complete"}
                 </button>
+                {task.requiresFile && myFiles.length === 0 && (
+                  <p className="text-xs text-ink/45">Attach a file to enable this.</p>
+                )}
                 <p className="text-xs text-ink/45">
                   {meLead
                     ? "As a lead, this completes the task immediately."
@@ -953,7 +1028,26 @@ function TaskDetail({
                 {task.submissionLink && (
                   <a href={task.submissionLink} target="_blank" rel="noreferrer" className="break-all text-pine underline">{task.submissionLink}</a>
                 )}
-                {!task.submissionText && !task.submissionLink && <p className="text-ink/40">Nothing submitted yet.</p>}
+                {!task.submissionText && !task.submissionLink && files.length === 0 && <p className="text-ink/40">Nothing submitted yet.</p>}
+                {files.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {files.map((f) => (
+                      <li key={f.id} className="flex items-center gap-2">
+                        <button
+                          onClick={async () => {
+                            const r = await fetch(`/api/lms/files/${f.id}/url`);
+                            const d = await r.json().catch(() => null);
+                            if (d?.url) window.open(d.url, "_blank", "noopener");
+                          }}
+                          className="min-w-0 flex-1 truncate text-left text-pine underline"
+                        >
+                          {f.name}
+                        </button>
+                        <span className="shrink-0 text-xs text-ink/45">{nameOf(f.uploadedBy ?? "")}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>
@@ -1419,6 +1513,7 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
   const [description, setDescription] = useState(editing?.description ?? "");
   const [dueAt, setDueAt] = useState(editing ? toLocalInput(editing.dueAt) : "");
   const [requireSubmission, setRequireSubmission] = useState(editing?.requireSubmission ?? false);
+  const [requiresFile, setRequiresFile] = useState(editing?.requiresFile ?? false);
   const [tags, setTags] = useState<string[]>(editing?.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [assignees, setAssignees] = useState<string[]>(
@@ -1460,13 +1555,13 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
           method: "PATCH",
           body: JSON.stringify({
             action: "editGroup", title, description, dueAt: dueIso, requireSubmission,
-            requiresFile: false, tags, assigneeEmails: assignees, emailTemplate,
+            requiresFile, tags, assigneeEmails: assignees, emailTemplate,
           }),
         });
       } else {
         await api("/api/lms/tasks", {
           method: "POST",
-          body: JSON.stringify({ title, description, dueAt: dueIso, requireSubmission, requiresFile: false, tags, emailTemplate, assigneeEmails: resolveAssignees(), meetingId }),
+          body: JSON.stringify({ title, description, dueAt: dueIso, requireSubmission, requiresFile, tags, emailTemplate, assigneeEmails: resolveAssignees(), meetingId }),
         });
       }
       onCreated();
@@ -1534,6 +1629,16 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
         <label className="flex items-center gap-2 text-sm text-ink/70">
           <input type="checkbox" checked={requireSubmission} onChange={(e) => setRequireSubmission(e.target.checked)} />
           Require a submission (written note or link) before the doer can mark it complete
+        </label>
+
+        <label className="flex items-start gap-2 text-sm text-ink/70">
+          <input type="checkbox" className="mt-1" checked={requiresFile} onChange={(e) => setRequiresFile(e.target.checked)} />
+          <span>
+            Require a file upload before the doer can mark it complete
+            <span className="block text-xs text-ink/45">
+              Uploads are filed under Files → Tasks, visible to this group&apos;s leads.
+            </span>
+          </span>
         </label>
 
         <div className="rounded-xl border border-pine/12 p-3">

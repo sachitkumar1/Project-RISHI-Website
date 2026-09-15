@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { canSeeMember, findMember } from "@/lib/members";
+import { listTaskFiles } from "@/lib/lms/files";
 import {
   canApproveTask,
   canAssignTaskTo,
@@ -111,6 +112,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         { error: "This task requires a written note or a link before you can mark it done." },
         { status: 400 }
       );
+    // A task that requires a file can't be marked done until one is attached.
+    // Checked here rather than client-side because the client gate is a
+    // convenience; this is the rule.
+    if (task.requiresFile) {
+      const attached = await listTaskFiles(task.groupId).catch(() => []);
+      const mine = attached.filter(
+        (f) => (f.uploadedBy ?? "").toLowerCase() === me.email.toLowerCase(),
+      );
+      if (mine.length === 0)
+        return NextResponse.json(
+          { error: "This task requires a file upload before you can mark it done." },
+          { status: 400 }
+        );
+    }
     const note = trimOrNull(body.note);
     // A lead doing their OWN assigned task completes it straight away — no
     // approval step. Everyone else goes to "pending" for a manager to approve.

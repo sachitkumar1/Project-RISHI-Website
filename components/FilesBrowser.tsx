@@ -16,6 +16,7 @@ type Node = {
   path: string;
   modifiedAt: string | null;
   uploadedBy: string | null;
+  snippet?: string;
   audience?: "all" | "leads" | "exec" | "vpp" | "groups";
   audienceGroups?: string[];
 };
@@ -126,6 +127,7 @@ export default function FilesBrowser() {
   const [err, setErr] = useState("");
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Node[] | null>(null);
+  const [deepSearch, setDeepSearch] = useState(false);
   const [preview, setPreview] = useState<Node | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -172,7 +174,8 @@ export default function FilesBrowser() {
     }
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`/api/lms/files?q=${encodeURIComponent(q.trim())}`);
+        const mode = deepSearch ? "&mode=contents" : "";
+        const r = await fetch(`/api/lms/files?q=${encodeURIComponent(q.trim())}${mode}`);
         const d = await r.json();
         setResults(r.ok ? (d.results ?? []) : []);
       } catch {
@@ -180,7 +183,7 @@ export default function FilesBrowser() {
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [q]);
+  }, [q, deepSearch]);
 
   async function open(n: Node) {
     if (n.kind === "folder") {
@@ -278,6 +281,27 @@ export default function FilesBrowser() {
             />
           </label>
 
+          <div className="flex overflow-hidden rounded-full border border-pine/20" role="group" aria-label="Search scope">
+            <button
+              onClick={() => setDeepSearch(false)}
+              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                !deepSearch ? "bg-pine text-paper" : "text-pine hover:bg-pine/5"
+              }`}
+              title="Match file and folder names only"
+            >
+              Names
+            </button>
+            <button
+              onClick={() => setDeepSearch(true)}
+              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                deepSearch ? "bg-pine text-paper" : "text-pine hover:bg-pine/5"
+              }`}
+              title="Also search the text inside documents"
+            >
+              In files
+            </button>
+          </div>
+
           {view?.canUpload && (
             <>
               <input
@@ -307,6 +331,12 @@ export default function FilesBrowser() {
       {results && (
         <p className="mt-4 text-sm text-ink/60">
           {results.length} result{results.length === 1 ? "" : "s"} for “{q.trim()}”
+          {deepSearch ? " in names and file contents" : " in names"}
+          {deepSearch && (
+            <span className="block text-xs text-ink/45">
+              Only Docs, Sheets, Slides and text files have searchable contents.
+            </span>
+          )}
         </p>
       )}
 
@@ -344,6 +374,11 @@ export default function FilesBrowser() {
                         sizeLabel(n.sizeBytes),
                       ].filter(Boolean).join(" · ")}
                     </span>
+                    {n.snippet && (
+                      <span className="mt-1.5 block line-clamp-2 text-xs italic opacity-70">
+                        {n.snippet}
+                      </span>
+                    )}
                     {n.kind === "folder" && n.audience && n.audience !== "all" && (
                       <span className="mt-1.5 inline-block rounded-full bg-pine/10 px-2 py-0.5 text-[11px] font-semibold text-pine group-hover:bg-paper/20 group-hover:text-paper">
                         {n.audience === "groups"

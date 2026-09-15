@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 type Status = {
+  index?: { total: number; withText: number; pending: number };
   lastSync: string | null;
   usedBytes: number;
   maxUploadBytes: number;
@@ -17,7 +18,7 @@ type Folder = {
   name: string;
   year: string | null;
   path: string;
-  audience: "all" | "leads" | "exec" | "vpp" | "groups";
+  audience: "all" | "leads" | "exec" | "vpp" | "groups" | "group_leads" | "nmt";
   audienceGroups?: string[];
   audienceExplicit?: boolean;
 };
@@ -28,6 +29,8 @@ const AUDIENCES: { value: Folder["audience"]; label: string }[] = [
   { value: "exec", label: "Exec" },
   { value: "vpp", label: "VP / President" },
   { value: "groups", label: "Chosen project groups" },
+  { value: "group_leads", label: "Leads of chosen groups only" },
+  { value: "nmt", label: "NMT leaders only" },
 ];
 
 const GROUPS: { code: string; label: string }[] = [
@@ -157,6 +160,19 @@ export default function FilesSettingsPanel() {
         </p>
       </div>
 
+      {status.index && (
+        <div className="mt-4 rounded-xl border border-ink/10 p-4">
+          <p className="text-sm font-semibold text-ink">Searchable file contents</p>
+          <p className="mt-0.5 text-xs text-ink/55">
+            {status.index.withText} of {status.index.total} files have their text indexed
+            {status.index.pending > 0
+              ? `, ${status.index.pending} still queued — the hourly job works through them.`
+              : "."}{" "}
+            Only Docs, Sheets, Slides and text files can be indexed; PDFs, images and video can&apos;t.
+          </p>
+        </div>
+      )}
+
       {msg && <p className="mt-3 text-sm text-ink/70">{msg}</p>}
 
       <div className="mt-6 border-t border-pine/10 pt-4">
@@ -227,7 +243,9 @@ export default function FilesSettingsPanel() {
                             void save({
                               folderId: fid,
                               audience: e.target.value,
-                              groups: e.target.value === "groups" ? (f.audienceGroups ?? ["E"]) : [],
+                              groups: e.target.value === "groups" || e.target.value === "group_leads"
+                                ? (f.audienceGroups ?? ["E"])
+                                : [],
                             })
                           }
                           className="rounded-lg border border-pine/20 bg-paper px-2.5 py-1.5 text-xs outline-none focus:border-pine"
@@ -249,7 +267,7 @@ export default function FilesSettingsPanel() {
                         )}
                       </div>
 
-                      {f.audience === "groups" && (
+                      {(f.audience === "groups" || f.audience === "group_leads") && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {GROUPS.map((g) => {
                             const on = (f.audienceGroups ?? []).includes(g.code);
@@ -264,7 +282,7 @@ export default function FilesSettingsPanel() {
                                     setMsg("Pick at least one project group.");
                                     return;
                                   }
-                                  void save({ folderId: fid, audience: "groups", groups: next });
+                                  void save({ folderId: fid, audience: f.audience, groups: next });
                                 }}
                                 className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
                                   on ? "bg-pine text-paper" : "border border-pine/20 text-pine hover:bg-pine/5"

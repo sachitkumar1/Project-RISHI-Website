@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { syncDrive } from "@/lib/lms/drive";
+import { indexContent } from "@/lib/lms/indexer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,13 +35,18 @@ async function run(req: Request) {
 
   const started = Date.now();
   const result = await syncDrive();
-  const ms = Date.now() - started;
 
   if (!result.ok) {
     console.error("cron/files: sync failed —", result.error ?? result.skipped);
-    return NextResponse.json({ ...result, ms }, { status: 500 });
+    return NextResponse.json({ ...result, ms: Date.now() - started }, { status: 500 });
   }
-  return NextResponse.json({ ...result, ms });
+
+  // Then extract text from whatever still needs it, so "search in files" keeps
+  // up. Bounded per run — anything left over is picked up by the next one, and
+  // `remaining` says how much is outstanding.
+  const index = await indexContent(60);
+
+  return NextResponse.json({ ...result, index, ms: Date.now() - started });
 }
 
 export async function GET(req: Request) {

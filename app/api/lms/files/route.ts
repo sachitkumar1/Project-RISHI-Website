@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
-import { listFolder, searchFiles } from "@/lib/lms/files";
+import { listFolder, searchFiles, type SearchMode } from "@/lib/lms/files";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,6 +9,7 @@ export const runtime = "nodejs";
  * GET /api/lms/files            → the top level (the school-year folders)
  * GET /api/lms/files?folder=ID  → that folder's visible contents + breadcrumbs
  * GET /api/lms/files?q=text     → name search across everything they can see
+ * GET /api/lms/files?q=…&mode=contents → also searches the text inside files
  *
  * Visibility is applied here, on the server. A folder the member isn't allowed
  * to open returns 404 rather than 403 — a restricted folder shouldn't announce
@@ -22,7 +23,10 @@ export async function GET(req: Request) {
   const q = url.searchParams.get("q");
 
   try {
-    if (q) return NextResponse.json({ results: await searchFiles(me, q) });
+    if (q) {
+      const mode: SearchMode = url.searchParams.get("mode") === "contents" ? "contents" : "names";
+      return NextResponse.json({ results: await searchFiles(me, q, mode), mode });
+    }
 
     const folder = url.searchParams.get("folder");
     const view = await listFolder(me, folder && folder.length > 0 ? folder : null);

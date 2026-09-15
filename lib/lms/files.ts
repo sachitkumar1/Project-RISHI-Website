@@ -36,7 +36,14 @@ function sb(): SupabaseClient {
 }
 
 // ------------------------------------------------------------------ types
-export type FileAudience = "all" | "leads" | "exec" | "vpp" | "groups";
+export type FileAudience =
+  | "all"
+  | "leads"
+  | "exec"
+  | "vpp"
+  | "groups"      // members of the listed project groups
+  | "group_leads" // ONLY the leads of the listed project groups
+  | "nmt";        // ONLY New Member Training leaders
 
 export type FileNode = {
   id: string;
@@ -45,13 +52,15 @@ export type FileNode = {
   name: string;
   mimeType: string;
   kind: "folder" | "file" | "shortcut";
-  source: "drive" | "upload";
+  source: "drive" | "upload" | "task";
   sizeBytes: number | null;
   webViewLink: string | null;
   year: string | null;
   path: string;
   modifiedAt: string | null;
   uploadedBy: string | null;
+  /** Content-search results only: context around the match. */
+  snippet?: string;
   /** Folders only: the audience in force here (resolved through inheritance). */
   audience?: FileAudience;
   /** Folders only: true when the audience is set on this folder itself. */
@@ -106,8 +115,10 @@ export async function setDefaultAudience(a: FileAudience): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+const AUDIENCES: FileAudience[] = ["all", "leads", "exec", "vpp", "groups", "group_leads", "nmt"];
+
 export function normalizeAudience(v: unknown): FileAudience {
-  return v === "leads" || v === "exec" || v === "vpp" || v === "groups" ? v : "all";
+  return AUDIENCES.includes(v as FileAudience) ? (v as FileAudience) : "all";
 }
 
 // ---------------------------------------------------------------- visibility
@@ -158,6 +169,12 @@ export function memberMatches(m: Member, rule: { audience: FileAudience; groups:
       return m.roles.vpp;
     case "groups":
       return m.roles.vpp || rule.groups.includes(m.group);
+    // A lead sees their OWN group's submissions and nobody else's. Deliberately
+    // not m.roles.lead alone — that would let every lead read every group.
+    case "group_leads":
+      return m.roles.vpp || (m.roles.lead && rule.groups.includes(m.group));
+    case "nmt":
+      return m.roles.vpp || m.roles.nmtLeader;
   }
 }
 
@@ -308,16 +325,69 @@ export async function listFolder(m: Member, folderKey: string | null): Promise<F
   return { folder: decorate(folder), breadcrumbs: crumbs, children: children.map(decorate), canUpload: true };
 }
 
-/** Name search across everything the member is allowed to see. */
-export async function searchFiles(m: Member, q: string, limit = 60): Promise<FileNode[]> {
+export type SearchMode = "names" | "contents";
+
+/**
+ * Search everything the member is allowed to see.
+ *
+ * mode 'names'    — file and folder names only (fast, always available)
+ * mode 'contents' — names AND the indexed text inside files. Matching rows come
+ *                   back with a short snippet around the first hit, so the
+ *                   result explains itself rather than looking arbitrary.
+ *
+ * Content matching runs in Postgres (ilike on content_text) rather than in
+ * memory, because content_text holds whole documents and pulling all of it into
+ * the server on every keystroke would be wasteful. Visibility is still applied
+ * here, after the query.
+ */
+export async function searchFiles(
+  m: Member,
+  q: string,
+  mode: SearchMode = "names",
+  limit = 60,
+): Promise<FileNode[]> {
   const needle = q.trim().toLowerCase();
   if (needle.length < 2) return [];
+
   const idx = await loadIndex();
   const fallback = await getDefaultAudience();
-  return idx.nodes
-    .filter((n) => n.name.toLowerCase().includes(needle))
-    .filter((n) => canSee(m, idx, n.parentId, fallback))
-    .slice(0, limit);
+  const visible = (n: FileNode) => canSee(m, idx, n.parentId, fallback);
+
+  const byName = idx.nodes.filter((n) => n.name.toLowerCase().includes(needle)).filter(visible);
+  if (mode === "names" || !usingSupabase) return byName.slice(0, limit);
+
+  // Content hits, excluding anything already matched by name.
+  const seen = new Set(byName.map((n) => n.id));
+  const escaped = needle.replace(/[%_\\]/g, (c) => `\\${c}`);
+  const { data, error } = await sb()
+    .from("lms_files")
+    .select("id,source,drive_id,parent_id,name,mime_type,kind,size_bytes,web_view_link,year,path,modified_at,uploaded_by,content_text")
+    .eq("deleted", false)
+    .ilike("content_text", `%${escaped}%`)
+    .limit(limit * 2);
+  if (error) return byName.slice(0, limit);
+
+  const contentHits: FileNode[] = [];
+  for (const row of data ?? []) {
+    if (seen.has(row.id)) continue;
+    const node = toNode(row);
+    if (!visible(node)) continue;
+    contentHits.push({ ...node, snippet: snippetAround(row.content_text ?? "", needle) });
+  }
+
+  return [...byName, ...contentHits].slice(0, limit);
+}
+
+/** ~160 characters of context around the first match, trimmed to word edges. */
+function snippetAround(text: string, needle: string): string {
+  const at = text.toLowerCase().indexOf(needle);
+  if (at < 0) return "";
+  const start = Math.max(0, at - 60);
+  const end = Math.min(text.length, at + needle.length + 100);
+  let out = text.slice(start, end).replace(/\s+/g, " ").trim();
+  if (start > 0) out = `…${out.replace(/^\S*\s/, "")}`;
+  if (end < text.length) out = `${out.replace(/\s\S*$/, "")}…`;
+  return out;
 }
 
 /** Every folder, for the visibility editor in Settings. */
@@ -439,4 +509,196 @@ export async function uploadUsageBytes(): Promise<number> {
   if (!usingSupabase) return 0;
   const { data } = await sb().from("lms_files").select("size_bytes").eq("source", "upload").eq("deleted", false);
   return (data ?? []).reduce((n, r) => n + (r.size_bytes ?? 0), 0);
+}
+
+// ============================================================================
+//  Task submissions
+// ----------------------------------------------------------------------------
+//  Files attached to a task submission live in their own branch of the tree,
+//  alongside the mirrored Drive years:
+//
+//      Tasks/
+//        Education/  Water & Sanitation/  Women's Empowerment/  Health/  NMT/
+//          <task title>/
+//            <uploaded file>   (labelled with who submitted it)
+//
+//  These folders are synthetic — they exist only in lms_files, never in Drive.
+//  They carry source = 'task' so the Drive sync (which only ever touches
+//  source = 'drive' rows) can't flag them deleted, and so deleteUpload refuses
+//  them: a submission is evidence of work, not a file to casually bin.
+//
+//  Visibility is seeded by the migration: each project-group folder is
+//  'group_leads' for that one group, and NMT is 'nmt'. A lead therefore sees
+//  their own group's submissions and no one else's.
+// ============================================================================
+
+export const TASKS_ROOT = "tasks";
+export const taskGroupFolderKey = (g: ProjectGroup | "NMT") => `tasks:${g}`;
+export const taskFolderKey = (taskGroupId: string) => `tasks:t:${taskGroupId}`;
+
+/**
+ * Which folder a task's submissions belong in.
+ *
+ * A task assigned by an NMT leader to a newbie is new-member training work, so
+ * it files under NMT — unless the assigner is also that newbie's project lead,
+ * in which case it's ordinary group work and files under the group. Everything
+ * else follows the assignee's project group.
+ */
+export function taskFolderGroup(
+  assigner: Member | null,
+  assignee: Member | null,
+): ProjectGroup | "NMT" {
+  if (
+    assigner?.roles.nmtLeader &&
+    assignee?.roles.newbie &&
+    !(assigner.roles.lead && assigner.group === assignee.group)
+  )
+    return "NMT";
+  return (assignee?.group ?? assigner?.group ?? "E") as ProjectGroup;
+}
+
+/** Create the Tasks/<group>/<task title> chain if it isn't there yet. */
+async function ensureTaskFolder(
+  group: ProjectGroup | "NMT",
+  taskGroupId: string,
+  taskTitle: string,
+): Promise<string> {
+  if (!usingSupabase) throw new Error("Task uploads need Supabase configured.");
+  const groupKey = taskGroupFolderKey(group);
+  const folderKey = taskFolderKey(taskGroupId);
+
+  // The root and the five group folders are seeded by the migration, but create
+  // them defensively so a fresh database can't 500 on the first upload.
+  const rows = [
+    { drive_id: TASKS_ROOT, parent_id: null, name: "Tasks", path: "" },
+    { drive_id: groupKey, parent_id: TASKS_ROOT, name: TASK_GROUP_NAMES[group], path: "Tasks" },
+    {
+      drive_id: folderKey,
+      parent_id: groupKey,
+      name: taskTitle.trim() || "Untitled task",
+      path: `Tasks/${TASK_GROUP_NAMES[group]}`,
+    },
+  ].map((r) => ({
+    ...r,
+    source: "task",
+    mime_type: "application/vnd.google-apps.folder",
+    kind: "folder",
+    year: null,
+    deleted: false,
+  }));
+
+  // ignoreDuplicates so an existing task folder keeps the title it was created
+  // with rather than being rewritten on every upload.
+  const { error } = await sb()
+    .from("lms_files")
+    .upsert(rows, { onConflict: "drive_id", ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
+  return folderKey;
+}
+
+export const TASK_GROUP_NAMES: Record<ProjectGroup | "NMT", string> = {
+  E: "Education",
+  R: "Water & Sanitation",
+  W: "Women's Empowerment",
+  H: "Health",
+  NMT: "NMT",
+};
+
+export type TaskUploadInput = {
+  taskGroupId: string;
+  taskTitle: string;
+  group: ProjectGroup | "NMT";
+  name: string;
+  mimeType: string;
+  bytes: Buffer;
+  uploadedBy: string;
+};
+
+/** Attach a file to a task submission. */
+export async function createTaskUpload(input: TaskUploadInput): Promise<FileNode> {
+  if (!usingSupabase) throw new Error("Task uploads need Supabase configured.");
+  if (input.bytes.length > MAX_UPLOAD_BYTES)
+    throw new Error(
+      `That file is ${(input.bytes.length / 1024 / 1024).toFixed(1)} MB. The limit is ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.`,
+    );
+
+  const folderKey = await ensureTaskFolder(input.group, input.taskGroupId, input.taskTitle);
+  const safe = input.name.replace(/[^\w.\- ]+/g, "_").slice(0, 120) || "file";
+  const storagePath = `tasks/${input.taskGroupId}/${crypto.randomUUID()}-${safe}`;
+
+  const { error: upErr } = await sb()
+    .storage.from(UPLOAD_BUCKET)
+    .upload(storagePath, input.bytes, {
+      contentType: input.mimeType || "application/octet-stream",
+      upsert: false,
+    });
+  if (upErr)
+    throw new Error(
+      /bucket/i.test(upErr.message)
+        ? `Storage bucket "${UPLOAD_BUCKET}" doesn't exist yet — create it in Supabase → Storage (keep it private).`
+        : upErr.message,
+    );
+
+  const row = {
+    source: "task",
+    drive_id: null,
+    parent_id: folderKey,
+    name: input.name.slice(0, 200),
+    mime_type: input.mimeType || "application/octet-stream",
+    kind: "file",
+    size_bytes: input.bytes.length,
+    year: null,
+    path: `Tasks/${TASK_GROUP_NAMES[input.group]}/${input.taskTitle}`,
+    modified_at: new Date().toISOString(),
+    storage_path: storagePath,
+    uploaded_by: input.uploadedBy,
+    deleted: false,
+  };
+  const { data, error } = await sb().from("lms_files").insert(row).select("*").single();
+  if (error) {
+    await sb().storage.from(UPLOAD_BUCKET).remove([storagePath]).catch(() => {});
+    throw new Error(error.message);
+  }
+  return toNode(data);
+}
+
+/** Files attached to one task group (all assignees' submissions for it). */
+export async function listTaskFiles(taskGroupId: string): Promise<FileNode[]> {
+  if (!usingSupabase) return [];
+  const { data, error } = await sb()
+    .from("lms_files")
+    .select("id,source,drive_id,parent_id,name,mime_type,kind,size_bytes,web_view_link,year,path,modified_at,uploaded_by")
+    .eq("parent_id", taskFolderKey(taskGroupId))
+    .eq("deleted", false)
+    .order("modified_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(toNode);
+}
+
+/**
+ * Remove an attachment. The person who uploaded it can take it back while the
+ * task is still open; once it's approved the submission is a record, so only a
+ * VP/President can remove it.
+ */
+export async function deleteTaskUpload(
+  m: Member,
+  fileId: string,
+  taskIsComplete: boolean,
+): Promise<void> {
+  if (!usingSupabase) return;
+  const { data } = await sb().from("lms_files").select("*").eq("id", fileId).maybeSingle();
+  if (!data) throw new Error("That file doesn't exist.");
+  if (data.source !== "task") throw new Error("That isn't a task attachment.");
+
+  const mine = (data.uploaded_by ?? "").toLowerCase() === m.email.toLowerCase();
+  if (!(m.roles.vpp || (mine && !taskIsComplete)))
+    throw new Error(
+      taskIsComplete
+        ? "This task has been approved, so its attachments can't be removed."
+        : "Only the person who uploaded this can remove it.",
+    );
+
+  if (data.storage_path) await sb().storage.from(UPLOAD_BUCKET).remove([data.storage_path]).catch(() => {});
+  const { error } = await sb().from("lms_files").delete().eq("id", fileId);
+  if (error) throw new Error(error.message);
 }

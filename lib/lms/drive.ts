@@ -67,9 +67,10 @@ const b64url = (buf: Buffer | string) =>
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
-type TokenResult = { token: string } | { error: string };
+export type TokenResult = { token: string } | { error: string };
 
-async function getAccessToken(): Promise<TokenResult> {
+/** Exported so the content indexer can reuse the same cached token. */
+export async function getDriveAccessToken(): Promise<TokenResult> {
   if (cachedToken && Date.now() < cachedToken.expiresAt) return { token: cachedToken.token };
 
   const email = process.env.GOOGLE_SA_EMAIL;
@@ -250,7 +251,7 @@ export type DriveSyncResult = {
 export async function syncDrive(): Promise<DriveSyncResult> {
   if (!usingSupabase) return { ok: false, skipped: "Supabase isn't configured in this environment." };
 
-  const auth = await getAccessToken();
+  const auth = await getDriveAccessToken();
   if ("error" in auth) return { ok: false, error: auth.error };
 
   const at = new Date().toISOString();
@@ -310,6 +311,11 @@ export async function syncDrive(): Promise<DriveSyncResult> {
     .lt("synced_at", at)
     .select("id");
   if (delErr) return { ok: false, error: delErr.message };
+
+  // Files edited in Drive are queued for re-indexing by the
+  // lms_files_reindex trigger (see migration-files.sql), which clears
+  // content_text whenever modified_at changes. It's done in the database
+  // because PostgREST filters compare against literals, not other columns.
 
   return {
     ok: true,

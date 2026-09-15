@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { syncDrive, lastDriveSync, YEAR_ROOTS, EXCLUDED_IDS } from "@/lib/lms/drive";
 import { uploadUsageBytes, MAX_UPLOAD_BYTES } from "@/lib/lms/files";
+import { indexContent, indexStatus } from "@/lib/lms/indexer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,10 +21,15 @@ export async function GET() {
   const g = await gate();
   if ("error" in g) return NextResponse.json({ error: g.error }, { status: g.status });
 
-  const [lastSync, usedBytes] = await Promise.all([lastDriveSync(), uploadUsageBytes()]);
+  const [lastSync, usedBytes, index] = await Promise.all([
+    lastDriveSync(),
+    uploadUsageBytes(),
+    indexStatus(),
+  ]);
   return NextResponse.json({
     lastSync,
     usedBytes,
+    index,
     maxUploadBytes: MAX_UPLOAD_BYTES,
     folders: YEAR_ROOTS,
     excludedCount: EXCLUDED_IDS.size,
@@ -37,6 +43,12 @@ export async function POST() {
   if ("error" in g) return NextResponse.json({ error: g.error }, { status: g.status });
 
   const result = await syncDrive();
+  if (result.ok) {
+    // Pull text for a first batch right away so "search in files" starts
+    // working immediately rather than only after the next cron run.
+    const index = await indexContent(60);
+    return NextResponse.json({ ...result, index });
+  }
   if (!result.ok)
     return NextResponse.json(
       { error: result.error ?? result.skipped ?? "Sync failed." },
