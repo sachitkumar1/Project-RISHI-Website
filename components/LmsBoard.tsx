@@ -182,6 +182,8 @@ export default function LmsBoard() {
   // "History" replaces the old Past tasks / Past events buttons.
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyOverview, setHistoryOverview] = useState(false);
+  // One switch for both History views — personal and club.
+  const [historyCalendar, setHistoryCalendar] = useState(true);
   const [openGroupKey, setOpenGroupKey] = useState<string | null>(null);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [overviewGroupKey, setOverviewGroupKey] = useState<string | null>(null);
@@ -333,6 +335,14 @@ export default function LmsBoard() {
     () => (openGroupKey ? tasks.filter((t) => (t.groupId || t.id) === openGroupKey) : []),
     [tasks, openGroupKey]
   );
+  /** Open an overview task by its GROUP key: a shared task opens once, with
+   *  every assignee listed, rather than as whichever row was clicked. */
+  const openOverviewTask = useCallback((groupKey: string) => {
+    const rows = (overview?.tasks ?? []).filter((t) => (t.groupId || t.id) === groupKey);
+    if (rows.length > 1) setOverviewGroupKey(groupKey);
+    else if (rows[0]) setDetailTaskId(rows[0].id);
+  }, [overview]);
+
   const overviewGroupRows = useMemo(
     () => (overviewGroupKey ? (overview?.tasks ?? []).filter((t) => (t.groupId || t.id) === overviewGroupKey) : []),
     [overview, overviewGroupKey]
@@ -436,10 +446,16 @@ export default function LmsBoard() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <button onClick={() => setOverviewOn((v) => !v)}
-          className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${overviewOn ? "bg-pine text-paper" : "border border-pine/25 text-pine-deep hover:bg-pine/5"}`}>
-          {overviewOn ? "✓ Full Club Overview" : "Full Club Overview"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setOverviewOn((v) => !v)}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${overviewOn ? "bg-pine text-paper" : "border border-pine/25 text-pine-deep hover:bg-pine/5"}`}>
+            {overviewOn ? "✓ Full Club Overview" : "Full Club Overview"}
+          </button>
+          <button onClick={() => setHistoryOpen(true)}
+            className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
+            History ({pastTaskGroups.length + pastEvents.length})
+          </button>
+        </div>
         <div className="flex gap-2">
           {meta.can.assignTasks && (
             <button onClick={() => setShowTaskForm(true)} className="btn-primary text-sm">+ Assign task</button>
@@ -477,9 +493,6 @@ export default function LmsBoard() {
 
       {!overviewOn && (<>
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        <button onClick={() => setHistoryOpen(true)} className="btn-ghost text-sm">
-          History ({pastTaskGroups.length + pastEvents.length})
-        </button>
         {calConnected ? (
           <>
             <button onClick={syncGoogleCalendar} disabled={syncing} className="btn-ghost text-sm disabled:opacity-60">
@@ -563,7 +576,7 @@ export default function LmsBoard() {
 
       {overviewOn && overview && (
         <ClubOverviewLists tasks={overview.tasks} events={overview.events} archive={ovArchive} period={ovWindow}
-          nameOf={nameOf} onOpenTask={(id) => setDetailTaskId(id)} onOpenEvent={(id) => setDetailEventId(id)} />
+          nameOf={nameOf} onOpenTask={openOverviewTask} onOpenEvent={(id) => setDetailEventId(id)} />
       )}
 
       {(showTaskForm || editingTask) && (
@@ -620,31 +633,45 @@ export default function LmsBoard() {
             <p className="text-sm text-ink/55">
               Everything finished or archived. The dashboard itself only shows active work.
             </p>
+            <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => setHistoryCalendar((v) => !v)}
+              className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
+              {historyCalendar ? "Hide calendar" : "Show calendar"}
+            </button>
             {(
               <button onClick={() => setHistoryOverview((v) => !v)}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${historyOverview ? "bg-pine text-paper" : "border border-pine/25 text-pine-deep hover:bg-pine/5"}`}>
                 {historyOverview ? "✓ Full Club Overview" : "Full Club Overview"}
               </button>
             )}
+            </div>
           </div>
 
           {historyOverview ? (
             overview ? (
               /* In History the overview shows EVERYTHING — the old "All" setting. */
               <>
-                <ClubCalendar tasks={overview.tasks} events={overview.events} archive="all" period="all"
-                  onOpenTaskGroup={(gid) => { setOverviewGroupKey(gid); setHistoryOpen(false); }}
-                  onOpenEvent={(id) => { setDetailEventId(id); setHistoryOpen(false); }} />
+                {historyCalendar && (
+                  <ClubCalendar tasks={overview.tasks} events={overview.events} archive="all" period="all"
+                    onOpenTaskGroup={(gid) => { setOverviewGroupKey(gid); setHistoryOpen(false); }}
+                    onOpenEvent={(id) => { setDetailEventId(id); setHistoryOpen(false); }} />
+                )}
                 <div className="mt-8">
                   <ClubOverviewLists tasks={overview.tasks} events={overview.events} archive="all" period="all"
                     nameOf={nameOf}
-                    onOpenTask={(id) => { setDetailTaskId(id); setHistoryOpen(false); }}
+                    onOpenTask={(key) => { openOverviewTask(key); setHistoryOpen(false); }}
                     onOpenEvent={(id) => { setDetailEventId(id); setHistoryOpen(false); }} />
                 </div>
               </>
             ) : <p className="text-sm text-ink/50">Loading the full club view…</p>
           ) : (
             <div className="space-y-10">
+              {historyCalendar && (
+                <CalendarMonth tasks={tasks} events={events} myEmail={myEmail} archive="all" period="all"
+                  onOpenTask={(id) => { setDetailTaskId(id); setHistoryOpen(false); }}
+                  onOpenEvent={(id) => { setDetailEventId(id); setHistoryOpen(false); }} />
+              )}
+
               <HistorySection title="Tasks assigned to me" empty="Nothing of yours has been completed or archived yet.">
                 {pastToMe.map((g) => (
                   <PastTaskRow key={g.key} g={g}
@@ -653,13 +680,17 @@ export default function LmsBoard() {
                 ))}
               </HistorySection>
 
-              <HistorySection title="Tasks assigned by me" empty="You haven't had any assigned tasks finish yet.">
-                {pastByMe.map((g) => (
-                  <PastTaskRow key={g.key} g={g}
-                    onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); setHistoryOpen(false); }}
-                    onUnarchive={() => archiveGroup(g.rows.filter((r) => r.archived), false)} />
-                ))}
-              </HistorySection>
+              {/* Only shown to people who can actually assign work — for
+                  everyone else the section would always be empty. */}
+              {meta.can.assignTasks && (
+                <HistorySection title="Tasks assigned by me" empty="You haven't had any assigned tasks finish yet.">
+                  {pastByMe.map((g) => (
+                    <PastTaskRow key={g.key} g={g}
+                      onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); setHistoryOpen(false); }}
+                      onUnarchive={() => archiveGroup(g.rows.filter((r) => r.archived), false)} />
+                  ))}
+                </HistorySection>
+              )}
 
               <HistorySection title="Past events" empty="No past events.">
                 {pastEvents.map((e) => (
@@ -1932,11 +1963,14 @@ function ClubCalendar({ tasks, events, archive, period, onOpenTaskGroup, onOpenE
 function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask, onOpenEvent }: {
   tasks: OTask[]; events: OEvent[]; archive: "active" | "all"; period: TimeWindow;
   nameOf: (e: string) => string;
-  onOpenTask: (id: string) => void; onOpenEvent: (id: string) => void;
+  /** Receives the task GROUP key, so multi-assignee tasks open as one task. */
+  onOpenTask: (groupKey: string) => void; onOpenEvent: (id: string) => void;
 }) {
-  const fTasks = tasks.filter((t) => taskPasses(t, archive, period));
   const fEvents = events.filter((e) => eventPasses(e, archive, period));
-  const groups = groupByBatch(fTasks);
+  // Group FIRST, then filter whole groups. Filtering rows first would drop the
+  // assignees who'd already finished, so a task shared by four people showed as
+  // "2 people · 0/2 done" while its detail correctly listed all four.
+  const groups = groupByBatch(tasks).filter((g) => g.rows.some((r) => taskPasses(r, archive, period)));
   const nothing = groups.length === 0 && fEvents.length === 0;
   return (
     <div className="mt-10">
@@ -1961,7 +1995,7 @@ function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask,
                   const done = g.rows.filter((r) => r.status === "complete").length;
                   const archived = g.rows.every((r) => r.archived);
                   return (
-                    <button key={g.key} onClick={() => onOpenTask(t.id)}
+                    <button key={g.key} onClick={() => onOpenTask(g.key)}
                       className="rounded-xl border border-pine/12 bg-paper p-3 text-left transition-colors hover:border-pine/30">
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-medium text-ink">{t.title}</span>

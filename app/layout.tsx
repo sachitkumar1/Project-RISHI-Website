@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import BackButton from "@/components/BackButton";
 import AuthProvider from "@/components/AuthProvider";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -48,6 +49,7 @@ export default function RootLayout({
       <body className="min-h-screen antialiased">
         <AuthProvider>
           <Navbar />
+          <BackButton />
           <main>{children}</main>
           <Footer />
         </AuthProvider>

@@ -21,9 +21,7 @@ export default function FilesHome() {
             Back to dashboard
           </Link>
           <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">Files</h1>
-          <p className="mt-2 max-w-2xl text-paper/70">
-            Everything the club keeps in Drive, plus meeting notes, in one place.
-          </p>
+          
         </div>
       </section>
 
