@@ -181,7 +181,7 @@ function FileCard({ n, onOpen, onDelete, showPath, big }: {
           <Icon n={n} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className={`block truncate font-semibold leading-snug ${big ? "font-display text-2xl" : ""}`}>{n.name}</span>
+          <span className={`block truncate font-semibold leading-snug ${big ? "text-xl" : ""}`}>{n.name}</span>
           <span className="mt-0.5 block truncate text-xs opacity-60">
             {[
               fileLabel(n),
@@ -485,7 +485,7 @@ export default function FilesBrowser() {
           <div className="space-y-8">
             {groupByYear(results).map(([year, hits]) => (
               <section key={year}>
-                <h3 className="font-display text-lg font-semibold text-pine-deep">
+                <h3 className="text-lg font-semibold text-pine-deep">
                   {year === UNDATED ? "Other results" : `${year} Results`}
                   <span className="ml-2 text-xs font-normal text-ink/40">{hits.length}</span>
                 </h3>
@@ -510,7 +510,7 @@ export default function FilesBrowser() {
             )}
             {pastRoots.length > 0 && (
               <section>
-                <h3 className="font-display text-base font-semibold text-ink/55">Past years</h3>
+                <h3 className="text-base font-semibold text-ink/55">Past years</h3>
                 <ul className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
                   {pastRoots.map((n) => (
                     <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} />
