@@ -447,11 +447,11 @@ export default function LmsBoard() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <button data-tour="overview" onClick={() => setOverviewOn((v) => !v)}
+          <button onClick={() => setOverviewOn((v) => !v)}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${overviewOn ? "bg-pine text-paper" : "border border-pine/25 text-pine-deep hover:bg-pine/5"}`}>
             {overviewOn ? "✓ Full Club Overview" : "Full Club Overview"}
           </button>
-          <button data-tour="history" onClick={() => setHistoryOpen(true)}
+          <button onClick={() => setHistoryOpen(true)}
             className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
             History ({pastTaskGroups.length + pastEvents.length})
           </button>
@@ -474,7 +474,7 @@ export default function LmsBoard() {
       )}
 
       {!overviewOn && (
-        <div data-tour="period" className="mt-6 flex flex-wrap items-center gap-4">
+        <div className="mt-6 flex flex-wrap items-center gap-4">
           <SegToggle label="Period" value={myWindow} onChange={(v) => setMyWindow(v as TimeWindow)}
             options={[["day", "Day"], ["week", "Week"], ["month", "Month"], ["all", "All time"]]} />
         </div>
@@ -508,7 +508,7 @@ export default function LmsBoard() {
       </div>
       {syncMsg && <p className="mt-2 text-sm text-ink/60">{syncMsg}</p>}
 
-      <div data-tour="my-tasks" className="mt-10 grid gap-8 lg:grid-cols-2">
+      <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <section>
           <h3 className="font-display text-xl font-semibold text-pine-deep">My tasks</h3>
           <div className="mt-4 space-y-3">

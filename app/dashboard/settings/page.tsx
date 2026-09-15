@@ -9,7 +9,6 @@ import Contours from "@/components/Contours";
 import Avatar from "@/components/Avatar";
 import ProfilePhotoModal from "@/components/ProfilePhotoModal";
 import FilesSettingsPanel from "@/components/FilesSettingsPanel";
-import TourReplayButton from "@/components/TourReplayButton";
 
 type Profile = {
   email: string;
@@ -221,7 +220,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Directory contact info (editable) */}
-            <div data-tour="settings-main" className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
+            <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
               <h2 className="font-display text-lg font-semibold text-pine-deep">Directory contact info</h2>
               <p className="mt-1 text-sm text-ink/60">
                 How you appear in the <a href="/dashboard/directory" className="text-pine underline">member directory</a>.
@@ -314,8 +313,6 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
-
-            <TourReplayButton />
 
             {/* Files (Drive mirror + per-folder visibility) — webmaster only */}
             <FilesSettingsPanel />

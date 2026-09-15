@@ -21,15 +21,13 @@ export default function FilesHome() {
             Back to dashboard
           </Link>
           <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">Files</h1>
-          <p className="mt-2 max-w-2xl text-paper/70">
-            Everything the club keeps in Drive, plus meeting notes, in one place.
-          </p>
+          
         </div>
       </section>
 
       {/* Meetings — pinned above the folders, since it's the thing people open most. */}
       <section className="container-rishi pt-10">
-        <div data-tour="meetings-card" className="rounded-3xl border border-pine/15 bg-pine/[0.03] p-6 sm:p-7">
+        <div className="rounded-3xl border border-pine/15 bg-pine/[0.03] p-6 sm:p-7">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="font-display text-2xl font-semibold text-pine-deep">Meeting notes</h2>
             <Link href="/dashboard/files/meetings" className="text-sm font-semibold text-pine hover:underline">

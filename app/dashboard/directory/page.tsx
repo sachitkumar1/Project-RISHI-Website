@@ -143,7 +143,7 @@ export default function DirectoryPage() {
         </div>
       </section>
 
-      <section data-tour="directory-list" className="container-rishi py-10">
+      <section className="container-rishi py-10">
         {loading && <p className="text-ink/60">Loading…</p>}
         {error && <p className="text-red-600">{error}</p>}
 
