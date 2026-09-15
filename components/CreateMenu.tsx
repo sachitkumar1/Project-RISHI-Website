@@ -59,11 +59,12 @@ export default function CreateMenu() {
         </button>
 
         {hover && (
-          <div className="absolute right-0 top-full z-30 w-72 pt-2">
+          <div data-tour="create-menu" className="absolute right-0 top-full z-30 w-72 pt-2">
             <div className="overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-xl">
               {modes.map((m) => (
                 <button
                   key={m}
+                  data-tour={`create-${m}`}
                   onClick={() => {
                     setComposeMode(m);
                     setHover(false);

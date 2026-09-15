@@ -215,15 +215,32 @@ const SEED: FileNode[] = (
   uploadedBy: null,
 }));
 
+const PAGE = 1000;
+
+/**
+ * Every visible row in the index.
+ *
+ * Paged deliberately: PostgREST caps a response at 1000 rows, and once the
+ * older school years were mirrored the index passed 1800. A single unpaged
+ * query silently returned the first 1000 by name, which quietly dropped the
+ * "Tasks" folder off the end of the alphabet — it looked like a permissions
+ * bug and wasn't. Any new query over this table needs the same treatment.
+ */
 async function allRows(): Promise<FileNode[]> {
   if (!usingSupabase) return SEED;
-  const { data, error } = await sb()
-    .from("lms_files")
-    .select("id,source,drive_id,parent_id,name,mime_type,kind,size_bytes,web_view_link,year,path,modified_at,uploaded_by")
-    .eq("deleted", false)
-    .order("name");
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(toNode);
+  const out: FileNode[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await sb()
+      .from("lms_files")
+      .select("id,source,drive_id,parent_id,name,mime_type,kind,size_bytes,web_view_link,year,path,modified_at,uploaded_by")
+      .eq("deleted", false)
+      .order("name")
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    out.push(...(data ?? []).map(toNode));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
 }
 
 type Resolved = {

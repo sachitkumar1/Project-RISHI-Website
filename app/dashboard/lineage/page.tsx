@@ -116,7 +116,7 @@ export default function LineagePage() {
       </section>
 
       {/* Trees */}
-      <section className="container-rishi space-y-6 py-14">
+      <section data-tour="lineage" className="container-rishi space-y-6 py-14">
         {ordered.map((tree, i) => {
           const isMine = !!userName && treeContains(tree, userName);
           return (

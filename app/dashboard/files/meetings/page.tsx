@@ -23,7 +23,7 @@ export default function MeetingsHome() {
         </div>
       </section>
 
-      <section className="container-rishi py-10">
+      <section data-tour="meetings-list" className="container-rishi py-10">
         <div className="grid gap-5 sm:grid-cols-2">
           {PROJECT_GROUPS.map((g) => (
             <Link key={g} href={`/dashboard/files/meetings/g/${g}`}
