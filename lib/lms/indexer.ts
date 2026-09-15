@@ -31,19 +31,45 @@ function sb(): SupabaseClient {
   return _client;
 }
 
+/** Marker for "this needs the PDF parser", not a Drive export type. */
+const PDF = "\u0000pdf";
+
+/** PDFs above this are skipped — parsing them costs more than they're worth. */
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
 /** Roughly 200k characters — far more than any club doc, small enough to store. */
 const MAX_CHARS = 200_000;
 
-/** mime → how to get text out of it. null means "download the bytes as text". */
+/**
+ * mime → how to get text out of it.
+ *   a string → ask Drive to export as that type (Google-native files)
+ *   null     → download the bytes and treat them as text
+ *   "PDF"    → download the bytes and parse them with unpdf
+ */
 const INDEXABLE: Record<string, string | null> = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.spreadsheet": "text/csv",
   "application/vnd.google-apps.presentation": "text/plain",
+  "application/pdf": PDF,
   "text/plain": null,
   "text/csv": null,
   "text/markdown": null,
   "application/json": null,
 };
+
+/**
+ * Folders whose contents should NOT be text-indexed, by folder id. Empty by
+ * design — everything is indexed, and search results already respect each
+ * folder's audience, so restricted material stays restricted.
+ *
+ * It exists because indexing copies a document's full text into the database.
+ * For most club files that's unremarkable. If you'd rather a folder's text
+ * never be stored at all, add its id here and the files inside it are listed
+ * and previewable as normal but their contents are never read. The 25-26
+ * reimbursement receipts folder is the one place this might be wanted:
+ *   "1BjOszalxfCkTFLxqhcYvaEuvw3lEsCAfxjGsyLKfXCQ"
+ */
+export const CONTENT_INDEX_SKIP_FOLDERS = new Set<string>([]);
 
 export const isIndexable = (mime: string) => mime in INDEXABLE;
 
@@ -52,11 +78,25 @@ function tidy(raw: string): string {
   return raw.replace(/\r/g, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, MAX_CHARS);
 }
 
+/** Pull readable text out of a PDF. Scanned PDFs legitimately yield nothing. */
+async function extractPdf(bytes: ArrayBuffer): Promise<string | null> {
+  if (bytes.byteLength > MAX_PDF_BYTES) return null;
+  // Imported lazily so the PDF engine is only loaded when a PDF turns up.
+  const { extractText, getDocumentProxy } = await import("unpdf");
+  const doc = await getDocumentProxy(new Uint8Array(bytes));
+  const { text } = await extractText(doc, { mergePages: true });
+  const out = tidy(Array.isArray(text) ? text.join("\n") : String(text ?? ""));
+  // A scan with no text layer comes back essentially empty. Storing "" would
+  // be indistinguishable from a real empty file, so return null.
+  return out.length > 20 ? out : null;
+}
+
 async function extract(token: string, driveId: string, mime: string): Promise<string | null> {
-  const exportAs = INDEXABLE[mime];
-  const url = exportAs
-    ? `https://www.googleapis.com/drive/v3/files/${driveId}/export?mimeType=${encodeURIComponent(exportAs)}`
-    : `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&supportsAllDrives=true`;
+  const how = INDEXABLE[mime];
+  const url =
+    how && how !== PDF
+      ? `https://www.googleapis.com/drive/v3/files/${driveId}/export?mimeType=${encodeURIComponent(how)}`
+      : `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&supportsAllDrives=true`;
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
@@ -64,6 +104,16 @@ async function extract(token: string, driveId: string, mime: string): Promise<st
     // shortcut to something we can't reach. Not worth failing the whole run.
     console.warn(`indexer: skipping ${driveId} (HTTP ${res.status})`);
     return null;
+  }
+
+  if (how === PDF) {
+    try {
+      return await extractPdf(await res.arrayBuffer());
+    } catch (e) {
+      // A malformed or encrypted PDF shouldn't take the run down with it.
+      console.warn(`indexer: PDF ${driveId} unreadable —`, (e as Error).message);
+      return null;
+    }
   }
   return tidy(await res.text());
 }
@@ -125,7 +175,7 @@ export async function indexContent(budgetMs = 35_000): Promise<IndexResult> {
   while (Date.now() < deadline) {
     const { data: rows, error } = await sb()
       .from("lms_files")
-      .select("id,drive_id,mime_type")
+      .select("id,drive_id,mime_type,parent_id")
       .eq("source", "drive")
       .eq("kind", "file")
       .eq("deleted", false)
@@ -140,7 +190,9 @@ export async function indexContent(budgetMs = 35_000): Promise<IndexResult> {
       rows.map(async (r) => {
         const at = new Date().toISOString();
         try {
-          const text = r.drive_id ? await extract(auth.token, r.drive_id, r.mime_type ?? "") : null;
+          const skip = CONTENT_INDEX_SKIP_FOLDERS.has(r.parent_id ?? "");
+          const text =
+            r.drive_id && !skip ? await extract(auth.token, r.drive_id, r.mime_type ?? "") : null;
           await sb()
             .from("lms_files")
             .update({ content_text: text, content_indexed_at: at })
