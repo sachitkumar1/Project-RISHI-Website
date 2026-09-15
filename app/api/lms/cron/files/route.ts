@@ -41,11 +41,10 @@ async function run(req: Request) {
     return NextResponse.json({ ...result, ms: Date.now() - started }, { status: 500 });
   }
 
-  // Then extract text from whatever still needs it, so "search in files" keeps
-  // up. Bounded per run — anything left over is picked up by the next one, and
-  // `remaining` says how much is outstanding.
-  const index = await indexContent();
-
+  // Then extract text, in bounded batches, for as long as the request budget
+  // allows. Whatever's left is picked up by the next run — `index.remaining`
+  // says how much that is.
+  const index = await indexContent(20_000);
   return NextResponse.json({ ...result, index, ms: Date.now() - started });
 }
 

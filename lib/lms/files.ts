@@ -802,7 +802,22 @@ export async function purgeTaskUploads(
   const paths = data.map((r) => r.storage_path).filter(Boolean) as string[];
   if (paths.length) await sb().storage.from(UPLOAD_BUCKET).remove(paths).catch(() => {});
   await sb().from("lms_files").delete().in("id", data.map((r) => r.id));
+
+  // If that emptied the task's folder, the folder goes too — an empty folder
+  // named after a task that no longer exists is just clutter in Files.
+  if (!assigneeEmail) await removeTaskFolderIfEmpty(taskGroupId);
   return data.length;
+}
+
+/** Drop a task's folder once nothing is left inside it. */
+export async function removeTaskFolderIfEmpty(taskGroupId: string): Promise<boolean> {
+  if (!usingSupabase) return false;
+  const key = taskFolderKey(taskGroupId);
+  const { count } = await sb()
+    .from("lms_files").select("*", { count: "exact", head: true }).eq("parent_id", key);
+  if ((count ?? 0) > 0) return false;
+  const { error } = await sb().from("lms_files").delete().eq("drive_id", key).eq("source", "task");
+  return !error;
 }
 
 /**

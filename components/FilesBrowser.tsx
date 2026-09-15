@@ -338,10 +338,11 @@ export default function FilesBrowser() {
   // under "Past years". Anything that isn't a year folder (Tasks) stays up top.
   const rootYears = atRoot ? items.filter((n) => /^\d{4}-\d{4}/.test(n.name)) : [];
   const newestYear = rootYears.map((n) => n.name.slice(0, 9)).sort().pop() ?? "";
-  // Only the newest year gets the large tile; Tasks and anything else that
-  // isn't a school year sits at normal size beneath it.
-  const currentRoots = atRoot ? rootYears.filter((n) => n.name.startsWith(newestYear)) : [];
-  const otherRoots = atRoot ? items.filter((n) => !rootYears.includes(n)) : [];
+  // The newest year and Tasks share the top row at the same size — they're the
+  // two things people open constantly. Older years drop to a smaller tier.
+  const currentRoots = atRoot
+    ? items.filter((n) => !rootYears.includes(n) || n.name.startsWith(newestYear))
+    : [];
   const pastRoots = atRoot ? rootYears.filter((n) => !n.name.startsWith(newestYear)) : [];
   const crumbs = view?.breadcrumbs ?? [];
 
@@ -504,13 +505,6 @@ export default function FilesBrowser() {
               <ul className="grid gap-3 sm:grid-cols-2">
                 {currentRoots.map((n) => (
                   <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} big />
-                ))}
-              </ul>
-            )}
-            {otherRoots.length > 0 && (
-              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {otherRoots.map((n) => (
-                  <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} />
                 ))}
               </ul>
             )}

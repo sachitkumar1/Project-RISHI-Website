@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { syncDrive, lastDriveSync, YEAR_ROOTS, EXCLUDED_IDS } from "@/lib/lms/drive";
 import { uploadUsageBytes, MAX_UPLOAD_BYTES } from "@/lib/lms/files";
-import { indexContent, indexStatus } from "@/lib/lms/indexer";
+import { indexStatus } from "@/lib/lms/indexer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -42,13 +42,12 @@ export async function POST() {
   const g = await gate();
   if ("error" in g) return NextResponse.json({ error: g.error }, { status: g.status });
 
+  // The Drive walk and the text indexing are SEPARATE requests now. With four
+  // school years mirrored the two together ran past 300s locally, well beyond
+  // Vercel's 60s ceiling. POST here walks Drive; POST /api/lms/files/index
+  // pulls text, a batch at a time, until `remaining` reaches 0.
   const result = await syncDrive();
-  if (result.ok) {
-    // Pull text for a first batch right away so "search in files" starts
-    // working immediately rather than only after the next cron run.
-    const index = await indexContent();
-    return NextResponse.json({ ...result, index });
-  }
+  if (result.ok) return NextResponse.json(result);
   if (!result.ok)
     return NextResponse.json(
       { error: result.error ?? result.skipped ?? "Sync failed." },

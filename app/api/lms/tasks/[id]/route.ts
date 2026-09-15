@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { canSeeMember, findMember } from "@/lib/members";
-import { listTaskFiles, purgeTaskUploads } from "@/lib/lms/files";
+import { listTaskFiles, purgeTaskUploads, removeTaskFolderIfEmpty } from "@/lib/lms/files";
 import {
   canApproveTask,
   canAssignTaskTo,
@@ -311,7 +311,10 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   // Last row of the group? Then the shared attachments have nothing left to
   // belong to. A single assignee's removal only clears their own files.
   const siblings = await getTasksByGroup(task.groupId).catch(() => []);
-  await purgeTaskUploads(task.groupId, siblings.length > 1 ? task.assigneeEmail : undefined).catch(() => {});
+  const lastRow = siblings.length <= 1;
+  await purgeTaskUploads(task.groupId, lastRow ? undefined : task.assigneeEmail).catch(() => {});
   await deleteTask(task.id);
+  // The whole task is gone, so its folder in Files goes with it.
+  if (lastRow) await removeTaskFolderIfEmpty(task.groupId).catch(() => {});
   return syncedJson({ ok: true });
 }

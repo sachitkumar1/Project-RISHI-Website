@@ -163,7 +163,7 @@ export async function indexContent(budgetMs = 35_000): Promise<IndexResult> {
     .is("content_indexed_at", null)
     .not("mime_type", "in", `(${Object.keys(INDEXABLE).map((m) => `"${m}"`).join(",")})`)
     .select("id");
-  const skipped = dropped?.length ?? 0;
+  let skipped = dropped?.length ?? 0;
 
   // ---- 2. Extract the rest, several at a time, until the budget runs out ----
   let indexed = 0,
@@ -184,22 +184,26 @@ export async function indexContent(budgetMs = 35_000): Promise<IndexResult> {
     if (!rows || rows.length === 0) break; // queue drained
 
     examined += rows.length;
+    // CLAIM the batch before doing any work. Stamping afterwards meant a file
+    // that never produced text — four image-only PDFs did exactly this — came
+    // back in every batch forever and starved the queue. Claiming first
+    // guarantees forward progress; the cost is that a run killed mid-extract
+    // leaves a file marked done without text, which the next Drive edit fixes.
+    const at = new Date().toISOString();
+    await sb().from("lms_files").update({ content_indexed_at: at }).in("id", rows.map((r) => r.id));
+
     await Promise.all(
       rows.map(async (r) => {
-        const at = new Date().toISOString();
         try {
           const skip = CONTENT_INDEX_SKIP_FOLDERS.has(r.parent_id ?? "");
           const text =
             r.drive_id && !skip ? await extract(auth.token, r.drive_id, r.mime_type ?? "") : null;
-          await sb()
-            .from("lms_files")
-            .update({ content_text: text, content_indexed_at: at })
-            .eq("id", r.id);
-          if (text) indexed++;
+          if (text) {
+            await sb().from("lms_files").update({ content_text: text }).eq("id", r.id);
+            indexed++;
+          } else skipped++;
         } catch (e) {
           console.warn(`indexer: ${r.drive_id} failed —`, (e as Error).message);
-          // Stamp it so one broken file can't wedge the queue forever.
-          await sb().from("lms_files").update({ content_indexed_at: at }).eq("id", r.id);
           failed++;
         }
       }),

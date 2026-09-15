@@ -41,7 +41,7 @@ function sb(): SupabaseClient {
 
 // ---------------------------------------------------------------- what to index
 /** The club's top-level Drive folder. Every school-year folder lives inside it. */
-export const PARENT_FOLDER_ID = "1Huum1_5MYHMR-Ap3b_LJVhcVAPFOpKmg";
+export const PARENT_FOLDER_ID = "1HuumMAhBWL-R0gZV58Brwrkz00NU-t29";
 
 /**
  * Year folders we know about without asking Drive. These are the two the
@@ -50,8 +50,12 @@ export const PARENT_FOLDER_ID = "1Huum1_5MYHMR-Ap3b_LJVhcVAPFOpKmg";
  * it takes for it to appear — no code change, no redeploy.
  */
 export const KNOWN_YEAR_ROOTS: { id: string; year: string; name: string }[] = [
-  { id: "143aYpyAABNvMFDw6J5kRAbltJTk-MDKf", year: "2025-2026", name: "2025-2026 Project RISHI" },
   { id: "1avvwirYScoTAoQFu3vc2luYrpb8YDS2n", year: "2026-2027", name: "2026-2027 Project RISHI" },
+  { id: "143aYpyAABNvMFDw6J5kRAbltJTk-MDKf", year: "2025-2026", name: "2025-2026 Project RISHI" },
+  { id: "1mFLYlwwxU2LlCyfqNRDxAaEymBwj-CZb", year: "2020-2021", name: "2020-2021 Project RISHI" },
+  { id: "1X5ZUAa3S0SHds1DrKJHqmejVZfoH6M0p", year: "2019-2020", name: "2019-2020 Project RISHI" },
+  // 2016-2017 and 2017-2018 aren't shared with GOOGLE_SA_EMAIL yet. Share them
+  // (or the parent folder) and they're picked up automatically — no code change.
 ];
 
 /** Kept for callers that just want a list to show in Settings. */
@@ -225,45 +229,67 @@ type IndexRow = {
 const kindOf = (mime: string): IndexRow["kind"] =>
   mime === FOLDER_MIME ? "folder" : mime === SHORTCUT_MIME ? "shortcut" : "file";
 
-/** Depth-first walk of one year folder, skipping anything in EXCLUDED_IDS. */
+/** How many folders are listed from Drive at once. */
+const WALK_CONCURRENCY = 8;
+
+/**
+ * Walk one year folder, level by level, listing folders in parallel.
+ *
+ * This used to recurse one folder at a time. With four school years mirrored
+ * (221 folders) that took 77s — past Vercel's 60s ceiling — because almost all
+ * of it was spent waiting on Drive rather than doing work. Listing a batch at a
+ * time turns that wait into overlap.
+ */
 async function walk(
   token: string,
-  folderId: string,
+  rootId: string,
   year: string,
-  path: string,
   at: string,
   acc: IndexRow[],
   seen: Set<string>,
-  depth = 0,
 ): Promise<void> {
-  if (depth > 12) return; // guard against a pathological/looping tree
-  const children = await listChildren(token, folderId);
-  for (const c of children) {
-    if (EXCLUDED_IDS.has(c.id)) continue;
-    if (seen.has(c.id)) continue; // a file can live in two folders; index it once
-    seen.add(c.id);
+  // Each queued entry is a folder still to be listed, plus its breadcrumb path.
+  let level: { id: string; path: string }[] = [{ id: rootId, path: "" }];
 
-    const kind = kindOf(c.mimeType);
-    acc.push({
-      source: "drive",
-      drive_id: c.id,
-      parent_id: folderId,
-      name: c.name,
-      mime_type: c.mimeType,
-      kind,
-      size_bytes: c.size ? Number(c.size) : null,
-      web_view_link: c.webViewLink ?? null,
-      year,
-      path,
-      modified_at: c.modifiedTime ?? null,
-      owner_email: c.owners?.[0]?.emailAddress ?? null,
-      deleted: false,
-      synced_at: at,
-    });
+  for (let depth = 0; depth < 12 && level.length > 0; depth++) {
+    const next: { id: string; path: string }[] = [];
 
-    if (kind === "folder") {
-      await walk(token, c.id, year, path ? `${path}/${c.name}` : c.name, at, acc, seen, depth + 1);
+    for (let i = 0; i < level.length; i += WALK_CONCURRENCY) {
+      const batch = level.slice(i, i + WALK_CONCURRENCY);
+      const listings = await Promise.all(
+        batch.map(async (f) => ({ folder: f, children: await listChildren(token, f.id) })),
+      );
+
+      for (const { folder, children } of listings) {
+        for (const c of children) {
+          if (EXCLUDED_IDS.has(c.id)) continue;
+          if (seen.has(c.id)) continue; // a file can live in two folders; index it once
+          seen.add(c.id);
+
+          const kind = kindOf(c.mimeType);
+          acc.push({
+            source: "drive",
+            drive_id: c.id,
+            parent_id: folder.id,
+            name: c.name,
+            mime_type: c.mimeType,
+            kind,
+            size_bytes: c.size ? Number(c.size) : null,
+            web_view_link: c.webViewLink ?? null,
+            year,
+            path: folder.path,
+            modified_at: c.modifiedTime ?? null,
+            owner_email: c.owners?.[0]?.emailAddress ?? null,
+            deleted: false,
+            synced_at: at,
+          });
+
+          if (kind === "folder")
+            next.push({ id: c.id, path: folder.path ? `${folder.path}/${c.name}` : c.name });
+        }
+      }
     }
+    level = next;
   }
 }
 
@@ -312,7 +338,7 @@ export async function syncDrive(): Promise<DriveSyncResult> {
         synced_at: at,
       });
       seen.add(root.id);
-      await walk(auth.token, root.id, root.year, "", at, rows, seen);
+      await walk(auth.token, root.id, root.year, at, rows, seen);
     }
   } catch (e) {
     // Bail without touching the index — a partial walk must never look like
