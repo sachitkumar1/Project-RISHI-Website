@@ -20,7 +20,29 @@ type Meeting = {
   location: string; notetaker: string; snack: string;
   attendees: string[]; blocks: Block[]; body: string; createdBy: string;
 };
-type Task = { id: string; groupId: string; title: string; description: string; assigneeEmail: string; assigneeName: string; dueAt: string; status: string; archived: boolean };
+type Task = { id: string; groupId: string; title: string; description: string; assigneeEmail: string; assigneeName: string; dueAt: string; status: string; archived: boolean; tags?: string[] };
+
+/** One row per task, with every assignee and their own completion state. */
+type TaskGroup = { key: string; head: Task; people: Task[] };
+
+/**
+ * Tasks are stored one row per assignee (sharing a groupId). A meeting should
+ * show the TASK, not the same line repeated per person, so collapse them here
+ * and let each person carry their own status.
+ */
+function groupTasks(rows: Task[]): TaskGroup[] {
+  const byKey = new Map<string, TaskGroup>();
+  for (const t of rows) {
+    const key = t.groupId || t.id;
+    const g = byKey.get(key);
+    if (g) g.people.push(t);
+    else byKey.set(key, { key, head: t, people: [t] });
+  }
+  return Array.from(byKey.values()).map((g) => ({
+    ...g,
+    people: g.people.slice().sort((a, b) => a.assigneeName.localeCompare(b.assigneeName)),
+  }));
+}
 type DirEntry = { loginEmail: string; name: string; group: string };
 
 const STATUS_LABEL: Record<string, string> = { not_complete: "Not complete", pending: "Pending approval", complete: "Complete" };
@@ -214,19 +236,42 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
             ) : (
               <table className="w-full text-left text-sm">
                 <thead><tr className="border-b border-pine/10 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/50">
-                  <th className="px-4 py-3 font-semibold">Task</th><th className="px-4 py-3 font-semibold">Description</th><th className="px-4 py-3 font-semibold">Assigned to</th>
-                  <th className="px-4 py-3 font-semibold">Due</th><th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold">Task</th><th className="px-4 py-3 font-semibold">Description</th>
+                  <th className="px-4 py-3 font-semibold">Assigned to</th>
+                  <th className="px-4 py-3 font-semibold">Due</th><th className="px-4 py-3 font-semibold">Progress</th>
                 </tr></thead>
                 <tbody>
-                  {tasks.map((t) => (
-                    <tr key={t.id} className="border-b border-pine/8">
-                      <td className="px-4 py-3 font-medium text-ink">{t.title}</td>
-                      <td className="max-w-xs px-4 py-3 text-ink/60"><span className="line-clamp-2 whitespace-pre-wrap">{t.description || <span className="text-ink/30">—</span>}</span></td>
-                      <td className="px-4 py-3 text-ink/70">{t.assigneeName}</td>
-                      <td className="px-4 py-3 text-ink/70">{new Date(t.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td>
-                      <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[t.status] ?? "bg-ink/8"}`}>{STATUS_LABEL[t.status] ?? t.status}</span></td>
-                    </tr>
-                  ))}
+                  {groupTasks(tasks).map((g) => {
+                    const done = g.people.filter((p) => p.status === "complete").length;
+                    const hasDue = !(g.head.tags ?? []).includes("imported:no-due-date");
+                    return (
+                      <tr key={g.key} className="border-b border-pine/8 align-top">
+                        <td className="px-4 py-3 font-medium text-ink">{g.head.title}</td>
+                        <td className="max-w-xs px-4 py-3 text-ink/60"><span className="line-clamp-2 whitespace-pre-wrap">{g.head.description || <span className="text-ink/30">—</span>}</span></td>
+                        <td className="px-4 py-3">
+                          {/* each person keeps their own completion state */}
+                          <ul className="flex flex-col gap-1.5">
+                            {g.people.map((p) => (
+                              <li key={p.id} className="flex items-center gap-2">
+                                <span className="min-w-0 flex-1 truncate text-ink/75">{p.assigneeName}</span>
+                                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_STYLE[p.status] ?? "bg-ink/8"}`}>
+                                  {STATUS_LABEL[p.status] ?? p.status}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-ink/70">
+                          {hasDue ? new Date(g.head.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : <span className="text-ink/30">—</span>}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${done === g.people.length ? "bg-pine/15 text-pine-deep" : "bg-ink/8 text-ink/60"}`}>
+                            {done}/{g.people.length} done
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

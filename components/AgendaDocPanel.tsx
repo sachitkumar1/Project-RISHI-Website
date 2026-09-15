@@ -70,9 +70,6 @@ export default function AgendaDocPanel({
         </div>
         <iframe src={preview} title={docName || "Agenda"} className="h-[600px] w-full bg-white" />
       </div>
-      <p className="mt-2 text-xs text-ink/40">
-        Editing happens in Google Docs — the preview is read-only and refreshes when you reopen it.
-      </p>
 
       {expanded && (
         <div

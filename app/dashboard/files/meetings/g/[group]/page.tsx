@@ -72,10 +72,11 @@ export default function GroupMeetings({ params }: { params: { group: string } })
               className="rounded-full bg-pine px-5 py-2.5 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-60">
               {creating ? "Creating…" : "+ New meeting"}
             </button>
-            <Link href={`/dashboard/files/meetings/g/${group}/template`}
-              className="rounded-full border border-pine/25 px-5 py-2.5 text-sm font-semibold text-pine-deep hover:bg-pine/5">
-              Edit template
-            </Link>
+            {/* "Edit template" is DORMANT. The template fed the old rich-text
+                agenda editor, which the agenda-doc embed replaced, so editing
+                it changed nothing a member would see. The route and the
+                lms_meeting_templates table are untouched — restore this Link
+                from git history to bring it back. */}
           </div>
         )}
 
