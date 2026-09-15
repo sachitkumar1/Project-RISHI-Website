@@ -90,7 +90,7 @@ export default function GroupMeetings({ params }: { params: { group: string } })
 
         <div className="space-y-3">
           {meetings.map((m) => (
-            <Link key={m.id} data-tour="meeting-link" href={`/dashboard/files/meetings/m/${m.id}`}
+            <Link key={m.id} href={`/dashboard/files/meetings/m/${m.id}`}
               className="flex items-center gap-4 rounded-2xl border border-pine/12 bg-paper p-5 transition-colors hover:border-pine/40">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-pine/[0.06] text-pine-deep">
                 <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>

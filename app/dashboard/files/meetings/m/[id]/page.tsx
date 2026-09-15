@@ -173,7 +173,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
             {canEdit ? <input value={m.location} onChange={(e) => update({ location: e.target.value })} placeholder="In person / link" className="field" />
               : <span className="text-ink/80">{m.location || "—"}</span>}
           </Field>
-          <Field data-tour="meeting-notetaker" label="Notetaker">
+          <Field label="Notetaker">
             {canEdit ? <input value={m.notetaker} onChange={(e) => update({ notetaker: e.target.value })} placeholder="Who's taking notes" className="field" />
               : <span className="text-ink/80">{m.notetaker || "—"}</span>}
           </Field>
@@ -223,9 +223,9 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
         {/* ---- tasks (real dashboard tasks) ---- */}
         <div className="mt-8">
           <div className="flex items-center justify-between">
-            <h2 data-tour="meeting-tasks-head" className="font-display text-2xl font-semibold text-pine-deep">Tasks</h2>
+            <h2 className="font-display text-2xl font-semibold text-pine-deep">Tasks</h2>
             {canManage && (
-              <button data-tour="meeting-assign" onClick={() => setAssignOpen(true)} className="rounded-full bg-pine px-4 py-2 text-sm font-semibold text-paper hover:bg-pine-deep">
+              <button onClick={() => setAssignOpen(true)} className="rounded-full bg-pine px-4 py-2 text-sm font-semibold text-paper hover:bg-pine-deep">
                 + Assign task
               </button>
             )}
@@ -301,8 +301,8 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
   );
 }
 
-function Field({ label, children, ...rest }: { label: string; children: React.ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
-  return (<div {...rest}><p className="text-xs font-semibold uppercase tracking-wide text-ink/45">{label}</p><div className="mt-1">{children}</div></div>);
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (<div><p className="text-xs font-semibold uppercase tracking-wide text-ink/45">{label}</p><div className="mt-1">{children}</div></div>);
 }
 
 function Shell({ children }: { children: React.ReactNode }) {

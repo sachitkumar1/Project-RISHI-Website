@@ -34,20 +34,12 @@ type Step = {
   when?: (f: Flags) => boolean;
   /** Invites a click rather than describing. */
   action?: string;
-  /**
-   * The person must click this themselves before the tour moves on. The tour
-   * highlights it, replaces Next with a prompt, and advances once they do —
-   * so they leave having actually used the thing, not just read about it.
-   */
-  clickTarget?: string;
-  /** Hovered on entering, for menus that open on hover. */
+  /** Clicked on entering the step, to open the thing being described. */
+  open?: string;
+  /** Clicked on leaving, to close it again. */
+  close?: string;
+  /** Hovered on entering (menus that open on hover). */
   hover?: string;
-  /**
-   * Treat `path` as a prefix and never navigate there. Used for pages whose
-   * URL contains an id — the person has already arrived by clicking a link,
-   * and there's no address the tour could push on its own.
-   */
-  prefix?: boolean;
 };
 
 const STEPS: Step[] = [
@@ -55,7 +47,7 @@ const STEPS: Step[] = [
     id: "welcome",
     path: "/dashboard",
     title: "Welcome to your member dashboard",
-    body: "This is where everything the club runs on lives. Rather than just describing it, this tour will ask you to click through things yourself, so you finish having actually used them. It takes a few minutes, and you can leave any time.",
+    body: "This is where everything the club runs on lives — your tasks, the calendar, the member directory, and every document we keep. It takes a couple of minutes to walk through, and the tour opens things up as it goes. You can leave any time and pick it up again from Settings.",
   },
   {
     id: "tiles",
@@ -78,28 +70,20 @@ const STEPS: Step[] = [
     title: "Narrow it down",
     body: "Switch between today, this week, this month, or everything. Handy when a long list is hiding the thing that's actually due tomorrow.",
   },
-  {
-    id: "reminders",
-    path: "/dashboard",
-    target: "[data-tour='my-tasks']",
-    title: "Reminders and nudges",
-    body: "Nobody has to police deadlines by hand. You get an email when a task is assigned to you, reminders as the due date approaches, and a note when your work is approved or sent back. Whoever assigned it can also send you a nudge from inside the task.",
-  },
 
-  /* ---- assigning work: they open it, walk it, and close it ---- */
+  /* ---- assigning work, opened up properly ---- */
   {
-    id: "assign-open",
+    id: "assign-btn",
     path: "/dashboard",
     target: "[data-tour='assign-task']",
-    title: "Try assigning a task",
-    body: "This is how work gets handed out. Go ahead and open it — we'll look at what you can set.",
-    action: "Click “+ Assign task” to continue",
-    clickTarget: "[data-tour='assign-task']",
+    title: "Assigning a task",
+    body: "This is how work gets handed out. Let's open it and look at what you can set.",
     when: (f) => f.assignTasks,
   },
   {
     id: "assign-who",
     path: "/dashboard",
+    open: "[data-tour='assign-task']",
     target: "[data-tour='tf-assignees']",
     title: "Who it goes to",
     body: "Pick one person or several. Assigning to a group creates the task once and tracks each person's progress separately, so you always see who's done and who hasn't.",
@@ -118,7 +102,7 @@ const STEPS: Step[] = [
     path: "/dashboard",
     target: "[data-tour='tf-file']",
     title: "Requiring a file",
-    body: "This one requires an actual file before the task can be closed — a photo, a receipt, a finished draft. Submissions are kept and organised for you, so you can find them again later without digging through email.",
+    body: "This one requires an actual file before the task can be closed. Uploads are filed automatically under Files, grouped by project group and task name, labelled with who sent them — so a lead can find any submission later without digging through email.",
     when: (f) => f.assignTasks,
   },
   {
@@ -126,40 +110,28 @@ const STEPS: Step[] = [
     path: "/dashboard",
     target: "[data-tour='tf-submission']",
     title: "What happens after they submit",
-    body: "When a member marks a task done it comes to you for approval rather than closing straight away, and you get an email. Approve it and it's complete; send it back with a note and they'll try again. Leads finishing their own work skip the approval step.",
+    body: "When a member marks a task done it goes to you for approval rather than closing straight away, and you get an email. Approve it and it's complete; send it back and they'll see your note and try again. Leads completing their own work skip the approval step.",
     when: (f) => f.assignTasks,
+    close: "[data-tour='tf-close']",
   },
   {
-    id: "assign-close",
+    id: "reminders",
     path: "/dashboard",
-    target: "[data-tour='tf-close']",
-    title: "Close it back down",
-    body: "We won't actually assign anything right now. Close the form and we'll carry on.",
-    action: "Click ✕ to continue",
-    clickTarget: "[data-tour='tf-close']",
-    when: (f) => f.assignTasks,
+    target: "[data-tour='my-tasks']",
+    title: "Reminders and nudges",
+    body: "Nobody has to police deadlines by hand. Everyone gets an email when a task is assigned, reminders as the due date approaches, and a note when work is approved or sent back. If someone's drifting, opening their task gives you a Nudge button that sends a friendly reminder on the spot.",
   },
 
   /* ---- events ---- */
   {
-    id: "event-open",
+    id: "event",
     path: "/dashboard",
-    target: "[data-tour='create-event']",
-    title: "Creating an event",
-    body: "Events work much the same way. Open it and take a look.",
-    action: "Click “+ Create event” to continue",
-    clickTarget: "[data-tour='create-event']",
-    when: (f) => f.createEvents,
-  },
-  {
-    id: "event-form",
-    path: "/dashboard",
+    open: "[data-tour='create-event']",
     target: "[data-tour='ef-form']",
-    title: "When and who for",
-    body: "A title, a time, and who it's for. Events land on everyone's calendar here, and on their own Google Calendar if they've connected it. Close this one when you're ready.",
-    action: "Click ✕ to continue",
-    clickTarget: "[data-tour='tf-close']",
+    title: "Creating an event",
+    body: "Events work the same way — a title, a time, and who it's for. They show up on everyone's calendar here, and on their own Google Calendar if they've connected it.",
     when: (f) => f.createEvents,
+    close: "[data-tour='tf-close']",
   },
 
   /* ---- email, announcements, newsletters ---- */
@@ -167,88 +139,52 @@ const STEPS: Step[] = [
     id: "create-menu",
     path: "/dashboard",
     hover: "[data-tour='create'] button",
+    open: "[data-tour='create-menu']",
     target: "[data-tour='create-menu']",
     title: "Reaching the club",
-    body: "Announcements appear on everyone's dashboard. Newsletters go to subscribers. Emails go to whoever you choose. Open the email composer.",
-    action: "Click “Email” to continue",
-    clickTarget: "[data-tour='create-email']",
+    body: "Announcements appear on everyone's dashboard. Newsletters go out to subscribers. Emails go to whoever you choose. Let's look at the email composer.",
     when: (f) => f.exec || f.outreach || f.lead,
   },
   {
     id: "merge",
     path: "/dashboard",
+    hover: "[data-tour='create'] button",
+    open: "[data-tour='create-email']",
     target: "[data-tour='merge-block']",
     title: "Mail merge",
-    body: "Write one email and send it personalised to everyone. Turn this on and each recipient gets their own version — their name, their group, whatever you choose — filled in automatically. Members are populated for you, and you can add rows by hand or paste in a spreadsheet for anyone outside the club.",
+    body: "Writing one email and sending it personalised to everyone. Turn this on and each recipient gets their own version — their name, their group, whatever you choose — filled in automatically. Members are populated for you, and you can add rows by hand or paste in a spreadsheet for anyone outside the club.",
     when: (f) => f.exec || f.outreach || f.lead,
-  },
-  {
-    id: "merge-close",
-    path: "/dashboard",
-    target: "[data-tour='composer-cancel']",
-    title: "All done here",
-    body: "We won't send anything right now. Cancel out and we'll move on.",
-    action: "Click “Cancel” to continue",
-    clickTarget: "[data-tour='composer-cancel']",
-    when: (f) => f.exec || f.outreach || f.lead,
+    close: "[data-tour='tf-close']",
   },
 
   /* ---- overview + history ---- */
   {
-    id: "overview-on",
+    id: "overview",
     path: "/dashboard",
+    open: "[data-tour='overview']",
     target: "[data-tour='overview']",
     title: "The whole club at once",
-    body: "This swaps your personal view for every project group's work side by side, with a shared calendar. Try it.",
-    action: "Click “Full Club Overview” to continue",
-    clickTarget: "[data-tour='overview']",
+    body: "This swaps your personal view for every project group's work side by side, with a shared calendar. It's the quickest way to see what the club as a whole is doing right now.",
     when: (f) => f.lead || f.exec,
+    close: "[data-tour='overview']",
   },
   {
-    id: "overview-off",
+    id: "history",
     path: "/dashboard",
-    target: "[data-tour='overview']",
-    title: "Switch it back",
-    body: "Every group's active tasks and events together — the quickest way to see what the club is working on right now. Click it again to return to your own view.",
-action: "Click “Full Club Overview” again to continue",
-    clickTarget: "[data-tour='overview']",
-    when: (f) => f.lead || f.exec,
-  },
-  {
-    id: "history-open",
-    path: "/dashboard",
-    target: "[data-tour='history']",
-    title: "Finished work lives here",
-    body: "Your dashboard stays clean by showing only what's still active. Everything completed or archived moves into History. Open it.",
-    action: "Click “History” to continue",
-    clickTarget: "[data-tour='history']",
-  },
-  {
-    id: "history-panel",
-    path: "/dashboard",
+    open: "[data-tour='history']",
     target: "[data-tour='history-panel']",
-    title: "What's in here",
-    body: "Your finished tasks, anything you assigned that's now done, and past events — with a calendar you can hide if you'd rather just read the lists.",
+    title: "Finished work lives here",
+    body: "Your dashboard stays clean by showing only what's still active. Everything completed or archived moves in here, split into what was assigned to you, what you assigned, and past events — with a calendar you can hide if you'd rather just read the lists.",
   },
   {
     id: "history-overview",
     path: "/dashboard",
+    open: "[data-tour='history-overview']",
     target: "[data-tour='history-overview']",
     title: "Club history too",
-    body: "The same club-wide view is in here, reaching further back — every finished task and past event across all groups. Try it, then close History with the ✕ when you're done looking.",
-    action: "Click “Full Club Overview”, then close History",
-    clickTarget: "[data-tour='fs-close']",
+    body: "The same club-wide view is in here, but reaching further back — every finished task and past event across all groups, not just what's still open.",
     when: (f) => f.lead || f.exec,
-  },
-  {
-    id: "history-close",
-    path: "/dashboard",
-    target: "[data-tour='fs-close']",
-    title: "Close History",
-    body: "Close it and we'll head over to Files.",
-    action: "Click ✕ to continue",
-    clickTarget: "[data-tour='fs-close']",
-    when: (f) => !(f.lead || f.exec),
+    close: "[data-tour='fs-close']",
   },
 
   /* ---- files ---- */
@@ -257,9 +193,7 @@ action: "Click “Full Club Overview” again to continue",
     path: "/dashboard",
     target: "[data-tour='files-tile']",
     title: "Files",
-    body: "Every document the club keeps in Drive is here, going back several years. Let's go in.",
-    action: "Click “Files” to continue",
-    clickTarget: "[data-tour='files-tile']",
+    body: "Every document the club keeps in Drive is mirrored here, going back several years. Let's take a look.",
   },
   {
     id: "files-years",
@@ -283,41 +217,26 @@ action: "Click “Full Club Overview” again to continue",
     body: "The Tasks folder holds every file submitted to finish a task, sorted by project group and task name. You'll see your own group's submissions here and nobody else's.",
     when: (f) => f.lead || f.exec,
   },
-
-  /* ---- meetings, walked properly ---- */
   {
     id: "meetings-open",
     path: "/dashboard/files",
     target: "[data-tour='meetings-card']",
     title: "Meeting notes",
-    body: "Each project group keeps its meetings here. Open Health to see what one looks like.",
-    action: "Click “Health” to continue",
-    clickTarget: "[data-tour='meetings-group-H']",
+    body: "Each project group keeps its meetings here. Let's open one.",
   },
   {
-    id: "meeting-pick",
-    path: "/dashboard/files/meetings/g/H",
-    target: "[data-tour='meeting-link']",
+    id: "meeting-page",
+    path: "/dashboard/files/meetings",
+    target: "[data-tour='meetings-list']",
     title: "Every meeting, kept",
-    body: "Every Health meeting, newest first. Open one.",
-    action: "Click a meeting to continue",
-    clickTarget: "[data-tour='meeting-link']",
-  },
-  {
-    id: "meeting-notes",
-    path: "/dashboard/files/meetings/m",
-    prefix: true,
-    target: "[data-tour='meeting-notetaker']",
-    title: "Who was there, who wrote it down",
-    body: "Date, location, attendance, the snack pledge, and who took notes — filled in during the meeting by whoever's running it. The agenda itself sits just below, straight from the group's working document.",
+    body: "Attendance, who took notes, the agenda, and the tasks that came out of it — all in one place, so nobody has to remember what was decided three weeks ago.",
   },
   {
     id: "meeting-tasks",
-    path: "/dashboard/files/meetings/m",
-    prefix: true,
-    target: "[data-tour='meeting-tasks-head']",
-    title: "Tasks assigned in the meeting",
-    body: "Work handed out in a meeting is recorded right here, showing each person and whether they've finished. These are ordinary tasks — the same due dates, reminders and approval step — so they appear on the assignee's dashboard like anything else. Nothing gets said in a meeting and then quietly forgotten.",
+    path: "/dashboard/files/meetings",
+    target: "[data-tour='meetings-list']",
+    title: "Tasks assigned in meetings are real tasks",
+    body: "Work handed out in a meeting is created right there, and it becomes an ordinary task on the assignee's dashboard — same due date, same reminders, same approval step. Nothing gets written down and then forgotten.",
   },
 
   /* ---- directory, lineage, settings ---- */
@@ -352,10 +271,9 @@ action: "Click “Full Club Overview” again to continue",
   },
   {
     id: "done",
-    path: "/dashboard/settings",
-    target: "[data-tour='tour-replay']",
+    path: "/dashboard",
     title: "That's everything",
-    body: "You can take this tour again from right here whenever you like. If something doesn't look right, tell Sachit.",
+    body: "You can take this tour again whenever you like — it's in Settings, under your profile. If something doesn't look right, tell Sachit.",
   },
 ];
 
@@ -415,62 +333,66 @@ export default function SiteTour() {
     } catch { /* ignore */ }
   }, []);
 
-  const onStepPage = useCallback(
-    (st: Step) => (st.prefix ? (pathname ?? "").startsWith(st.path) : pathname === st.path),
-    [pathname],
-  );
-
-  // Navigate to the step's page if we're not already on it. Prefix steps are
-  // reached by the person clicking a link, so the tour never pushes those.
+  // Navigate to the step's page if we're not already on it.
   useEffect(() => {
-    if (!active || !step || step.prefix) return;
+    if (!active || !step) return;
     if (pathname !== step.path) router.push(step.path);
   }, [active, step, pathname, router]);
 
-  // Hover-opened menus still need a nudge to appear, but nothing else is
-  // clicked for the person: steps with `clickTarget` wait for them to do it.
+  // Perform the step's `hover` / `open` before looking for its target, and run
+  // the previous step's `close` on the way out. This is what lets the tour
+  // actually open a form or a panel instead of just describing one.
+  const prevClose = useRef<string | null>(null);
   useEffect(() => {
-    if (!active || !step || !step.hover) return;
-    if (!onStepPage(step)) return;
-    const el = document.querySelector(step.hover) as HTMLElement | null;
-    el?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-    el?.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
-    // React's onMouseEnter is delegated, so a synthesised event doesn't always
-    // reach it. If the menu still isn't open, click to toggle it — but only
-    // then, since clicking an already-open menu would close it.
-    const t = setTimeout(() => {
-      if (step.target && !document.querySelector(step.target)) el?.click();
-    }, 300);
-    return () => clearTimeout(t);
-  }, [active, step, pathname, onStepPage]);
+    if (!active || !step) return;
+    if (pathname !== step.path) return;
 
-  // Advance when they click the element the step asked them to click.
-  useEffect(() => {
-    if (!active || !step?.clickTarget) return;
-    if (!onStepPage(step)) return;
-
-    let done = false;
-    const onClick = (e: MouseEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (done || !el?.closest(step.clickTarget as string)) return;
-      done = true;
-      // Let the click do its work — open a form, follow a link — before the
-      // next step starts looking for whatever it lives inside.
-      setTimeout(() => setI((v) => v + 1), 700);
+    let cancelled = false;
+    const click = (sel: string) => {
+      const el = document.querySelector(sel) as HTMLElement | null;
+      el?.click();
+      return Boolean(el);
     };
-    document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
-  }, [active, step, pathname, onStepPage]);
+
+    (async () => {
+      // Close whatever the last step opened, unless this step needs it open.
+      if (prevClose.current && prevClose.current !== step.open) {
+        click(prevClose.current);
+        prevClose.current = null;
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      if (cancelled) return;
+
+      if (step.hover) {
+        // Hover-opened menus toggle on click, so clicking one that's already
+        // open closes it — which is what stopped the mail-merge step finding
+        // anything. Hover first; only click if it didn't open.
+        const el = document.querySelector(step.hover) as HTMLElement | null;
+        el?.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+        await new Promise((r) => setTimeout(r, 250));
+        if (step.open && !document.querySelector(step.open)) {
+          el?.click();
+          await new Promise((r) => setTimeout(r, 300));
+        }
+      }
+      if (cancelled) return;
+
+      // Only open if the thing isn't already on screen.
+      if (step.open && !(step.target && document.querySelector(step.target))) {
+        click(step.open);
+        await new Promise((r) => setTimeout(r, 700));
+      }
+      if (step.close) prevClose.current = step.close;
+    })();
+
+    return () => { cancelled = true; };
+  }, [active, step, pathname]);
 
   // Find and follow the target. Polls briefly because the page may still be
   // loading its data when the step begins.
   useEffect(() => {
     if (!active || !step) return;
     if (!step.target) { setRect(null); setMissing(false); return; }
-    // Don't start the countdown until we're actually on the step's page —
-    // otherwise a step that follows a link gives up while the page is still
-    // fetching and reports its target as missing.
-    if (!onStepPage(step)) { setRect(null); setMissing(false); return; }
 
     let tries = 0;
     let raf = 0;
@@ -487,12 +409,12 @@ export default function SiteTour() {
           return;
         }
       }
-      if (++tries > 300) { setMissing(true); setRect(null); return; } // ~5s
+      if (++tries > 90) { setMissing(true); setRect(null); return; } // ~3s
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [active, step, pathname, onStepPage]);
+  }, [active, step, pathname]);
 
   const next = useCallback(() => {
     if (i >= steps.length - 1) void finish(true);
@@ -538,14 +460,7 @@ export default function SiteTour() {
   const pct = Math.round(((i + 1) / steps.length) * 100);
 
   return (
-    <div
-      /* The overlay must not swallow clicks — the whole point is that the
-         person uses the real controls underneath it. Only the card itself
-         takes pointer events. */
-      className="pointer-events-none fixed inset-0 z-[60]"
-      role="dialog"
-      aria-label="Site tour"
-    >
+    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Site tour">
       {/* Dimming with a window cut out of it. An SVG mask keeps the highlighted
           element perfectly sharp instead of washing it out. */}
       <svg className="absolute inset-0 h-full w-full" aria-hidden>
@@ -581,7 +496,7 @@ export default function SiteTour() {
           const h = el?.offsetHeight;
           if (h && Math.abs(h - cardH) > 4) setCardH(h);
         }}
-        className="pointer-events-auto absolute w-[min(400px,calc(100vw-2rem))] rounded-2xl bg-paper p-5 shadow-2xl transition-all duration-300"
+        className="absolute w-[min(400px,calc(100vw-2rem))] rounded-2xl bg-paper p-5 shadow-2xl transition-all duration-300"
         style={cardStyle}
       >
         <div className="mb-3 flex items-center gap-3">
@@ -623,20 +538,12 @@ export default function SiteTour() {
                 Back
               </button>
             )}
-            {step.clickTarget && !missing ? (
-              // Deliberately no Next here: the step is finished by doing the
-              // thing, which is the whole point of walking it this way.
-              <span className="rounded-full bg-marigold/25 px-4 py-2 text-xs font-semibold text-pine-deep">
-                Your turn ↑
-              </span>
-            ) : (
-              <button
-                onClick={next}
-                className="rounded-full bg-pine px-5 py-2 text-sm font-semibold text-paper hover:bg-pine-deep"
-              >
-                {i === steps.length - 1 ? "Finish" : "Next"}
-              </button>
-            )}
+            <button
+              onClick={next}
+              className="rounded-full bg-pine px-5 py-2 text-sm font-semibold text-paper hover:bg-pine-deep"
+            >
+              {i === steps.length - 1 ? "Finish" : "Next"}
+            </button>
           </div>
         </div>
       </div>

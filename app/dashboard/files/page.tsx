@@ -40,7 +40,6 @@ export default function FilesHome() {
             {PROJECT_GROUPS.map((g) => (
               <Link
                 key={g}
-                data-tour={`meetings-group-${g}`}
                 href={`/dashboard/files/meetings/g/${g}`}
                 className="group flex items-center justify-between gap-3 rounded-2xl border border-pine/15 bg-paper p-4 transition-colors hover:border-pine hover:bg-pine hover:text-paper"
               >
