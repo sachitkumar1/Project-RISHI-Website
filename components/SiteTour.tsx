@@ -55,7 +55,7 @@ const STEPS: Step[] = [
     id: "welcome",
     path: "/dashboard",
     title: "Welcome to your member dashboard",
-    body: "This is where everything the club runs on lives. It takes a few minutes, and you can leave any time.",
+    body: "This is where everything the club runs on lives. Rather than just describing it, this tour will ask you to click through things yourself, so you finish having actually used them. It takes a few minutes, and you can leave any time.",
   },
   {
     id: "tiles",
@@ -118,7 +118,7 @@ const STEPS: Step[] = [
     path: "/dashboard",
     target: "[data-tour='tf-file']",
     title: "Requiring a file",
-    body: "This one requires an actual file before the task can be closed. Submissions are kept and organised for you, so you can find them again later without digging through email.",
+    body: "This one requires an actual file before the task can be closed — a photo, a receipt, a finished draft. Submissions are kept and organised for you, so you can find them again later without digging through email.",
     when: (f) => f.assignTasks,
   },
   {
