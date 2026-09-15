@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import { hasRealDueDate, isImportMarker, isPlaceholderEmail, placeholderName } from "@/lib/lms/importedTasks";
 import RichTextEditor from "@/components/editor/RichTextEditor";
@@ -179,18 +179,21 @@ export default function LmsBoard() {
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingEvent, setEditingEvent] = useState<ClubEvent | null>(null);
-  const [showPastTasks, setShowPastTasks] = useState(false);
-  const [showPastEvents, setShowPastEvents] = useState(false);
+  // "History" replaces the old Past tasks / Past events buttons.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOverview, setHistoryOverview] = useState(false);
   const [openGroupKey, setOpenGroupKey] = useState<string | null>(null);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [overviewGroupKey, setOverviewGroupKey] = useState<string | null>(null);
   const [detailEventId, setDetailEventId] = useState<string | null>(null);
   const [overviewOn, setOverviewOn] = useState(false);
   const [overview, setOverview] = useState<Overview | null>(null);
-  const [ovArchive, setOvArchive] = useState<"active" | "all">("active");
   const [ovWindow, setOvWindow] = useState<TimeWindow>("all");
-  const [myArchive, setMyArchive] = useState<"active" | "all">("active");
   const [myWindow, setMyWindow] = useState<TimeWindow>("all");
+  // The dashboard is now strictly the ACTIVE view — finished and archived work
+  // lives in the History popup, which is the only place that shows everything.
+  const myArchive = "active" as const;
+  const ovArchive = "active" as const;
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [calConnected, setCalConnected] = useState(false);
@@ -239,7 +242,7 @@ export default function LmsBoard() {
     try { setOverview(await api("/api/lms/overview")); }
     catch { setOverview(null); }
   }, []);
-  useEffect(() => { if (overviewOn) loadOverview(); }, [overviewOn, tasks, events, loadOverview]);
+  useEffect(() => { if (overviewOn || historyOverview) loadOverview(); }, [overviewOn, historyOverview, tasks, events, loadOverview]);
 
   useEffect(() => {
     (async () => {
@@ -305,7 +308,17 @@ export default function LmsBoard() {
       .sort((a, b) => (b.head.submittedAt ?? b.head.dueAt ?? "").localeCompare(a.head.submittedAt ?? a.head.dueAt ?? "")),
     [tasks]
   );
-  const pastTaskCount = useMemo(() => pastTaskGroups.reduce((n, g) => n + g.rows.length, 0), [pastTaskGroups]);
+  // History separates work I was asked to do from work I handed out.
+  const pastToMe = useMemo(
+    () => pastTaskGroups.filter((g) => g.rows.some((r) => r.assigneeEmail.toLowerCase() === myEmail.toLowerCase())),
+    [pastTaskGroups, myEmail]
+  );
+  const pastByMe = useMemo(
+    () => pastTaskGroups.filter((g) =>
+      g.head.assignerEmail.toLowerCase() === myEmail.toLowerCase()
+      && !g.rows.every((r) => r.assigneeEmail.toLowerCase() === myEmail.toLowerCase())),
+    [pastTaskGroups, myEmail]
+  );
 
   const upcomingEvents = useMemo(
     () => events.filter((e) => eventPasses(e, myArchive, myWindow)).sort((a, b) => a.startAt.localeCompare(b.startAt)),
@@ -439,8 +452,6 @@ export default function LmsBoard() {
 
       {overviewOn && overview && (
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <SegToggle label="Show" value={ovArchive} onChange={(v) => setOvArchive(v as "active" | "all")}
-            options={[["active", "Active"], ["all", "All"]]} />
           <SegToggle label="Period" value={ovWindow} onChange={(v) => setOvWindow(v as TimeWindow)}
             options={[["day", "Day"], ["week", "Week"], ["month", "Month"], ["all", "All time"]]} />
         </div>
@@ -448,8 +459,6 @@ export default function LmsBoard() {
 
       {!overviewOn && (
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <SegToggle label="Show" value={myArchive} onChange={(v) => setMyArchive(v as "active" | "all")}
-            options={[["active", "Active"], ["all", "All"]]} />
           <SegToggle label="Period" value={myWindow} onChange={(v) => setMyWindow(v as TimeWindow)}
             options={[["day", "Day"], ["week", "Week"], ["month", "Month"], ["all", "All time"]]} />
         </div>
@@ -468,8 +477,9 @@ export default function LmsBoard() {
 
       {!overviewOn && (<>
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        <button onClick={() => setShowPastTasks(true)} className="btn-ghost text-sm">Past tasks ({pastTaskCount})</button>
-        <button onClick={() => setShowPastEvents(true)} className="btn-ghost text-sm">Past events ({pastEvents.length})</button>
+        <button onClick={() => setHistoryOpen(true)} className="btn-ghost text-sm">
+          History ({pastTaskGroups.length + pastEvents.length})
+        </button>
         {calConnected ? (
           <>
             <button onClick={syncGoogleCalendar} disabled={syncing} className="btn-ghost text-sm disabled:opacity-60">
@@ -604,71 +614,74 @@ export default function LmsBoard() {
           onDelete={detailEvent.canManage ? () => removeEvent(detailEvent.id) : undefined} />
       )}
 
-      {showPastTasks && (
-        <Modal title="Past tasks" onClose={() => setShowPastTasks(false)}>
-          {pastTaskGroups.length === 0 ? (
-            <p className="text-sm text-ink/50">No completed or archived tasks yet.</p>
+      {historyOpen && (
+        <FullScreenModal title="History" onClose={() => { setHistoryOpen(false); setHistoryOverview(false); }}>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-ink/55">
+              Everything finished or archived. The dashboard itself only shows active work.
+            </p>
+            {(
+              <button onClick={() => setHistoryOverview((v) => !v)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${historyOverview ? "bg-pine text-paper" : "border border-pine/25 text-pine-deep hover:bg-pine/5"}`}>
+                {historyOverview ? "✓ Full Club Overview" : "Full Club Overview"}
+              </button>
+            )}
+          </div>
+
+          {historyOverview ? (
+            overview ? (
+              /* In History the overview shows EVERYTHING — the old "All" setting. */
+              <>
+                <ClubCalendar tasks={overview.tasks} events={overview.events} archive="all" period="all"
+                  onOpenTaskGroup={(gid) => { setOverviewGroupKey(gid); setHistoryOpen(false); }}
+                  onOpenEvent={(id) => { setDetailEventId(id); setHistoryOpen(false); }} />
+                <div className="mt-8">
+                  <ClubOverviewLists tasks={overview.tasks} events={overview.events} archive="all" period="all"
+                    nameOf={nameOf}
+                    onOpenTask={(id) => { setDetailTaskId(id); setHistoryOpen(false); }}
+                    onOpenEvent={(id) => { setDetailEventId(id); setHistoryOpen(false); }} />
+                </div>
+              </>
+            ) : <p className="text-sm text-ink/50">Loading the full club view…</p>
           ) : (
-            <div className="space-y-2">
-              {pastTaskGroups.map((g) => {
-                const t = g.head;
-                const multi = g.rows.length > 1;
-                const doneCount = g.rows.filter((r) => r.status === "complete").length;
-                const anyArchived = g.rows.some((r) => r.archived);
-                const late = !multi && t.submittedAt && t.dueAt && new Date(t.submittedAt) > new Date(t.dueAt);
-                return (
-                  <div key={g.key} className="rounded-xl border border-pine/12 p-3">
+            <div className="space-y-10">
+              <HistorySection title="Tasks assigned to me" empty="Nothing of yours has been completed or archived yet.">
+                {pastToMe.map((g) => (
+                  <PastTaskRow key={g.key} g={g}
+                    onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); setHistoryOpen(false); }}
+                    onUnarchive={() => archiveGroup(g.rows.filter((r) => r.archived), false)} />
+                ))}
+              </HistorySection>
+
+              <HistorySection title="Tasks assigned by me" empty="You haven't had any assigned tasks finish yet.">
+                {pastByMe.map((g) => (
+                  <PastTaskRow key={g.key} g={g}
+                    onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); setHistoryOpen(false); }}
+                    onUnarchive={() => archiveGroup(g.rows.filter((r) => r.archived), false)} />
+                ))}
+              </HistorySection>
+
+              <HistorySection title="Past events" empty="No past events.">
+                {pastEvents.map((e) => (
+                  <div key={e.id} className="rounded-xl border border-pine/12 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <button onClick={() => { if (!multi) { setDetailTaskId(t.id); setShowPastTasks(false); } else { setOpenGroupKey(g.key); setShowPastTasks(false); } }}
-                        className="text-left font-medium text-ink hover:underline">{t.title}</button>
-                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        style={{ backgroundColor: anyArchived ? "rgba(27,38,32,0.08)" : CAL_TO.bg, color: anyArchived ? "#1B2620" : CAL_TO.fg }}>
-                        {anyArchived ? "Archived" : "Complete"}
+                      <button onClick={() => { setDetailEventId(e.id); setHistoryOpen(false); }}
+                        className="text-left font-medium text-ink hover:underline">{e.title}</button>
+                      <span className="shrink-0 text-xs text-ink/50">
+                        {e.archived ? "Archived · " : ""}{e.allDay ? fmtDateOnly(e.startAt) : fmtDateTime(e.startAt)}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-ink/50">
-                      {multi
-                        ? `Assigned to ${g.rows.length} people · ${doneCount} complete`
-                        : <>{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}{t.submittedAt && <span className={late ? "font-semibold text-red-600" : ""}> · Completed {fmtDateTime(t.submittedAt)}{late ? " (late)" : ""}</span>}</>}
-                    </p>
-                    {g.rows.some((r) => r.canManage) && anyArchived && (
-                      <div className="mt-2 flex gap-2">
-                        <button onClick={() => archiveGroup(g.rows.filter((r) => r.archived), false)}
-                          className="rounded-full border border-pine/20 px-3 py-1 text-xs font-medium text-pine-deep hover:bg-pine/5">Unarchive</button>
-                      </div>
+                    {e.description && <p className="mt-1 text-xs text-ink/60">{e.description}</p>}
+                    {e.canManage && e.archived && (
+                      <button onClick={() => archiveEvent(e.id, false)}
+                        className="mt-2 rounded-full border border-pine/20 px-3 py-1 text-xs font-medium text-pine-deep hover:bg-pine/5">Unarchive</button>
                     )}
                   </div>
-                );
-              })}
+                ))}
+              </HistorySection>
             </div>
           )}
-        </Modal>
-      )}
-      {showPastEvents && (
-        <Modal title="Past events" onClose={() => setShowPastEvents(false)}>
-          {pastEvents.length === 0 ? (
-            <p className="text-sm text-ink/50">No past events.</p>
-          ) : (
-            <div className="space-y-2">
-              {pastEvents.map((e) => (
-                <div key={e.id} className="rounded-xl border border-pine/12 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <button onClick={() => { setDetailEventId(e.id); setShowPastEvents(false); }}
-                      className="text-left font-medium text-ink hover:underline">{e.title}</button>
-                    <span className="shrink-0 text-xs text-ink/50">
-                      {e.archived ? "Archived · " : ""}{e.allDay ? fmtDateOnly(e.startAt) : fmtDateTime(e.startAt)}
-                    </span>
-                  </div>
-                  {e.description && <p className="mt-1 text-xs text-ink/60">{e.description}</p>}
-                  {e.canManage && e.archived && (
-                    <button onClick={() => archiveEvent(e.id, false)}
-                      className="mt-2 rounded-full border border-pine/20 px-3 py-1 text-xs font-medium text-pine-deep hover:bg-pine/5">Unarchive</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </Modal>
+        </FullScreenModal>
       )}
 
       {overviewGroupKey && overviewGroupRows.length > 0 && (
@@ -1471,6 +1484,74 @@ function CalendarMonth({ tasks, events, myEmail, archive, period, onOpenTask, on
 }
 
 // ------------------------------------------------------------------- modal shell
+/** A popup that fills the whole tab, for content too big for the small Modal. */
+function FullScreenModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink/60" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="flex h-full w-full flex-col bg-paper">
+        <div className="flex items-center justify-between border-b border-pine/10 px-6 py-4">
+          <h3 className="font-display text-2xl font-semibold text-pine-deep">{title}</h3>
+          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+          <div className="mx-auto max-w-5xl">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** One labelled block inside History; renders its own empty state. */
+function HistorySection({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
+  const items = React.Children.toArray(children);
+  return (
+    <section>
+      <h4 className="font-display text-lg font-semibold text-pine-deep">{title}</h4>
+      {items.length === 0
+        ? <p className="mt-2 text-sm text-ink/45">{empty}</p>
+        : <div className="mt-3 space-y-2">{items}</div>}
+    </section>
+  );
+}
+
+/** A finished task in History, with its per-person completion summary. */
+function PastTaskRow({ g, onOpen, onUnarchive }: {
+  g: { key: string; head: Task; rows: Task[] }; onOpen: () => void; onUnarchive: () => void;
+}) {
+  const t = g.head;
+  const multi = g.rows.length > 1;
+  const doneCount = g.rows.filter((r) => r.status === "complete").length;
+  const anyArchived = g.rows.some((r) => r.archived);
+  const late = !multi && t.submittedAt && hasRealDueDate(t.tags) && !!t.dueAt && new Date(t.submittedAt) > new Date(t.dueAt);
+  return (
+    <div className="rounded-xl border border-pine/12 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <button onClick={onOpen} className="text-left font-medium text-ink hover:underline">{t.title}</button>
+        <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+          style={{ backgroundColor: anyArchived ? "rgba(27,38,32,0.08)" : CAL_TO.bg, color: anyArchived ? "#1B2620" : CAL_TO.fg }}>
+          {anyArchived ? "Archived" : "Complete"}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-ink/50">
+        {multi
+          ? `Assigned to ${g.rows.length} people · ${doneCount} complete`
+          : <>{hasRealDueDate(t.tags) && t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}{t.submittedAt && <span className={late ? "font-semibold text-red-600" : ""}> · Completed {fmtDateTime(t.submittedAt)}{late ? " (late)" : ""}</span>}</>}
+      </p>
+      {g.rows.some((r) => r.canManage) && anyArchived && (
+        <div className="mt-2 flex gap-2">
+          <button onClick={onUnarchive}
+            className="rounded-full border border-pine/20 px-3 py-1 text-xs font-medium text-pine-deep hover:bg-pine/5">Unarchive</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4" onClick={onClose}>
