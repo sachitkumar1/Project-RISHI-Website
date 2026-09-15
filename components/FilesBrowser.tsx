@@ -127,7 +127,7 @@ export default function FilesBrowser() {
   const [err, setErr] = useState("");
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Node[] | null>(null);
-  const [deepSearch, setDeepSearch] = useState(false);
+  const [deepSearch, setDeepSearch] = useState(true); // default: search inside files too
   const [preview, setPreview] = useState<Node | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);

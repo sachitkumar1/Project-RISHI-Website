@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Contours from "@/components/Contours";
-import MeetingEditor from "@/components/MeetingEditor";
+import AgendaDocPanel from "@/components/AgendaDocPanel";
+import { AGENDA_DOCS } from "@/lib/lms/agendaDocs";
+import type { ProjectGroup } from "@/lib/lms/types";
 import type { Block } from "@/components/MeetingOutline";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
 import { TaskForm, type Meta } from "@/components/LmsBoard";
@@ -178,16 +180,22 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* ---- agenda + notes (rich editor) ---- */}
+        {/* ---- agenda: the group's Drive doc ----
+            The MeetingEditor rich-text agenda is intentionally DORMANT. The
+            club writes agendas in Drive docs, so keeping a second editable
+            copy here just creates confusion about which one is current. The
+            component and the `body` column are untouched, so this is
+            reversible: restore the block in git history to bring it back. */}
         <div className="mt-8">
-          <h2 className="font-display text-2xl font-semibold text-pine-deep">Agenda & notes</h2>
+          <h2 className="font-display text-2xl font-semibold text-pine-deep">Agenda</h2>
           <div className="mt-3">
-            <MeetingEditor html={m.body} editable={canEdit}
-              placeholder="Write the agenda… use the toolbar for headings, tables, checklists, links and more."
-              onChange={(html) => update({ body: html })}
-              fullscreen={fsEditor} onToggleFullscreen={() => setFsEditor((v) => !v)} />
+            <AgendaDocPanel
+              docId={AGENDA_DOCS[m.group as ProjectGroup]?.id ?? null}
+              docName={AGENDA_DOCS[m.group as ProjectGroup]?.name ?? null}
+              tabId={null}
+              groupLabel={label}
+            />
           </div>
-          {!canEdit && <p className="mt-2 text-xs text-ink/40">Only {label} members can edit this meeting.</p>}
         </div>
 
         {/* ---- tasks (real dashboard tasks) ---- */}

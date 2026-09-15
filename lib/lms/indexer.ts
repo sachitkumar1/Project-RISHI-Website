@@ -67,12 +67,7 @@ const INDEXABLE: Record<string, string | null> = {
  * files are still listed, previewable and openable, their contents are just
  * never read.
  */
-export const CONTENT_INDEX_SKIP_FOLDERS = new Set<string>([
-  // 25-26 financial reimbursement receipts. The submission form requires
-  // screenshots showing the last four digits of a card or bank account, so the
-  // text of these files is deliberately never stored.
-  "1jmi7wpkSwy4seFixVgPg6cDM36IyrPqXQJRfinsurogUyXjd51ffgUTu5Fgvj-7O-pvvECcp",
-]);
+export const CONTENT_INDEX_SKIP_FOLDERS = new Set<string>([]);
 
 export const isIndexable = (mime: string) => mime in INDEXABLE;
 
