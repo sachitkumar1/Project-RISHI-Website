@@ -7,7 +7,7 @@
  */
 export default function TourReplayButton() {
   return (
-    <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
+    <div data-tour="tour-replay" className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
       <h2 className="font-display text-lg font-semibold text-pine-deep">Site tour</h2>
       <p className="mt-1 text-sm text-ink/60">
         A short walkthrough of everything on the dashboard, tailored to your role in the club.

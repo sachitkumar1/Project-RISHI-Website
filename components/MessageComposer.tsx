@@ -476,7 +476,7 @@ export default function MessageComposer({
         {err && <p className="mt-3 text-sm text-red-600">{err}</p>}
 
         <div className="mt-6 flex items-center justify-end gap-3">
-          <button onClick={onClose} disabled={busy} className="rounded-full px-4 py-2 text-sm font-semibold text-ink/70 hover:bg-ink/5">Cancel</button>
+          <button data-tour="composer-cancel" onClick={onClose} disabled={busy} className="rounded-full px-4 py-2 text-sm font-semibold text-ink/70 hover:bg-ink/5">Cancel</button>
           <button onClick={submit} disabled={busy || senderUnavailable} className="rounded-full bg-pine px-5 py-2 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-50">
             {busy ? "Sending…" : sendLabel}
           </button>
