@@ -404,8 +404,8 @@ export default function MessageComposer({
 
         {/* Mail merge (not available for newsletters) */}
         {mode !== "newsletter" && (
-          <div data-tour="merge-block" className="mt-4 rounded-xl border border-ink/12 p-3">
-            <label data-tour="merge-toggle" className="flex cursor-pointer items-center gap-2">
+          <div className="mt-4 rounded-xl border border-ink/12 p-3">
+            <label className="flex cursor-pointer items-center gap-2">
               <input type="checkbox" checked={mailMerge} onChange={(e) => enableMerge(e.target.checked)} className="accent-pine" />
               <span className="text-sm font-semibold text-ink">Personalize with mail merge</span>
             </label>

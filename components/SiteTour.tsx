@@ -34,12 +34,6 @@ type Step = {
   when?: (f: Flags) => boolean;
   /** Invites a click rather than describing. */
   action?: string;
-  /** Clicked on entering the step, to open the thing being described. */
-  open?: string;
-  /** Clicked on leaving, to close it again. */
-  close?: string;
-  /** Hovered on entering (menus that open on hover). */
-  hover?: string;
 };
 
 const STEPS: Step[] = [
@@ -47,7 +41,7 @@ const STEPS: Step[] = [
     id: "welcome",
     path: "/dashboard",
     title: "Welcome to your member dashboard",
-    body: "This is where everything the club runs on lives — your tasks, the calendar, the member directory, and every document we keep. It takes a couple of minutes to walk through, and the tour opens things up as it goes. You can leave any time and pick it up again from Settings.",
+    body: "This is where everything the club runs on lives — your tasks, the calendar, the member directory, and every document we keep. It takes about a minute to walk through. You can leave any time and pick it up again from Settings.",
   },
   {
     id: "tiles",
@@ -61,7 +55,7 @@ const STEPS: Step[] = [
     path: "/dashboard",
     target: "[data-tour='my-tasks']",
     title: "Your tasks and events",
-    body: "Anything assigned to you shows up here with its due date. Open one to read the details, leave a comment, attach a file, or mark it done.",
+    body: "Anything assigned to you shows up here with its due date. Open one to read the details, leave a comment, attach a file, or mark it done. Some tasks need a lead's approval before they count as complete.",
   },
   {
     id: "period",
@@ -70,196 +64,79 @@ const STEPS: Step[] = [
     title: "Narrow it down",
     body: "Switch between today, this week, this month, or everything. Handy when a long list is hiding the thing that's actually due tomorrow.",
   },
-
-  /* ---- assigning work, opened up properly ---- */
   {
-    id: "assign-btn",
+    id: "assign",
     path: "/dashboard",
-    target: "[data-tour='assign-task']",
-    title: "Assigning a task",
-    body: "This is how work gets handed out. Let's open it and look at what you can set.",
-    when: (f) => f.assignTasks,
+    target: "[data-tour='create']",
+    title: "Assigning work",
+    body: "You can create tasks and events from here. When you assign a task you choose who it goes to, when it's due, and whether they need to submit a note, a link, or a file before it can be marked done.",
+    when: (f) => f.assignTasks || f.createEvents,
   },
-  {
-    id: "assign-who",
-    path: "/dashboard",
-    open: "[data-tour='assign-task']",
-    target: "[data-tour='tf-assignees']",
-    title: "Who it goes to",
-    body: "Pick one person or several. Assigning to a group creates the task once and tracks each person's progress separately, so you always see who's done and who hasn't.",
-    when: (f) => f.assignTasks,
-  },
-  {
-    id: "assign-submission",
-    path: "/dashboard",
-    target: "[data-tour='tf-submission']",
-    title: "Asking for proof of work",
-    body: "Tick this and the person can't mark the task done until they've written a note or added a link explaining what they did.",
-    when: (f) => f.assignTasks,
-  },
-  {
-    id: "assign-file",
-    path: "/dashboard",
-    target: "[data-tour='tf-file']",
-    title: "Requiring a file",
-    body: "This one requires an actual file before the task can be closed. Uploads are filed automatically under Files, grouped by project group and task name, labelled with who sent them — so a lead can find any submission later without digging through email.",
-    when: (f) => f.assignTasks,
-  },
-  {
-    id: "assign-flow",
-    path: "/dashboard",
-    target: "[data-tour='tf-submission']",
-    title: "What happens after they submit",
-    body: "When a member marks a task done it goes to you for approval rather than closing straight away, and you get an email. Approve it and it's complete; send it back and they'll see your note and try again. Leads completing their own work skip the approval step.",
-    when: (f) => f.assignTasks,
-    close: "[data-tour='tf-close']",
-  },
-  {
-    id: "reminders",
-    path: "/dashboard",
-    target: "[data-tour='my-tasks']",
-    title: "Reminders and nudges",
-    body: "Nobody has to police deadlines by hand. Everyone gets an email when a task is assigned, reminders as the due date approaches, and a note when work is approved or sent back. If someone's drifting, opening their task gives you a Nudge button that sends a friendly reminder on the spot.",
-  },
-
-  /* ---- events ---- */
-  {
-    id: "event",
-    path: "/dashboard",
-    open: "[data-tour='create-event']",
-    target: "[data-tour='ef-form']",
-    title: "Creating an event",
-    body: "Events work the same way — a title, a time, and who it's for. They show up on everyone's calendar here, and on their own Google Calendar if they've connected it.",
-    when: (f) => f.createEvents,
-    close: "[data-tour='tf-close']",
-  },
-
-  /* ---- email, announcements, newsletters ---- */
-  {
-    id: "create-menu",
-    path: "/dashboard",
-    hover: "[data-tour='create'] button",
-    open: "[data-tour='create-menu']",
-    target: "[data-tour='create-menu']",
-    title: "Reaching the club",
-    body: "Announcements appear on everyone's dashboard. Newsletters go out to subscribers. Emails go to whoever you choose. Let's look at the email composer.",
-    when: (f) => f.exec || f.outreach || f.lead,
-  },
-  {
-    id: "merge",
-    path: "/dashboard",
-    hover: "[data-tour='create'] button",
-    open: "[data-tour='create-email']",
-    target: "[data-tour='merge-block']",
-    title: "Mail merge",
-    body: "Writing one email and sending it personalised to everyone. Turn this on and each recipient gets their own version — their name, their group, whatever you choose — filled in automatically. Members are populated for you, and you can add rows by hand or paste in a spreadsheet for anyone outside the club.",
-    when: (f) => f.exec || f.outreach || f.lead,
-    close: "[data-tour='tf-close']",
-  },
-
-  /* ---- overview + history ---- */
   {
     id: "overview",
     path: "/dashboard",
-    open: "[data-tour='overview']",
     target: "[data-tour='overview']",
     title: "The whole club at once",
-    body: "This swaps your personal view for every project group's work side by side, with a shared calendar. It's the quickest way to see what the club as a whole is doing right now.",
+    body: "This opens a view of every project group's tasks and events together, with a shared calendar. It's the quickest way to see what the club as a whole is working on.",
     when: (f) => f.lead || f.exec,
-    close: "[data-tour='overview']",
   },
   {
     id: "history",
     path: "/dashboard",
-    open: "[data-tour='history']",
-    target: "[data-tour='history-panel']",
+    target: "[data-tour='history']",
     title: "Finished work lives here",
-    body: "Your dashboard stays clean by showing only what's still active. Everything completed or archived moves in here, split into what was assigned to you, what you assigned, and past events — with a calendar you can hide if you'd rather just read the lists.",
+    body: "Your dashboard stays clean by showing only what's still active. Everything completed or archived moves into History, split into what was assigned to you, what you assigned, and past events.",
   },
-  {
-    id: "history-overview",
-    path: "/dashboard",
-    open: "[data-tour='history-overview']",
-    target: "[data-tour='history-overview']",
-    title: "Club history too",
-    body: "The same club-wide view is in here, but reaching further back — every finished task and past event across all groups, not just what's still open.",
-    when: (f) => f.lead || f.exec,
-    close: "[data-tour='fs-close']",
-  },
-
-  /* ---- files ---- */
   {
     id: "files-open",
     path: "/dashboard",
     target: "[data-tour='files-tile']",
     title: "Files",
     body: "Every document the club keeps in Drive is mirrored here, going back several years. Let's take a look.",
+    action: "Click Files to continue",
   },
   {
     id: "files-years",
     path: "/dashboard/files",
     target: "[data-tour='file-list']",
     title: "Organised by school year",
-    body: "The current year sits up top with everything older grouped underneath. Open a folder and browse it just as you would in Drive — click any document to read it right here without leaving the site.",
+    body: "The current year sits up top with everything older grouped underneath. Open a folder to browse it exactly as you would in Drive — click any document to read it right here, without leaving the site.",
   },
   {
     id: "files-search",
     path: "/dashboard/files",
     target: "[data-tour='file-search']",
     title: "Search that reads inside documents",
-    body: "Search covers every year at once and groups results by year. Switch to “Include In-File Text” and it searches the words inside documents too — useful when you remember something was written down but not where.",
+    body: "Search covers every year at once, and results are grouped by year so you always know what you're looking at. Switch to “Include In-File Text” and it searches the words inside documents too, not just their names.",
+  },
+  {
+    id: "files-meetings",
+    path: "/dashboard/files",
+    target: "[data-tour='meetings-card']",
+    title: "Meeting notes",
+    body: "Each project group keeps its meetings here — who attended, who took notes, the agenda, and the tasks that came out of it. Tasks assigned in a meeting become real tasks on your dashboard automatically.",
   },
   {
     id: "files-tasks",
     path: "/dashboard/files",
     target: "[data-tour='file-list']",
     title: "Task submissions",
-    body: "The Tasks folder holds every file submitted to finish a task, sorted by project group and task name. You'll see your own group's submissions here and nobody else's.",
+    body: "When someone attaches a file to finish a task, it's filed under Tasks by project group and task name, labelled with who submitted it. You'll see your own group's submissions here.",
     when: (f) => f.lead || f.exec,
   },
-  {
-    id: "meetings-open",
-    path: "/dashboard/files",
-    target: "[data-tour='meetings-card']",
-    title: "Meeting notes",
-    body: "Each project group keeps its meetings here. Let's open one.",
-  },
-  {
-    id: "meeting-page",
-    path: "/dashboard/files/meetings",
-    target: "[data-tour='meetings-list']",
-    title: "Every meeting, kept",
-    body: "Attendance, who took notes, the agenda, and the tasks that came out of it — all in one place, so nobody has to remember what was decided three weeks ago.",
-  },
-  {
-    id: "meeting-tasks",
-    path: "/dashboard/files/meetings",
-    target: "[data-tour='meetings-list']",
-    title: "Tasks assigned in meetings are real tasks",
-    body: "Work handed out in a meeting is created right there, and it becomes an ordinary task on the assignee's dashboard — same due date, same reminders, same approval step. Nothing gets written down and then forgotten.",
-  },
-
-  /* ---- directory, lineage, settings ---- */
   {
     id: "directory",
     path: "/dashboard/directory",
     target: "[data-tour='directory-list']",
     title: "Member directory",
-    body: "Everyone in the club with their role and project group. Sort and filter by group, year, or position when you're trying to find the right person to ask.",
-  },
-  {
-    id: "lineage",
-    path: "/dashboard/lineage",
-    target: "[data-tour='lineage']",
-    title: "RISHI lineage",
-    body: "A look back at who has led the club over the years — the people behind the projects we've inherited.",
+    body: "Everyone in the club, with their role and project group. You can sort and filter by group, year, or position when you're trying to find the right person to ask.",
   },
   {
     id: "settings",
     path: "/dashboard/settings",
     target: "[data-tour='settings-main']",
     title: "Your settings",
-    body: "Update your photo and contact details, choose how you'd like to be notified, and connect your calendar so tasks and events sit alongside the rest of your schedule.",
+    body: "Update your photo and contact details, choose how you'd like to be notified, and connect your calendar so your tasks and events show up alongside the rest of your schedule.",
   },
   {
     id: "settings-admin",
@@ -290,8 +167,6 @@ export default function SiteTour() {
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [missing, setMissing] = useState(false);
   const startedRef = useRef(false);
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const [cardH, setCardH] = useState(250);
 
   const steps = useMemo(
     () => (flags ? STEPS.filter((s) => !s.when || s.when(flags)) : []),
@@ -338,55 +213,6 @@ export default function SiteTour() {
     if (!active || !step) return;
     if (pathname !== step.path) router.push(step.path);
   }, [active, step, pathname, router]);
-
-  // Perform the step's `hover` / `open` before looking for its target, and run
-  // the previous step's `close` on the way out. This is what lets the tour
-  // actually open a form or a panel instead of just describing one.
-  const prevClose = useRef<string | null>(null);
-  useEffect(() => {
-    if (!active || !step) return;
-    if (pathname !== step.path) return;
-
-    let cancelled = false;
-    const click = (sel: string) => {
-      const el = document.querySelector(sel) as HTMLElement | null;
-      el?.click();
-      return Boolean(el);
-    };
-
-    (async () => {
-      // Close whatever the last step opened, unless this step needs it open.
-      if (prevClose.current && prevClose.current !== step.open) {
-        click(prevClose.current);
-        prevClose.current = null;
-        await new Promise((r) => setTimeout(r, 200));
-      }
-      if (cancelled) return;
-
-      if (step.hover) {
-        // Hover-opened menus toggle on click, so clicking one that's already
-        // open closes it — which is what stopped the mail-merge step finding
-        // anything. Hover first; only click if it didn't open.
-        const el = document.querySelector(step.hover) as HTMLElement | null;
-        el?.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
-        await new Promise((r) => setTimeout(r, 250));
-        if (step.open && !document.querySelector(step.open)) {
-          el?.click();
-          await new Promise((r) => setTimeout(r, 300));
-        }
-      }
-      if (cancelled) return;
-
-      // Only open if the thing isn't already on screen.
-      if (step.open && !(step.target && document.querySelector(step.target))) {
-        click(step.open);
-        await new Promise((r) => setTimeout(r, 700));
-      }
-      if (step.close) prevClose.current = step.close;
-    })();
-
-    return () => { cancelled = true; };
-  }, [active, step, pathname]);
 
   // Find and follow the target. Polls briefly because the page may still be
   // loading its data when the step begins.
@@ -442,19 +268,13 @@ export default function SiteTour() {
     left: "50%", top: "50%", transform: "translate(-50%, -50%)",
   };
   if (rect) {
-    // Measured, not estimated: a guessed height let a long step overlap the very
-    // thing it was pointing at.
-    const CARD_H = cardH;
     const below = rect.bottom + 16;
     const above = rect.top - 16;
-    const goBelow = below + CARD_H < H || above < CARD_H;
+    const goBelow = below + 220 < H || above < 220;
     const left = Math.min(Math.max(16, rect.left + rect.width / 2 - card.w / 2), W - card.w - 16);
-    // Clamp to the viewport on both axes. Without this the card tracked a
-    // target that was still smooth-scrolling into place and ended up off the
-    // bottom of the screen, leaving Next unreachable.
-    const raw = goBelow ? below : above - CARD_H;
-    const top = Math.min(Math.max(16, raw), Math.max(16, H - CARD_H - 16));
-    cardStyle = { left, top };
+    cardStyle = goBelow
+      ? { left, top: Math.min(below, H - 240) }
+      : { left, top: Math.max(16, above - 200) };
   }
 
   const pct = Math.round(((i + 1) / steps.length) * 100);
@@ -491,11 +311,6 @@ export default function SiteTour() {
       )}
 
       <div
-        ref={(el) => {
-          cardRef.current = el;
-          const h = el?.offsetHeight;
-          if (h && Math.abs(h - cardH) > 4) setCardH(h);
-        }}
         className="absolute w-[min(400px,calc(100vw-2rem))] rounded-2xl bg-paper p-5 shadow-2xl transition-all duration-300"
         style={cardStyle}
       >

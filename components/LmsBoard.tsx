@@ -458,10 +458,10 @@ export default function LmsBoard() {
         </div>
         <div className="flex gap-2">
           {meta.can.assignTasks && (
-            <button data-tour="assign-task" onClick={() => setShowTaskForm(true)} className="btn-primary text-sm">+ Assign task</button>
+            <button onClick={() => setShowTaskForm(true)} className="btn-primary text-sm">+ Assign task</button>
           )}
           {meta.can.createEvents && (
-            <button data-tour="create-event" onClick={() => setShowEventForm(true)} className="btn-accent text-sm">+ Create event</button>
+            <button onClick={() => setShowEventForm(true)} className="btn-accent text-sm">+ Create event</button>
           )}
         </div>
       </div>
@@ -629,17 +629,17 @@ export default function LmsBoard() {
 
       {historyOpen && (
         <FullScreenModal title="History" onClose={() => { setHistoryOpen(false); setHistoryOverview(false); }}>
-          <div data-tour="history-panel" className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-ink/55">
               Everything finished or archived. The dashboard itself only shows active work.
             </p>
             <div className="flex flex-wrap items-center gap-2">
-            <button data-tour="history-calendar" onClick={() => setHistoryCalendar((v) => !v)}
+            <button onClick={() => setHistoryCalendar((v) => !v)}
               className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
               {historyCalendar ? "Hide calendar" : "Show calendar"}
             </button>
             {(
-              <button data-tour="history-overview" onClick={() => setHistoryOverview((v) => !v)}
+              <button onClick={() => setHistoryOverview((v) => !v)}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${historyOverview ? "bg-pine text-paper" : "border border-pine/25 text-pine-deep hover:bg-pine/5"}`}>
                 {historyOverview ? "✓ Full Club Overview" : "Full Club Overview"}
               </button>
@@ -1527,7 +1527,7 @@ function FullScreenModal({ title, onClose, children }: { title: string; onClose:
       <div className="flex h-full w-full flex-col bg-paper">
         <div className="flex items-center justify-between border-b border-pine/10 px-6 py-4">
           <h3 className="font-display text-2xl font-semibold text-pine-deep">{title}</h3>
-          <button data-tour="fs-close" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="mx-auto max-w-5xl">{children}</div>
@@ -1589,7 +1589,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-paper p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl font-semibold text-pine-deep">{title}</h3>
-          <button data-tour="tf-close" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
         </div>
         <div className="mt-5">{children}</div>
       </div>
@@ -1715,7 +1715,7 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
         </div>
 
         <div>
-          <label data-tour="tf-assignees" className={labelCls}>Assign to{isEdit ? " (add or remove anyone)" : ""}</label>
+          <label className={labelCls}>Assign to{isEdit ? " (add or remove anyone)" : ""}</label>
           {isEdit ? (
             <div className="mt-1"><MemberPicker members={meta.assignableMembers} selected={assignees} onToggle={toggleAssignee} /></div>
           ) : (
@@ -1744,12 +1744,12 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
           )}
         </div>
 
-        <label data-tour="tf-submission" className="flex items-center gap-2 text-sm text-ink/70">
+        <label className="flex items-center gap-2 text-sm text-ink/70">
           <input type="checkbox" checked={requireSubmission} onChange={(e) => setRequireSubmission(e.target.checked)} />
           Require a submission (written note or link) before the doer can mark it complete
         </label>
 
-        <label data-tour="tf-file" className="flex items-start gap-2 text-sm text-ink/70">
+        <label className="flex items-start gap-2 text-sm text-ink/70">
           <input type="checkbox" className="mt-1" checked={requiresFile} onChange={(e) => setRequiresFile(e.target.checked)} />
           <span>
             Require a file upload before the doer can mark it complete
@@ -1834,7 +1834,7 @@ function EventForm({ meta, editing, onClose, onCreated }: { meta: Meta; editing?
         <div><label className={labelCls}>Description</label>
           <textarea className={inputCls} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
 
-        <label data-tour="ef-form" className="flex items-center gap-2 text-sm font-medium text-ink/80">
+        <label className="flex items-center gap-2 text-sm font-medium text-ink/80">
           <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All day
         </label>
 
