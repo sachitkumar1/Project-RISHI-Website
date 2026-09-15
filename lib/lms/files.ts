@@ -61,6 +61,8 @@ export type FileNode = {
   uploadedBy: string | null;
   /** Content-search results only: context around the match. */
   snippet?: string;
+  /** Whether the asking member may delete this file. */
+  canDelete?: boolean;
   /** Folders only: the audience in force here (resolved through inheritance). */
   audience?: FileAudience;
   /** Folders only: true when the audience is set on this folder itself. */
@@ -276,6 +278,38 @@ function canSee(m: Member, idx: Resolved, folderKey: string | null, fallback: Fi
   return memberMatches(m, ruleFor(idx, folderKey, fallback));
 }
 
+/**
+ * Should this folder appear at all?
+ *
+ * Being allowed to open a folder isn't enough — a folder whose contents are all
+ * restricted would show up, invite a click, and reveal an empty page, which
+ * both wastes the click and hints at what's inside. So a folder is listed only
+ * if it holds something this person can actually reach. A folder that is empty
+ * for everyone still shows: there's nothing to hide, and hiding it would make
+ * new folders invisible until someone put a file in them.
+ */
+function visibleFolder(m: Member, idx: Resolved, folder: FileNode, fallback: FileAudience): boolean {
+  if (!canSee(m, idx, nodeKey(folder), fallback)) return false;
+
+  const childrenOf = (key: string) => idx.nodes.filter((n) => n.parentId === key);
+  const reachable = (key: string, depth = 0): boolean | null => {
+    if (depth > 12) return null;
+    const kids = childrenOf(key);
+    if (kids.length === 0) return null; // genuinely empty — not a permission matter
+    let sawSomething = false;
+    for (const k of kids) {
+      if (k.kind !== "folder") return true; // a file they can see, since they can see this folder
+      if (!canSee(m, idx, nodeKey(k), fallback)) { sawSomething = true; continue; }
+      const deeper = reachable(nodeKey(k), depth + 1);
+      if (deeper !== false) return true; // visible subfolder, empty or otherwise
+      sawSomething = true;
+    }
+    return sawSomething ? false : null;
+  };
+
+  return reachable(nodeKey(folder)) !== false;
+}
+
 export type FolderView = {
   folder: FileNode | null; // null = the top level (the year folders)
   breadcrumbs: { key: string; name: string }[];
@@ -297,7 +331,7 @@ export async function listFolder(m: Member, folderKey: string | null): Promise<F
   if (!folderKey) {
     const roots = idx.nodes
       .filter((n) => n.parentId === null && n.kind === "folder")
-      .filter((n) => canSee(m, idx, nodeKey(n), fallback))
+      .filter((n) => visibleFolder(m, idx, n, fallback))
       .sort((a, b) => b.name.localeCompare(a.name)); // newest school year first
     return { folder: null, breadcrumbs: [], children: roots.map(decorate), canUpload: false };
   }
@@ -315,14 +349,25 @@ export async function listFolder(m: Member, folderKey: string | null): Promise<F
     cur = cur.parentId ? idx.byKey.get(cur.parentId) : undefined;
   }
 
+  const folderRule = ruleFor(idx, folderKey, fallback);
+  const mayClear = canDeleteInFolder(m, folder, folderRule);
+
   const children = idx.nodes
     .filter((n) => n.parentId === folderKey)
-    .filter((n) => (n.kind === "folder" ? canSee(m, idx, nodeKey(n), fallback) : true))
+    .filter((n) => (n.kind === "folder" ? visibleFolder(m, idx, n, fallback) : true))
     .sort((a, b) =>
       a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "folder" ? -1 : 1,
-    );
+    )
+    .map((n) => ({
+      ...decorate(n),
+      // Drive-mirrored items are managed in Drive, never deleted from here.
+      canDelete:
+        n.kind !== "folder" &&
+        n.source !== "drive" &&
+        (mayClear || (n.uploadedBy ?? "").toLowerCase() === m.email.toLowerCase()),
+    }));
 
-  return { folder: decorate(folder), breadcrumbs: crumbs, children: children.map(decorate), canUpload: true };
+  return { folder: decorate(folder), breadcrumbs: crumbs, children, canUpload: true };
 }
 
 export type SearchMode = "names" | "contents";
@@ -697,6 +742,81 @@ export async function deleteTaskUpload(
         ? "This task has been approved, so its attachments can't be removed."
         : "Only the person who uploaded this can remove it.",
     );
+
+  if (data.storage_path) await sb().storage.from(UPLOAD_BUCKET).remove([data.storage_path]).catch(() => {});
+  const { error } = await sb().from("lms_files").delete().eq("id", fileId);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Remove every attachment one person made to a task, bytes included.
+ *
+ * Used when a submission stops existing: the assignee takes their submission
+ * back, or a manager deletes the task outright. Leaving orphaned bytes in the
+ * bucket would quietly eat the 1 GB allowance and keep work visible in Files
+ * that no longer exists as a task.
+ */
+export async function purgeTaskUploads(
+  taskGroupId: string,
+  assigneeEmail?: string,
+): Promise<number> {
+  if (!usingSupabase) return 0;
+  let q = sb().from("lms_files").select("id,storage_path").eq("parent_id", taskFolderKey(taskGroupId));
+  if (assigneeEmail) q = q.eq("uploaded_by", assigneeEmail.toLowerCase());
+  const { data, error } = await q;
+  if (error || !data?.length) return 0;
+
+  const paths = data.map((r) => r.storage_path).filter(Boolean) as string[];
+  if (paths.length) await sb().storage.from(UPLOAD_BUCKET).remove(paths).catch(() => {});
+  await sb().from("lms_files").delete().in("id", data.map((r) => r.id));
+  return data.length;
+}
+
+/**
+ * Can this person delete files in a given folder?
+ *
+ * Leads may clear out their own project group's folders; NMT leaders may clear
+ * the NMT folder. VP/President may do either. Deliberately NOT "any lead" —
+ * that would let an Education lead delete Health's submissions.
+ */
+export function canDeleteInFolder(m: Member, folder: FileNode | null, rule: VisibilityRule): boolean {
+  if (m.roles.vpp || m.roles.webmaster) return true;
+  if (rule.audience === "nmt") return m.roles.nmtLeader;
+  if ((rule.audience === "group_leads" || rule.audience === "groups") && m.roles.lead)
+    return rule.groups.includes(m.group);
+  // Elsewhere in the tree, a lead may remove things from their own group's area.
+  if (m.roles.lead && folder?.path)
+    return folder.path.toLowerCase().includes(GROUP_PATH_HINT[m.group].toLowerCase());
+  return false;
+}
+
+/** How each project group's folder is named in the mirrored Drive tree. */
+const GROUP_PATH_HINT: Record<ProjectGroup, string> = {
+  E: "Education", R: "WatSan", W: "Women", H: "Health",
+};
+
+/**
+ * Delete a file a member owns or oversees.
+ *
+ * Drive-mirrored files can't be removed: the site reads Drive with a read-only
+ * scope, so the only honest options are "delete it in Drive" or silently hide
+ * it here, and hiding it would drift the site out of sync with Drive.
+ */
+export async function deleteFileAsLead(m: Member, fileId: string): Promise<void> {
+  if (!usingSupabase) return;
+  const { data } = await sb().from("lms_files").select("*").eq("id", fileId).maybeSingle();
+  if (!data) throw new Error("That file doesn't exist.");
+  if (data.source === "drive")
+    throw new Error("This file lives in Google Drive — delete it there and re-sync.");
+
+  const idx = await loadIndex();
+  const fallback = await getDefaultAudience();
+  const folder = data.parent_id ? idx.byKey.get(data.parent_id) ?? null : null;
+  const rule = ruleFor(idx, data.parent_id ?? null, fallback);
+
+  const mine = (data.uploaded_by ?? "").toLowerCase() === m.email.toLowerCase();
+  if (!mine && !canDeleteInFolder(m, folder, rule))
+    throw new Error("You can't delete files in this folder.");
 
   if (data.storage_path) await sb().storage.from(UPLOAD_BUCKET).remove([data.storage_path]).catch(() => {});
   const { error } = await sb().from("lms_files").delete().eq("id", fileId);

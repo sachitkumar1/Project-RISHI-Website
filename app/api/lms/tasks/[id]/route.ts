@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { canSeeMember, findMember } from "@/lib/members";
-import { listTaskFiles } from "@/lib/lms/files";
+import { listTaskFiles, purgeTaskUploads } from "@/lib/lms/files";
 import {
   canApproveTask,
   canAssignTaskTo,
@@ -171,6 +171,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!canUnmarkTask(me, task))
       return NextResponse.json({ error: "You can't unmark this task." }, { status: 403 });
     const note = trimOrNull(body.note);
+    // Taking a submission back removes its attachment: the submission no longer
+    // exists, so neither should the file or its bytes in storage.
+    await purgeTaskUploads(task.groupId, task.assigneeEmail).catch(() => {});
     let updated = await unmarkTask(task, me.email, note);
     if (note) updated = await addTaskComment(updated, me.email, note, null);
     // Only email the doer when someone ELSE unmarked it (per spec).
@@ -305,6 +308,10 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: "You can't delete this task." }, { status: 403 });
   if (task.assigneeEmail.toLowerCase() !== me.email.toLowerCase())
     await notifyTaskDeleted(task, me.email).catch(() => {});
+  // Last row of the group? Then the shared attachments have nothing left to
+  // belong to. A single assignee's removal only clears their own files.
+  const siblings = await getTasksByGroup(task.groupId).catch(() => []);
+  await purgeTaskUploads(task.groupId, siblings.length > 1 ? task.assigneeEmail : undefined).catch(() => {});
   await deleteTask(task.id);
   return syncedJson({ ok: true });
 }

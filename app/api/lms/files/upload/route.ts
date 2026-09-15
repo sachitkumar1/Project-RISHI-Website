@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
-import { createUpload, deleteUpload, MAX_UPLOAD_BYTES } from "@/lib/lms/files";
+import { createUpload, deleteFileAsLead, MAX_UPLOAD_BYTES } from "@/lib/lms/files";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -43,7 +43,11 @@ export async function POST(req: Request) {
   }
 }
 
-/** DELETE ?id=…  — uploads only; Drive-mirrored files are managed in Drive. */
+/**
+ * DELETE ?id=… — the uploader, a lead of the folder's project group, an NMT
+ * leader for the NMT folder, or a VP/President. Drive-mirrored files are
+ * managed in Drive.
+ */
 export async function DELETE(req: Request) {
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
@@ -52,7 +56,7 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: "Bad request" }, { status: 400 });
 
   try {
-    await deleteUpload(me, id);
+    await deleteFileAsLead(me, id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });

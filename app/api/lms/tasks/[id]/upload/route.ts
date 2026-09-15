@@ -5,6 +5,7 @@ import { canManageTask } from "@/lib/lms/permissions";
 import { findMember } from "@/lib/members";
 import {
   createTaskUpload,
+  purgeTaskUploads,
   deleteTaskUpload,
   listTaskFiles,
   taskFolderGroup,
@@ -71,6 +72,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     );
 
   try {
+    // One file per person per task. A task sent back for revision keeps its old
+    // attachment until a new one arrives, then the new one REPLACES it — bytes
+    // and all — so a manager is never choosing between two versions.
+    await purgeTaskUploads(task.groupId, me.email).catch(() => {});
+
     const node = await createTaskUpload({
       taskGroupId: task.groupId,
       taskTitle: task.title,

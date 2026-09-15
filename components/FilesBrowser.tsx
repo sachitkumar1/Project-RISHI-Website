@@ -17,6 +17,7 @@ type Node = {
   modifiedAt: string | null;
   uploadedBy: string | null;
   snippet?: string;
+  canDelete?: boolean;
   audience?: "all" | "leads" | "exec" | "vpp" | "groups";
   audienceGroups?: string[];
 };
@@ -208,6 +209,19 @@ export default function FilesBrowser() {
     }
   }
 
+  async function remove(n: Node) {
+    if (!window.confirm(`Delete “${n.name}”? This removes the file and its contents for everyone.`)) return;
+    setErr("");
+    try {
+      const r = await fetch(`/api/lms/files/upload?id=${encodeURIComponent(n.id)}`, { method: "DELETE" });
+      const d = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(d?.error || "Couldn't delete that file.");
+      await load(folderKey);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't delete that file.");
+    }
+  }
+
   async function upload(f: File) {
     if (!view?.folder) return;
     setUploading(true);
@@ -355,7 +369,19 @@ export default function FilesBrowser() {
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((n) => (
-              <li key={n.id}>
+              <li key={n.id} className="group/item relative">
+                {n.canDelete && (
+                  <button
+                    onClick={() => void remove(n)}
+                    className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-paper/80 text-ink/40 opacity-0 transition-opacity hover:bg-marigold/30 hover:text-ink focus:opacity-100 group-hover/item:opacity-100"
+                    aria-label={`Delete ${n.name}`}
+                    title="Delete this file"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+                    </svg>
+                  </button>
+                )}
                 <button
                   onClick={() => void open(n)}
                   className="group flex w-full items-start gap-3 rounded-2xl border border-pine/15 bg-pine/[0.03] p-4 text-left transition-colors hover:border-pine hover:bg-pine hover:text-paper"
