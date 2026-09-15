@@ -6,6 +6,7 @@ import { createTasks, patchTask } from "@/lib/lms/store";
 import { BASE_MEMBERS } from "@/lib/members";
 import { getDriveAccessToken } from "@/lib/lms/drive";
 import type { ProjectGroup } from "@/lib/lms/types";
+import { clubDateToISO } from "@/lib/lms/time";
 import {
   TAG_NO_DUE_DATE, TAG_PLACEHOLDER_ASSIGNEE, placeholderEmail,
 } from "@/lib/lms/importedTasks";
@@ -183,7 +184,7 @@ function dueAtFor(raw: string, nextMeetingDate: string | null): string | null {
   if (!s) return null;
 
   if (/next meeting/i.test(s)) {
-    return nextMeetingDate ? `${nextMeetingDate}T20:00:00` : null;
+    return nextMeetingDate ? clubDateToISO(nextMeetingDate, 20, 0) : null;
   }
 
   const d = s.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
@@ -193,10 +194,12 @@ function dueAtFor(raw: string, nextMeetingDate: string | null): string | null {
   const day = `${y}-${String(Number(mo)).padStart(2, "0")}-${String(Number(da)).padStart(2, "0")}`;
 
   const t = s.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i);
-  if (!t) return `${day}T23:59:00`;
+  // Deadlines are written in Berkeley local time, so convert rather than
+  // handing Postgres a naive string it would read as UTC.
+  if (!t) return clubDateToISO(day, 23, 59);
   let hh = Number(t[1]) % 12;
   if (/pm/i.test(t[3])) hh += 12;
-  return `${day}T${String(hh).padStart(2, "0")}:${t[2] ?? "00"}:00`;
+  return clubDateToISO(day, hh, Number(t[2] ?? 0));
 }
 
 /** A tidy title: first line, de-bulleted, trimmed to something readable. */
@@ -375,7 +378,7 @@ export async function POST(req: Request) {
               // due_at is NOT NULL and stays that way. A task the agenda gave
               // no deadline for is stored against its meeting date and carries
               // TAG_NO_DUE_DATE, which is what makes the UI show "No due date".
-              dueAt: rec.dueAt ?? `${m.date}T23:59:00`,
+              dueAt: rec.dueAt ?? clubDateToISO(m.date, 23, 59),
               requiresFile: false,
               requireSubmission: false,
               emailTemplate: null,
@@ -393,7 +396,7 @@ export async function POST(req: Request) {
             } else {
               patch.archived = true;
               patch.status = /extension granted/i.test(status) ? "not_complete" : "complete";
-              if (patch.status === "complete") patch.submitted_at = new Date(`${m.date}T20:00:00`).toISOString();
+              if (patch.status === "complete") patch.submitted_at = clubDateToISO(m.date, 20, 0);
             }
             await patchTask(task.id, patch);
           }

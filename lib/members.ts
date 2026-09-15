@@ -88,6 +88,7 @@ export const BASE_MEMBERS: Member[] = [
   { email: "narayannirali@berkeley.edu", firstName: "Nirali", lastName: "Narayan", phone: "7205488016", group: "R", roles: roles({ nmtLeader: true }) },
   { email: "dilpreetvohra@berkeley.edu", firstName: "Jannat", lastName: "Vohra", phone: "9253023115", group: "W", roles: roles({ lead: true }) },
   // ---- Added from the 26–27 Master Roster ----
+  { email: "alishashah@berkeley.edu", firstName: "Alisha", lastName: "Shah", phone: "", group: "W", roles: roles({  }) },
   { email: "jahanveersingh@berkeley.edu", firstName: "Jahan", lastName: "Singh", phone: "5597701709", group: "W", roles: roles({  }) },
   { email: "jiya.dharne@berkeley.edu", firstName: "Jiya", lastName: "Dharne", phone: "5103887239", group: "R", roles: roles({ exec: true, internationalDirector: true }) },
   { email: "kaavya_pravin@berkeley.edu", firstName: "Kaavya", lastName: "Pravin", phone: "9259845837", group: "H", roles: roles({  }) },
