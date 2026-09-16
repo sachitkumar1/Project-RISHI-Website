@@ -29,6 +29,9 @@ export async function GET() {
     name: `${m.firstName} ${m.lastName}`,
     group: m.group,
     avatar: avatarMap[m.email.toLowerCase()] ?? null,
+    // Used by History to say who a task came from — a co-lead or NMT.
+    lead: m.roles.lead,
+    nmt: m.roles.nmtLeader,
   });
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
 

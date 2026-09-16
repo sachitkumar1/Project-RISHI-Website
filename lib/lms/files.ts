@@ -349,7 +349,13 @@ export async function listFolder(m: Member, folderKey: string | null): Promise<F
     const roots = idx.nodes
       .filter((n) => n.parentId === null && n.kind === "folder")
       .filter((n) => visibleFolder(m, idx, n, fallback))
-      .sort((a, b) => b.name.localeCompare(a.name)); // newest school year first
+      // School years first, newest to oldest; anything else (Tasks) after them,
+      // so the current year leads and Tasks sits beside it.
+      .sort((a, b) => {
+        const ay = /^\d{4}-\d{4}/.test(a.name), by = /^\d{4}-\d{4}/.test(b.name);
+        if (ay !== by) return ay ? -1 : 1;
+        return ay ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
+      });
     return { folder: null, breadcrumbs: [], children: roots.map(decorate), canUpload: false };
   }
 

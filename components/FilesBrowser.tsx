@@ -31,13 +31,6 @@ type View = {
 
 const key = (n: Node) => n.driveId ?? n.id;
 
-const AUDIENCE_LABEL: Record<string, string> = {
-  leads: "Leads only",
-  exec: "Exec only",
-  vpp: "VP / President only",
-  groups: "Limited groups",
-};
-
 function fileLabel(n: Node): string {
   if (n.kind === "folder") return "Folder";
   if (n.kind === "shortcut") return "Shortcut";
@@ -192,11 +185,9 @@ function FileCard({ n, onOpen, onDelete, showPath, big }: {
           {n.snippet && (
             <span className="mt-1.5 block line-clamp-2 text-xs italic opacity-70">{n.snippet}</span>
           )}
-          {n.kind === "folder" && n.audience && n.audience !== "all" && (
-            <span className="mt-1.5 inline-block rounded-full bg-pine/10 px-2 py-0.5 text-[11px] font-semibold text-pine group-hover:bg-paper/20 group-hover:text-paper">
-              {n.audience === "groups" ? `${(n.audienceGroups ?? []).join(", ")} only` : AUDIENCE_LABEL[n.audience]}
-            </span>
-          )}
+          {/* No audience badge here on purpose. Restricted folders simply don't
+              appear for people who can't open them, so labelling them for the
+              people who CAN just adds noise. Settings still shows the rules. */}
           {n.source === "upload" && (
             <span className="mt-1.5 ml-1 inline-block rounded-full bg-marigold/25 px-2 py-0.5 text-[11px] font-semibold text-pine-deep">
               Added here
@@ -356,7 +347,7 @@ export default function FilesBrowser() {
   return (
     <div>
       {/* Breadcrumbs + search */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div data-tour="file-search" className="flex flex-wrap items-center justify-between gap-4">
         <nav className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm" aria-label="Folder path">
           <button
             onClick={() => { setFolderKey(null); setQ(""); setResults(null); }}
@@ -468,7 +459,7 @@ export default function FilesBrowser() {
       )}
 
       {/* Listing */}
-      <div className="mt-5">
+      <div data-tour="file-list" className="mt-5">
         {loading ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2, 3, 4, 5].map((i) => (

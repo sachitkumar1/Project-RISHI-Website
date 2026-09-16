@@ -18,7 +18,7 @@ type Roles = {
   nmtLeader: boolean; newbie: boolean; lead: boolean;
   internal: boolean; vpp: boolean; exec: boolean;
 };
-type Lite = { email: string; name: string; group: Group; avatar?: string | null };
+type Lite = { email: string; name: string; group: Group; avatar?: string | null; lead?: boolean; nmt?: boolean };
 export type Meta = {
   me: { email: string; name: string; group: Group; roles: Roles };
   can: { assignTasks: boolean; createEvents: boolean };
@@ -315,6 +315,30 @@ export default function LmsBoard() {
     () => pastTaskGroups.filter((g) => g.rows.some((r) => r.assigneeEmail.toLowerCase() === myEmail.toLowerCase())),
     [pastTaskGroups, myEmail]
   );
+  /** Finished work a peer handed out — a co-lead in my group, or NMT. */
+  const roleOf = useCallback(
+    (email: string) => meta?.allMembers.find((m) => m.email.toLowerCase() === email.toLowerCase()),
+    [meta],
+  );
+  const pastFromPeers = useMemo(
+    () =>
+      pastTaskGroups.filter((g) => {
+        const from = g.head.assignerEmail.toLowerCase();
+        if (from === myEmail.toLowerCase()) return false;            // mine, not a peer's
+        if (g.rows.some((r) => r.assigneeEmail.toLowerCase() === myEmail.toLowerCase())) return false; // already listed
+        return g.rows.some((r) => r.canManage);                      // I co-manage it
+      }),
+    [pastTaskGroups, myEmail]
+  );
+  const pastFromNmt = useMemo(
+    () => pastFromPeers.filter((g) => roleOf(g.head.assignerEmail)?.nmt),
+    [pastFromPeers, roleOf]
+  );
+  const pastFromCoLeads = useMemo(
+    () => pastFromPeers.filter((g) => !roleOf(g.head.assignerEmail)?.nmt),
+    [pastFromPeers, roleOf]
+  );
+
   const pastByMe = useMemo(
     () => pastTaskGroups.filter((g) =>
       g.head.assignerEmail.toLowerCase() === myEmail.toLowerCase()
@@ -447,21 +471,21 @@ export default function LmsBoard() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => setOverviewOn((v) => !v)}
+          <button data-tour="overview" onClick={() => setOverviewOn((v) => !v)}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${overviewOn ? "bg-pine text-paper" : "border border-pine/25 text-pine-deep hover:bg-pine/5"}`}>
             {overviewOn ? "✓ Full Club Overview" : "Full Club Overview"}
           </button>
-          <button onClick={() => setHistoryOpen(true)}
+          <button data-tour="history" onClick={() => setHistoryOpen(true)}
             className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
             History ({pastTaskGroups.length + pastEvents.length})
           </button>
         </div>
         <div className="flex gap-2">
           {meta.can.assignTasks && (
-            <button onClick={() => setShowTaskForm(true)} className="btn-primary text-sm">+ Assign task</button>
+            <button data-tour="assign-task" onClick={() => setShowTaskForm(true)} className="btn-primary text-sm">+ Assign task</button>
           )}
           {meta.can.createEvents && (
-            <button onClick={() => setShowEventForm(true)} className="btn-accent text-sm">+ Create event</button>
+            <button data-tour="create-event" onClick={() => setShowEventForm(true)} className="btn-accent text-sm">+ Create event</button>
           )}
         </div>
       </div>
@@ -474,7 +498,7 @@ export default function LmsBoard() {
       )}
 
       {!overviewOn && (
-        <div className="mt-6 flex flex-wrap items-center gap-4">
+        <div data-tour="period" className="mt-6 flex flex-wrap items-center gap-4">
           <SegToggle label="Period" value={myWindow} onChange={(v) => setMyWindow(v as TimeWindow)}
             options={[["day", "Day"], ["week", "Week"], ["month", "Month"], ["all", "All time"]]} />
         </div>
@@ -508,7 +532,7 @@ export default function LmsBoard() {
       </div>
       {syncMsg && <p className="mt-2 text-sm text-ink/60">{syncMsg}</p>}
 
-      <div className="mt-10 grid gap-8 lg:grid-cols-2">
+      <div data-tour="my-tasks" className="mt-10 grid gap-8 lg:grid-cols-2">
         <section>
           <h3 className="font-display text-xl font-semibold text-pine-deep">My tasks</h3>
           <div className="mt-4 space-y-3">
@@ -629,17 +653,17 @@ export default function LmsBoard() {
 
       {historyOpen && (
         <FullScreenModal title="History" onClose={() => { setHistoryOpen(false); setHistoryOverview(false); }}>
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div data-tour="history-panel" className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-ink/55">
               Everything finished or archived. The dashboard itself only shows active work.
             </p>
             <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => setHistoryCalendar((v) => !v)}
+            <button data-tour="history-calendar" onClick={() => setHistoryCalendar((v) => !v)}
               className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
               {historyCalendar ? "Hide calendar" : "Show calendar"}
             </button>
             {(
-              <button onClick={() => setHistoryOverview((v) => !v)}
+              <button data-tour="history-overview" onClick={() => setHistoryOverview((v) => !v)}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${historyOverview ? "bg-pine text-paper" : "border border-pine/25 text-pine-deep hover:bg-pine/5"}`}>
                 {historyOverview ? "✓ Full Club Overview" : "Full Club Overview"}
               </button>
@@ -675,7 +699,7 @@ export default function LmsBoard() {
               <HistorySection title="Tasks assigned to me" empty="Nothing of yours has been completed or archived yet.">
                 {pastToMe.map((g) => (
                   <PastTaskRow key={g.key} g={g}
-                    onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); setHistoryOpen(false); }}
+                    onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); }}
                     onUnarchive={() => archiveGroup(g.rows.filter((r) => r.archived), false)} />
                 ))}
               </HistorySection>
@@ -686,7 +710,27 @@ export default function LmsBoard() {
                 <HistorySection title="Tasks assigned by me" empty="You haven't had any assigned tasks finish yet.">
                   {pastByMe.map((g) => (
                     <PastTaskRow key={g.key} g={g}
-                      onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); setHistoryOpen(false); }}
+                      onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); }}
+                      onUnarchive={() => archiveGroup(g.rows.filter((r) => r.archived), false)} />
+                  ))}
+                </HistorySection>
+              )}
+
+              {pastFromCoLeads.length > 0 && (
+                <HistorySection title="Assigned by a co-lead" empty="Nothing yet.">
+                  {pastFromCoLeads.map((g) => (
+                    <PastTaskRow key={g.key} g={g}
+                      onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); }}
+                      onUnarchive={() => archiveGroup(g.rows.filter((r) => r.archived), false)} />
+                  ))}
+                </HistorySection>
+              )}
+
+              {pastFromNmt.length > 0 && (
+                <HistorySection title="Assigned by NMT" empty="Nothing yet.">
+                  {pastFromNmt.map((g) => (
+                    <PastTaskRow key={g.key} g={g}
+                      onOpen={() => { if (g.rows.length > 1) setOpenGroupKey(g.key); else setDetailTaskId(g.head.id); }}
                       onUnarchive={() => archiveGroup(g.rows.filter((r) => r.archived), false)} />
                   ))}
                 </HistorySection>
@@ -696,7 +740,7 @@ export default function LmsBoard() {
                 {pastEvents.map((e) => (
                   <div key={e.id} className="rounded-xl border border-pine/12 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <button onClick={() => { setDetailEventId(e.id); setHistoryOpen(false); }}
+                      <button onClick={() => setDetailEventId(e.id)}
                         className="text-left font-medium text-ink hover:underline">{e.title}</button>
                       <span className="shrink-0 text-xs text-ink/50">
                         {e.archived ? "Archived · " : ""}{e.allDay ? fmtDateOnly(e.startAt) : fmtDateTime(e.startAt)}
@@ -1523,11 +1567,11 @@ function FullScreenModal({ title, onClose, children }: { title: string; onClose:
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-ink/60" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-[45] flex flex-col bg-ink/60" role="dialog" aria-modal="true" aria-label={title}>
       <div className="flex h-full w-full flex-col bg-paper">
         <div className="flex items-center justify-between border-b border-pine/10 px-6 py-4">
           <h3 className="font-display text-2xl font-semibold text-pine-deep">{title}</h3>
-          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+          <button data-tour="fs-close" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="mx-auto max-w-5xl">{children}</div>
@@ -1589,7 +1633,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-paper p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl font-semibold text-pine-deep">{title}</h3>
-          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+          <button data-tour="tf-close" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
         </div>
         <div className="mt-5">{children}</div>
       </div>
@@ -1715,7 +1759,7 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
         </div>
 
         <div>
-          <label className={labelCls}>Assign to{isEdit ? " (add or remove anyone)" : ""}</label>
+          <label data-tour="tf-assignees" className={labelCls}>Assign to{isEdit ? " (add or remove anyone)" : ""}</label>
           {isEdit ? (
             <div className="mt-1"><MemberPicker members={meta.assignableMembers} selected={assignees} onToggle={toggleAssignee} /></div>
           ) : (
@@ -1744,12 +1788,12 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
           )}
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-ink/70">
+        <label data-tour="tf-submission" className="flex items-center gap-2 text-sm text-ink/70">
           <input type="checkbox" checked={requireSubmission} onChange={(e) => setRequireSubmission(e.target.checked)} />
           Require a submission (written note or link) before the doer can mark it complete
         </label>
 
-        <label className="flex items-start gap-2 text-sm text-ink/70">
+        <label data-tour="tf-file" className="flex items-start gap-2 text-sm text-ink/70">
           <input type="checkbox" className="mt-1" checked={requiresFile} onChange={(e) => setRequiresFile(e.target.checked)} />
           <span>
             Require a file upload before the doer can mark it complete
@@ -1834,7 +1878,7 @@ function EventForm({ meta, editing, onClose, onCreated }: { meta: Meta; editing?
         <div><label className={labelCls}>Description</label>
           <textarea className={inputCls} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
 
-        <label className="flex items-center gap-2 text-sm font-medium text-ink/80">
+        <label data-tour="ef-form" className="flex items-center gap-2 text-sm font-medium text-ink/80">
           <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All day
         </label>
 
