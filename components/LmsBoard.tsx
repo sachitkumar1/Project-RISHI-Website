@@ -41,6 +41,8 @@ type Task = {
   submittedAt: string | null; submissionText: string | null; submissionLink: string | null;
   history: HistoryEntry[]; comments: Comment[]; archived: boolean; createdAt: string;
   canManage?: boolean; emailTemplate?: EmailTemplate | null; ccEmails?: string[];
+  /** Other people on the same task, with their own progress. */
+  coAssignees?: { email: string; status: string }[];
 };
 type ClubEvent = {
   id: string; title: string; description: string; startAt: string;
@@ -1056,6 +1058,30 @@ function TaskDetail({
           <div><span className="font-semibold text-ink/70">Assigned to</span><br />
             <span className="inline-flex items-center gap-1.5"><Avatar src={avatarOf(task.assigneeEmail)} name={nameOf(task.assigneeEmail)} size={18} />{nameOf(task.assigneeEmail)}</span>
           </div>
+
+          {/* A shared task is stored as one row per person, so without this an
+              assignee would have no idea anyone else was working on it. */}
+          {(task.coAssignees?.length ?? 0) > 0 && (
+            <div className="col-span-2">
+              <span className="font-semibold text-ink/70">Also working on this</span>
+              <ul className="mt-1.5 space-y-1">
+                {task.coAssignees!.map((p) => (
+                  <li key={p.email} className="flex items-center gap-2">
+                    <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 truncate">
+                      <Avatar src={avatarOf(p.email)} name={nameOf(p.email)} size={18} />
+                      <span className="truncate text-ink/80">{nameOf(p.email)}</span>
+                    </span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      p.status === "complete" ? "bg-pine/15 text-pine-deep"
+                      : p.status === "pending" ? "bg-marigold-soft/50 text-marigold-deep"
+                      : "bg-ink/8 text-ink/60"}`}>
+                      {p.status === "complete" ? "Complete" : p.status === "pending" ? "Pending approval" : "Not complete"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div><span className="font-semibold text-ink/70">Assigned by</span><br />{nameOf(task.assignerEmail)}</div>
           {task.tags.length > 0 && (
             <div><span className="font-semibold text-ink/70">Tags</span><br />{task.tags.filter((t) => !isImportMarker(t)).map((t) => `#${t}`).join(" ") || "—"}</div>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { canSeeMember, findMember, MEMBERS } from "@/lib/members";
 import { canAssignTasks, canAssignTaskTo, canManageTask } from "@/lib/lms/permissions";
-import { createTasks, listTasksForMember } from "@/lib/lms/store";
+import { createTasks, listAllTasks, listTasksForMember } from "@/lib/lms/store";
 import { syncTasksIfRealtime } from "@/lib/lms/sheets";
 import { notifyTaskAssigned } from "@/lib/lms/notify";
 import type { NewTaskInput, Task } from "@/lib/lms/types";
@@ -25,10 +25,28 @@ export async function GET() {
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   const tasks = await listTasksForMember(me);
+
+  // Who else is on the same task. A task shared by several people is stored as
+  // one row each, so an assignee would otherwise have no idea anyone else was
+  // working on it. Only the people and their progress are exposed — nothing
+  // about tasks the person isn't part of.
+  const everyone = await listAllTasks();
+  const byGroup = new Map<string, { email: string; status: string }[]>();
+  for (const t of everyone) {
+    const key = t.groupId || t.id;
+    const arr = byGroup.get(key);
+    const entry = { email: t.assigneeEmail, status: t.status };
+    if (arr) arr.push(entry);
+    else byGroup.set(key, [entry]);
+  }
+
   const withFlags = tasks.map((t) => ({
     ...t,
     canManage: canManageTask(me, t),
     ccEmails: t.emailTemplate ? autoCc(t) : [],
+    coAssignees: (byGroup.get(t.groupId || t.id) ?? []).filter(
+      (x) => x.email.toLowerCase() !== t.assigneeEmail.toLowerCase(),
+    ),
   }));
   return NextResponse.json({ tasks: withFlags });
 }
