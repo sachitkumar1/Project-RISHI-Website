@@ -67,6 +67,7 @@ const taskFromRow = (r: any): Task => ({
   remindersSent: (r.reminders_sent ?? []) as string[],
   archived: r.archived ?? false,
   createdAt: r.created_at,
+  meetingId: r.meeting_id ?? null,
 });
 
 const eventFromRow = (r: any): ClubEvent => ({
@@ -387,6 +388,30 @@ export async function listAllEvents(): Promise<ClubEvent[]> {
 }
 
 // ---- Part 3: fetch + edit a whole task group (add/remove assignees) ----
+/**
+ * Every row belonging to the given task groups, in one query.
+ *
+ * Used to work out who shares a task with you. The alternative — loading every
+ * task in the club and filtering in memory — gave the same answer but read the
+ * whole table on each dashboard load, and that grows with every task the club
+ * ever creates.
+ */
+export async function listTasksInGroups(groupIds: string[]): Promise<Task[]> {
+  const ids = Array.from(new Set(groupIds.filter(Boolean)));
+  if (ids.length === 0) return [];
+  if (usingSupabase) {
+    const out: Task[] = [];
+    // Chunked: a very long "in" list can overflow the request URL.
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data, error } = await sb().from("lms_tasks").select("*").in("group_id", ids.slice(i, i + 200));
+      if (error) throw new Error(error.message);
+      out.push(...(data ?? []).map(taskFromRow));
+    }
+    return out;
+  }
+  return mem.tasks.filter((t) => ids.includes(t.groupId || t.id));
+}
+
 export async function getTasksByGroup(groupId: string): Promise<Task[]> {
   if (usingSupabase) {
     const { data, error } = await sb().from("lms_tasks").select("*").eq("group_id", groupId);

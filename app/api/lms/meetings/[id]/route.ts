@@ -20,7 +20,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     // Whether this person may open the full task panel — the same rule the
     // dashboard uses. Meetings are viewable by everyone, but a task's details
     // stay with the people actually involved in it.
-    canOpen: canManageTask(me, t) || t.assigneeEmail.toLowerCase() === me.email.toLowerCase(),
+    // Every task from a meeting opens for any member; what they can DO in the
+    // panel is still decided by canManage / being the assignee.
+    canOpen: true,
     assigneeName: findMember(t.assigneeEmail) ? memberFullName(findMember(t.assigneeEmail)!) : t.assigneeEmail,
   }));
   return NextResponse.json({

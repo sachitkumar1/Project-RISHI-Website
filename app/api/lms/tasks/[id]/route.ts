@@ -103,7 +103,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
   const isAssignee = task.assigneeEmail.toLowerCase() === me.email.toLowerCase();
-  if (!isAssignee && !canManageTask(me, task))
+  // Meetings are visible to the whole club by design, so a task that came out
+  // of one is readable by any member — the same transparency the meeting page
+  // already gives. Tasks that aren't tied to a meeting stay with the people
+  // involved. Reading is all this grants: every action below is still gated.
+  const fromMeeting = Boolean(task.meetingId);
+  if (!isAssignee && !canManageTask(me, task) && !fromMeeting)
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
 
   const siblings = await getTasksByGroup(task.groupId).catch(() => []);

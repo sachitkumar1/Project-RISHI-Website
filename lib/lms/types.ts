@@ -93,6 +93,8 @@ export type Task = {
   remindersSent: string[]; // reminder keys already emailed (e.g. "3d", "overdue:2026-06-25")
   archived: boolean;
   createdAt: string;
+  /** Set when the task was assigned from a meeting. */
+  meetingId?: string | null;
 };
 
 export type NewTaskInput = {
