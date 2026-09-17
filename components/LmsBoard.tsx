@@ -842,7 +842,24 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 // --------------------------------------------------------------------- task row
-function statusChipFor(status: Task["status"]) {
+/**
+ * Was the work finished after its deadline? Tasks whose due date is a stand-in
+ * (imported with no deadline written down) can never be late.
+ */
+export function wasLate(t: Pick<Task, "status" | "submittedAt" | "dueAt" | "tags">): boolean {
+  return Boolean(
+    t.status === "complete" && t.submittedAt && t.dueAt && hasRealDueDate(t.tags) &&
+    new Date(t.submittedAt) > new Date(t.dueAt),
+  );
+}
+
+export function statusChipFor(status: Task["status"], late = false) {
+  if (status === "complete" && late)
+    return (
+      <span className="rounded-full bg-marigold-deep px-2.5 py-1 text-xs font-semibold text-paper">
+        Completed late
+      </span>
+    );
   if (status === "complete")
     return <span className="rounded-full bg-pine px-2.5 py-1 text-xs font-semibold text-paper">Complete</span>;
   if (status === "pending")
@@ -870,7 +887,7 @@ function TaskRow({
       <button onClick={onOpen} className="block w-full text-left">
         <div className="flex items-start justify-between gap-3">
           <p className="font-semibold text-ink">{task.title}</p>
-          <div className="flex shrink-0 items-center gap-1.5">{statusChipFor(task.status)}</div>
+          <div className="flex shrink-0 items-center gap-1.5">{statusChipFor(task.status, wasLate(task))}</div>
         </div>
         {task.description && <p className="mt-1 line-clamp-2 text-sm text-ink/70">{task.description}</p>}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -960,7 +977,7 @@ function GroupCard({ group, byline, onOpen, onArchive }: { group: TaskGroup; byl
 }
 
 // --------------------------------------------------------------- task detail popup
-function TaskDetail({
+export function TaskDetail({
   task, myEmail, nameOf, avatarOf, meLead, onClose, onAction, onEdit, onDelete, onComposeEmail, onNudge, nudgeLocked,
 }: {
   task: Task; myEmail: string; meLead: boolean;
@@ -1044,7 +1061,7 @@ function TaskDetail({
     <Modal title={task.title} onClose={onClose}>
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
-          {statusChipFor(task.status)}
+          {statusChipFor(task.status, wasLate(task))}
           {task.requireSubmission && (
             <span className="rounded-full bg-marigold-soft/60 px-2.5 py-1 text-xs font-medium text-marigold-deep">submission required</span>
           )}
@@ -1054,7 +1071,15 @@ function TaskDetail({
         {task.description && <p className="whitespace-pre-line text-sm text-ink/75">{task.description}</p>}
 
         <div className="grid grid-cols-2 gap-3 text-xs text-ink/55">
-          <div><span className="font-semibold text-ink/70">Due</span><br />{task.dueAt ? fmtDateTime(task.dueAt) : "Not set"}</div>
+          <div><span className="font-semibold text-ink/70">Due</span><br />{hasRealDueDate(task.tags) && task.dueAt ? fmtDateTime(task.dueAt) : "Not set"}</div>
+          {task.submittedAt && (
+            <div>
+              <span className="font-semibold text-ink/70">Submitted</span><br />
+              <span className={wasLate(task) ? "font-semibold text-marigold-deep" : ""}>
+                {fmtDateTime(task.submittedAt)}{wasLate(task) ? " · late" : ""}
+              </span>
+            </div>
+          )}
           <div><span className="font-semibold text-ink/70">Assigned to</span><br />
             <span className="inline-flex items-center gap-1.5"><Avatar src={avatarOf(task.assigneeEmail)} name={nameOf(task.assigneeEmail)} size={18} />{nameOf(task.assigneeEmail)}</span>
           </div>

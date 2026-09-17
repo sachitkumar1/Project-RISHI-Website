@@ -17,6 +17,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   // Everyone can view; editing is gated to that group's members (or VP/P).
   const tasks = (await listTasksForMeeting(params.id)).map((t) => ({
     ...t, canManage: canManageTask(me, t),
+    // Whether this person may open the full task panel — the same rule the
+    // dashboard uses. Meetings are viewable by everyone, but a task's details
+    // stay with the people actually involved in it.
+    canOpen: canManageTask(me, t) || t.assigneeEmail.toLowerCase() === me.email.toLowerCase(),
     assigneeName: findMember(t.assigneeEmail) ? memberFullName(findMember(t.assigneeEmail)!) : t.assigneeEmail,
   }));
   return NextResponse.json({

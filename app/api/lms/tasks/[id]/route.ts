@@ -87,6 +87,38 @@ async function syncGroupArchive(task: Task): Promise<void> {
   );
 }
 
+/**
+ * One task, for anyone entitled to see it — the assignee, or a manager.
+ *
+ * The board's list endpoint only returns a person's own and their peers' work,
+ * so opening a task from a meeting needed a way to fetch just that one. Comes
+ * back with the same flags and co-assignee list the board gets, so the meeting
+ * view and the dashboard show identical information.
+ */
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const me = await getCurrentMember();
+  if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+
+  const task = await getTask(params.id);
+  if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+
+  const isAssignee = task.assigneeEmail.toLowerCase() === me.email.toLowerCase();
+  if (!isAssignee && !canManageTask(me, task))
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+
+  const siblings = await getTasksByGroup(task.groupId).catch(() => []);
+  return NextResponse.json({
+    task: {
+      ...task,
+      canManage: canManageTask(me, task),
+      coAssignees: siblings
+        .filter((s) => s.assigneeEmail.toLowerCase() !== task.assigneeEmail.toLowerCase())
+        .map((s) => ({ email: s.assigneeEmail, status: s.status })),
+    },
+    groupAssignees: siblings.map((s) => s.assigneeEmail),
+  });
+}
+
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });

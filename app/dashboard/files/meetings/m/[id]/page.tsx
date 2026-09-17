@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Contours from "@/components/Contours";
 import AgendaDocPanel from "@/components/AgendaDocPanel";
+import TaskDetailModal from "@/components/TaskDetailModal";
 import { AGENDA_DOCS } from "@/lib/lms/agendaDocs";
 import type { ProjectGroup } from "@/lib/lms/types";
 import type { Block } from "@/components/MeetingOutline";
@@ -20,7 +21,14 @@ type Meeting = {
   location: string; notetaker: string; snack: string;
   attendees: string[]; blocks: Block[]; body: string; createdBy: string;
 };
-type Task = { id: string; groupId: string; title: string; description: string; assigneeEmail: string; assigneeName: string; dueAt: string; status: string; archived: boolean; tags?: string[] };
+type Task = { id: string; groupId: string; title: string; description: string; assigneeEmail: string; assigneeName: string; dueAt: string; status: string; archived: boolean; tags?: string[]; submittedAt?: string | null; canOpen?: boolean };
+
+/** Finished after the deadline? Imported stand-in dates never count as late. */
+function lateSubmission(t: Task): boolean {
+  if (t.status !== "complete" || !t.submittedAt || !t.dueAt) return false;
+  if ((t.tags ?? []).includes("imported:no-due-date")) return false;
+  return new Date(t.submittedAt) > new Date(t.dueAt);
+}
 
 /** One row per task, with every assignee and their own completion state. */
 type TaskGroup = { key: string; head: Task; people: Task[] };
@@ -64,6 +72,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
   const [saveState, setSaveState] = useState<"" | "saving" | "saved">("");
   const [dir, setDir] = useState<DirEntry[]>([]);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [fsEditor, setFsEditor] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [liveNote, setLiveNote] = useState(false); // brief "updated" flash
@@ -173,7 +182,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
             {canEdit ? <input value={m.location} onChange={(e) => update({ location: e.target.value })} placeholder="In person / link" className="field" />
               : <span className="text-ink/80">{m.location || "—"}</span>}
           </Field>
-          <Field label="Notetaker">
+          <Field data-tour="meeting-notetaker" label="Notetaker">
             {canEdit ? <input value={m.notetaker} onChange={(e) => update({ notetaker: e.target.value })} placeholder="Who's taking notes" className="field" />
               : <span className="text-ink/80">{m.notetaker || "—"}</span>}
           </Field>
@@ -223,9 +232,9 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
         {/* ---- tasks (real dashboard tasks) ---- */}
         <div className="mt-8">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-2xl font-semibold text-pine-deep">Tasks</h2>
+            <h2 data-tour="meeting-tasks-head" className="font-display text-2xl font-semibold text-pine-deep">Tasks</h2>
             {canManage && (
-              <button onClick={() => setAssignOpen(true)} className="rounded-full bg-pine px-4 py-2 text-sm font-semibold text-paper hover:bg-pine-deep">
+              <button data-tour="meeting-assign" onClick={() => setAssignOpen(true)} className="rounded-full bg-pine px-4 py-2 text-sm font-semibold text-paper hover:bg-pine-deep">
                 + Assign task
               </button>
             )}
@@ -251,14 +260,46 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
                         <td className="px-4 py-3">
                           {/* each person keeps their own completion state */}
                           <ul className="flex flex-col gap-1.5">
-                            {g.people.map((p) => (
-                              <li key={p.id} className="flex items-center gap-2">
-                                <span className="min-w-0 flex-1 truncate text-ink/75">{p.assigneeName}</span>
-                                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_STYLE[p.status] ?? "bg-ink/8"}`}>
-                                  {STATUS_LABEL[p.status] ?? p.status}
-                                </span>
-                              </li>
-                            ))}
+                            {g.people.map((p) => {
+                              const late = lateSubmission(p);
+                              return (
+                                <li key={p.id}>
+                                  {/* Opens the same panel the dashboard uses, so a
+                                      task can be read, commented on, approved or
+                                      edited without leaving the meeting. */}
+                                  {/* Only the people involved can open the full
+                                      panel, so the row isn't a button for anyone
+                                      who'd just be refused. */}
+                                  {p.canOpen ? (
+                                    <button
+                                      onClick={() => setOpenTaskId(p.id)}
+                                      className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left hover:bg-pine/[0.06]"
+                                    >
+                                      <span className="min-w-0 flex-1 truncate text-ink/75 underline-offset-2 hover:underline">
+                                        {p.assigneeName}
+                                      </span>
+                                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                        late ? "bg-marigold-deep text-paper" : STATUS_STYLE[p.status] ?? "bg-ink/8"}`}>
+                                        {late ? "Completed late" : STATUS_LABEL[p.status] ?? p.status}
+                                      </span>
+                                    </button>
+                                  ) : (
+                                    <span className="flex w-full items-center gap-2 px-1 py-0.5">
+                                      <span className="min-w-0 flex-1 truncate text-ink/75">{p.assigneeName}</span>
+                                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                        late ? "bg-marigold-deep text-paper" : STATUS_STYLE[p.status] ?? "bg-ink/8"}`}>
+                                        {late ? "Completed late" : STATUS_LABEL[p.status] ?? p.status}
+                                      </span>
+                                    </span>
+                                  )}
+                                  {p.submittedAt && (
+                                    <span className="block pl-1 text-[11px] text-ink/40">
+                                      Submitted {new Date(p.submittedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-ink/70">
@@ -296,13 +337,21 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
           onCreated={() => { setAssignOpen(false); load(); }} />
       )}
 
+      {openTaskId && (
+        <TaskDetailModal
+          taskId={openTaskId}
+          onClose={() => setOpenTaskId(null)}
+          onChanged={load}
+        />
+      )}
+
       <style jsx>{`.field { width: 100%; border-radius: 0.75rem; border: 1px solid rgba(20,54,40,0.15); padding: 0.5rem 0.75rem; font-size: 0.875rem; outline: none; background: #fff; }`}</style>
     </>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<div><p className="text-xs font-semibold uppercase tracking-wide text-ink/45">{label}</p><div className="mt-1">{children}</div></div>);
+function Field({ label, children, ...rest }: { label: string; children: React.ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
+  return (<div {...rest}><p className="text-xs font-semibold uppercase tracking-wide text-ink/45">{label}</p><div className="mt-1">{children}</div></div>);
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
