@@ -73,8 +73,19 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
   const [dir, setDir] = useState<DirEntry[]>([]);
   const [assignOpen, setAssignOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+
   const [fsEditor, setFsEditor] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
+  /**
+   * Which row of a shared task the panel should open. An assignee lands on
+   * their own row so "mark complete" and their submission are right there;
+   * everyone else gets the first row, read-only.
+   */
+  const rowForViewer = useCallback(
+    (g: TaskGroup) =>
+      g.people.find((p) => p.assigneeEmail.toLowerCase() === (meta?.me.email ?? "").toLowerCase()) ?? g.head,
+    [meta],
+  );
   const [liveNote, setLiveNote] = useState(false); // brief "updated" flash
   const clientId = useRef(Math.random().toString(36).slice(2)).current;
   const dirtyRef = useRef(false);        // unsaved local edits pending
@@ -255,7 +266,17 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
                     const hasDue = !(g.head.tags ?? []).includes("imported:no-due-date");
                     return (
                       <tr key={g.key} className="border-b border-pine/8 align-top">
-                        <td className="px-4 py-3 font-medium text-ink">{g.head.title}</td>
+                        <td className="px-4 py-3 font-medium text-ink">
+                          {/* The title opens the task. If the viewer is one of
+                              the assignees it opens THEIR row, so they land on
+                              their own submission rather than someone else's. */}
+                          <button
+                            onClick={() => setOpenTaskId(rowForViewer(g).id)}
+                            className="text-left font-medium text-ink underline-offset-2 hover:underline"
+                          >
+                            {g.head.title}
+                          </button>
+                        </td>
                         <td className="max-w-xs px-4 py-3 text-ink/60"><span className="line-clamp-2 whitespace-pre-wrap">{g.head.description || <span className="text-ink/30">—</span>}</span></td>
                         <td className="px-4 py-3">
                           {/* each person keeps their own completion state */}
@@ -264,34 +285,15 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
                               const late = lateSubmission(p);
                               return (
                                 <li key={p.id}>
-                                  {/* Opens the same panel the dashboard uses, so a
-                                      task can be read, commented on, approved or
-                                      edited without leaving the meeting. */}
-                                  {/* Only the people involved can open the full
-                                      panel, so the row isn't a button for anyone
-                                      who'd just be refused. */}
-                                  {p.canOpen ? (
-                                    <button
-                                      onClick={() => setOpenTaskId(p.id)}
-                                      className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left hover:bg-pine/[0.06]"
-                                    >
-                                      <span className="min-w-0 flex-1 truncate text-ink/75 underline-offset-2 hover:underline">
-                                        {p.assigneeName}
-                                      </span>
-                                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                        late ? "bg-marigold-deep text-paper" : STATUS_STYLE[p.status] ?? "bg-ink/8"}`}>
-                                        {late ? "Completed late" : STATUS_LABEL[p.status] ?? p.status}
-                                      </span>
-                                    </button>
-                                  ) : (
-                                    <span className="flex w-full items-center gap-2 px-1 py-0.5">
-                                      <span className="min-w-0 flex-1 truncate text-ink/75">{p.assigneeName}</span>
-                                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                        late ? "bg-marigold-deep text-paper" : STATUS_STYLE[p.status] ?? "bg-ink/8"}`}>
-                                        {late ? "Completed late" : STATUS_LABEL[p.status] ?? p.status}
-                                      </span>
+                                  {/* Names are read-only — the task title is what
+                                      opens the panel. */}
+                                  <span className="flex w-full items-center gap-2 px-1 py-0.5">
+                                    <span className="min-w-0 flex-1 truncate text-ink/75">{p.assigneeName}</span>
+                                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                      late ? "bg-marigold-deep text-paper" : STATUS_STYLE[p.status] ?? "bg-ink/8"}`}>
+                                      {late ? "Completed late" : STATUS_LABEL[p.status] ?? p.status}
                                     </span>
-                                  )}
+                                  </span>
                                   {p.submittedAt && (
                                     <span className="block pl-1 text-[11px] text-ink/40">
                                       Submitted {new Date(p.submittedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
