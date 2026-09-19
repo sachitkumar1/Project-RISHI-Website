@@ -165,6 +165,15 @@ const LANE_COLOR: Record<Lane, { bg: string; fg: string; dot: string }> = {
   OTHER: { bg: "rgba(60,60,60,0.16)", fg: "#333333", dot: "#777777" },
 };
 
+// Keys for the "first time on screen" pulse (see useSeenMarks).
+const seenKey = {
+  assigned: (t: Task) => `a:${t.id}`,
+  pending: (t: Task) => `p:${t.id}:${t.submittedAt ?? ""}`,
+};
+// Dashboard card grid: 1 → 2 → 3 across.
+const CARD_GRID = "mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3";
+const CAL_HIDDEN_KEY = "rishi:dash:calendar-hidden";
+
 async function api(url: string, opts?: RequestInit) {
   const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...opts });
   const data = await res.json().catch(() => ({}));
@@ -342,10 +351,6 @@ export default function LmsBoard() {
   // a:<id>              a task handed to me by someone else
   // p:<id>:<submitted>  a submission awaiting my approval (re-submitting after
   //                     being sent back is a new key, so it pulses again)
-  const seenKey = {
-    assigned: (t: Task) => `a:${t.id}`,
-    pending: (t: Task) => `p:${t.id}:${t.submittedAt ?? ""}`,
-  };
   const liveSeenKeys = useMemo(() => {
     if (!meta || loading) return null; // wait for real data before seeding
     const keys: string[] = [];
@@ -356,6 +361,36 @@ export default function LmsBoard() {
     return keys;
   }, [meta, loading, tasks, myEmail]);
   const { isNew, markSeen } = useSeenMarks(myEmail, liveSeenKeys);
+
+  // New (pulsing) items go FIRST in their list. Once something has been new
+  // this session it stays pinned until the page is reloaded — otherwise it would
+  // jump back into place the instant it's marked seen, mid-pulse.
+  const pinnedNewRef = useRef<Set<string>>(new Set());
+  const pinIfNew = useCallback((key: string) => {
+    if (isNew(key)) pinnedNewRef.current.add(key);
+    return pinnedNewRef.current.has(key);
+  }, [isNew]);
+  const pendingOrdered = useMemo(() => {
+    const flags = pendingApprovalGroups.map((g) => g.rows.map(seenKey.pending).map(pinIfNew).some(Boolean));
+    return [...pendingApprovalGroups.filter((_, i) => flags[i]), ...pendingApprovalGroups.filter((_, i) => !flags[i])];
+  }, [pendingApprovalGroups, pinIfNew]);
+  const toMeOrdered = useMemo(() => {
+    const flags = activeToMe.map((t) =>
+      t.assignerEmail.toLowerCase() !== myEmail.toLowerCase() && pinIfNew(seenKey.assigned(t)));
+    return [...activeToMe.filter((_, i) => flags[i]), ...activeToMe.filter((_, i) => !flags[i])];
+  }, [activeToMe, myEmail, pinIfNew]);
+
+  // Calendar can be hidden on the main dashboard; remembered in this browser.
+  const [calHidden, setCalHidden] = useState(false);
+  useEffect(() => {
+    try { setCalHidden(window.localStorage.getItem(CAL_HIDDEN_KEY) === "1"); } catch { /* ignore */ }
+  }, []);
+  const toggleCalendar = useCallback(() => {
+    setCalHidden((v) => {
+      try { window.localStorage.setItem(CAL_HIDDEN_KEY, v ? "0" : "1"); } catch { /* ignore */ }
+      return !v;
+    });
+  }, []);
   const pastTaskGroups = useMemo(
     () => groupByBatch(tasks)
       .filter((g) => g.rows.every((r) => r.status === "complete" || r.archived))
@@ -546,6 +581,10 @@ export default function LmsBoard() {
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <SegToggle label="Period" value={ovWindow} onChange={(v) => setOvWindow(v as TimeWindow)}
             options={[["day", "Day"], ["week", "Week"], ["month", "Month"], ["all", "All time"]]} />
+          <button data-tour="toggle-calendar" onClick={toggleCalendar}
+            className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
+            {calHidden ? "Show calendar" : "Hide calendar"}
+          </button>
         </div>
       )}
 
@@ -553,10 +592,14 @@ export default function LmsBoard() {
         <div data-tour="period" className="mt-6 flex flex-wrap items-center gap-4">
           <SegToggle label="Period" value={myWindow} onChange={(v) => setMyWindow(v as TimeWindow)}
             options={[["day", "Day"], ["week", "Week"], ["month", "Month"], ["all", "All time"]]} />
+          <button data-tour="toggle-calendar" onClick={toggleCalendar}
+            className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
+            {calHidden ? "Show calendar" : "Hide calendar"}
+          </button>
         </div>
       )}
 
-      <div className="mt-8">
+      {!calHidden && <div className="mt-8">
         {overviewOn && overview ? (
           <ClubCalendar tasks={overview.tasks} events={overview.events} archive={ovArchive} period={ovWindow}
             onOpenTaskGroup={(gid) => setOverviewGroupKey(gid)} onOpenEvent={(id) => setDetailEventId(id)} />
@@ -564,7 +607,7 @@ export default function LmsBoard() {
           <CalendarMonth tasks={tasks} events={events} myEmail={myEmail} archive={myArchive} period={myWindow}
             onOpenTask={(id) => setDetailTaskId(id)} onOpenEvent={(id) => setDetailEventId(id)} />
         )}
-      </div>
+      </div>}
       {overviewOn && !overview && <p className="mt-3 text-sm text-ink/50">Loading the full club view…</p>}
 
       {!overviewOn && (<>
@@ -584,107 +627,108 @@ export default function LmsBoard() {
       </div>
       {syncMsg && <p className="mt-2 text-sm text-ink/60">{syncMsg}</p>}
 
-      {pendingApprovalGroups.length > 0 && (
-        <section data-tour="pending-approval" className="mt-10">
-          <div className="flex flex-wrap items-baseline gap-3">
-            <h3 className="font-display text-xl font-semibold text-pine-deep">Pending Your Approval</h3>
-            <span className="rounded-full bg-marigold-soft px-2.5 py-0.5 text-xs font-semibold text-marigold-deep">
-              {pendingApprovalGroups.length} {pendingApprovalGroups.length === 1 ? "task" : "tasks"}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-ink/50">
+      <div className="mt-10 space-y-10">
+        {pendingOrdered.length > 0 && (
+          <section data-tour="pending-approval">
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h3 className="font-display text-xl font-semibold text-pine-deep">Pending Your Approval</h3>
+              <span className="rounded-full bg-marigold-soft px-2.5 py-0.5 text-xs font-semibold text-marigold-deep">
+                {pendingOrdered.length} {pendingOrdered.length === 1 ? "task" : "tasks"}
+              </span>
+            </div>
+            <div className={CARD_GRID}>
+              {pendingOrdered.map((g) => {
+                const keys = g.rows.map(seenKey.pending);
+                return (
+                  <AttentionPulse key={g.key} className="h-full" active={keys.some(isNew)} onSeen={() => markSeen(keys)}>
+                    <PendingApprovalCard
+                      rows={g.rows}
+                      groupSize={groupSize.get(g.key) ?? g.rows.length}
+                      byline={g.head.assignerEmail.toLowerCase() !== myEmail.toLowerCase() ? `by ${nameOf(g.head.assignerEmail)}` : undefined}
+                      nameOf={nameOf} avatarOf={avatarOf}
+                      onOpenRow={(id) => setDetailTaskId(id)}
+                      onOpenGroup={() => setOpenGroupKey(g.key)}
+                      onApprove={(id) => act(id, "approve")} />
+                  </AttentionPulse>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-          </p>
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {pendingApprovalGroups.map((g) => {
-              const keys = g.rows.map(seenKey.pending);
-              return (
-                <AttentionPulse key={g.key} active={keys.some(isNew)} onSeen={() => markSeen(keys)}>
-                  <PendingApprovalCard
-                    rows={g.rows}
-                    groupSize={groupSize.get(g.key) ?? g.rows.length}
-                    byline={g.head.assignerEmail.toLowerCase() !== myEmail.toLowerCase() ? `by ${nameOf(g.head.assignerEmail)}` : undefined}
-                    nameOf={nameOf} avatarOf={avatarOf}
-                    onOpenRow={(id) => setDetailTaskId(id)}
-                    onOpenGroup={() => setOpenGroupKey(g.key)}
-                    onApprove={(id) => act(id, "approve")} />
-                </AttentionPulse>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      <div data-tour="my-tasks" className="mt-10 grid gap-8 lg:grid-cols-2">
-        <section>
-          <h3 className="font-display text-xl font-semibold text-pine-deep">My tasks</h3>
-          <div className="mt-4 space-y-3">
-            {activeToMe.length === 0 && <Empty>No active tasks assigned to you. Nice.</Empty>}
-            {activeToMe.map((t) => {
-              // Self-assigned work isn't news to anyone — only pulse a hand-off.
-              const fromSomeoneElse = t.assignerEmail.toLowerCase() !== myEmail.toLowerCase();
-              return (
-                <AttentionPulse key={t.id} active={fromSomeoneElse && isNew(seenKey.assigned(t))}
-                  onSeen={() => markSeen([seenKey.assigned(t)])}>
-                  <TaskRow task={t} role="assignee" onOpen={() => setDetailTaskId(t.id)}
-                    onComposeEmail={() => setComposeTask(t)} />
-                </AttentionPulse>
-              );
-            })}
-          </div>
-
-          {activeByMeGroups.length > 0 && (
-            <>
-              <h3 className="mt-8 font-display text-xl font-semibold text-pine-deep">Assigned by me</h3>
-              <div className="mt-4 space-y-3">
-                {activeByMeGroups.map((g) =>
-                  g.rows.length === 1 ? (
-                    <TaskRow key={g.key} task={g.rows[0]} role="assigner"
-                      assigneeName={nameOf(g.rows[0].assigneeEmail)} assigneeAvatar={avatarOf(g.rows[0].assigneeEmail)}
-                      onOpen={() => setDetailTaskId(g.rows[0].id)} />
-                  ) : (
-                    <GroupCard key={g.key} group={g} onOpen={() => setOpenGroupKey(g.key)}
-                      onArchive={() => archiveGroup(g.rows, true)} />
-                  )
-                )}
-              </div>
-            </>
-          )}
-
-          {coLeadGroups.length > 0 && (
-            <>
-              <h3 className="mt-8 font-display text-xl font-semibold text-pine-deep">
-                Assigned by my co-leads
-              </h3>
-              <p className="mt-1 text-xs text-ink/50">
-                Tasks assigned by the other lead(s) of your project group or your co-NMT leaders. You have full control over these.
-              </p>
-              <div className="mt-4 space-y-3">
-                {coLeadGroups.map((g) =>
-                  g.rows.length === 1 ? (
-                    <TaskRow key={g.key} task={g.rows[0]} role="assigner"
-                      assigneeName={nameOf(g.rows[0].assigneeEmail)} assigneeAvatar={avatarOf(g.rows[0].assigneeEmail)}
-                      byline={`by ${nameOf(g.rows[0].assignerEmail)}`}
-                      onOpen={() => setDetailTaskId(g.rows[0].id)} />
-                  ) : (
-                    <GroupCard key={g.key} group={g} byline={`by ${nameOf(g.head.assignerEmail)}`}
-                      onOpen={() => setOpenGroupKey(g.key)} onArchive={() => archiveGroup(g.rows, true)} />
-                  )
-                )}
-              </div>
-            </>
-          )}
-        </section>
-
-        <section>
+        <section data-tour="events">
           <h3 className="font-display text-xl font-semibold text-pine-deep">Events</h3>
-          <div className="mt-4 space-y-3">
-            {upcomingEvents.length === 0 && <Empty>No upcoming events.</Empty>}
-            {upcomingEvents.map((e) => (
-              <EventRow key={e.id} event={e} onOpen={() => setDetailEventId(e.id)} />
-            ))}
-          </div>
+          {upcomingEvents.length === 0 ? (
+            <div className="mt-4"><Empty>No upcoming events.</Empty></div>
+          ) : (
+            <div className={CARD_GRID}>
+              {upcomingEvents.map((e) => (
+                <EventRow key={e.id} event={e} onOpen={() => setDetailEventId(e.id)} />
+              ))}
+            </div>
+          )}
         </section>
+
+        <section data-tour="my-tasks">
+          <h3 className="font-display text-xl font-semibold text-pine-deep">My tasks</h3>
+          {toMeOrdered.length === 0 ? (
+            <div className="mt-4"><Empty>No active tasks assigned to you. Nice.</Empty></div>
+          ) : (
+            <div className={CARD_GRID}>
+              {toMeOrdered.map((t) => {
+                // Self-assigned work isn't news to anyone — only pulse a hand-off.
+                const fromSomeoneElse = t.assignerEmail.toLowerCase() !== myEmail.toLowerCase();
+                return (
+                  <AttentionPulse key={t.id} className="h-full" active={fromSomeoneElse && isNew(seenKey.assigned(t))}
+                    onSeen={() => markSeen([seenKey.assigned(t)])}>
+                    <TaskRow task={t} role="assignee" onOpen={() => setDetailTaskId(t.id)}
+                      onComposeEmail={() => setComposeTask(t)} />
+                  </AttentionPulse>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {activeByMeGroups.length > 0 && (
+          <section>
+            <h3 className="font-display text-xl font-semibold text-pine-deep">Assigned by me</h3>
+            <div className={CARD_GRID}>
+              {activeByMeGroups.map((g) =>
+                g.rows.length === 1 ? (
+                  <TaskRow key={g.key} task={g.rows[0]} role="assigner"
+                    assigneeName={nameOf(g.rows[0].assigneeEmail)} assigneeAvatar={avatarOf(g.rows[0].assigneeEmail)}
+                    onOpen={() => setDetailTaskId(g.rows[0].id)} />
+                ) : (
+                  <GroupCard key={g.key} group={g} onOpen={() => setOpenGroupKey(g.key)}
+                    onArchive={() => archiveGroup(g.rows, true)} />
+                )
+              )}
+            </div>
+          </section>
+        )}
+
+        {coLeadGroups.length > 0 && (
+          <section>
+            <h3 className="font-display text-xl font-semibold text-pine-deep">Assigned by my co-leads</h3>
+            <p className="mt-1 text-xs text-ink/50">
+              Tasks assigned by the other lead(s) of your project group or your co-NMT leaders. You have full control over these.
+            </p>
+            <div className={CARD_GRID}>
+              {coLeadGroups.map((g) =>
+                g.rows.length === 1 ? (
+                  <TaskRow key={g.key} task={g.rows[0]} role="assigner"
+                    assigneeName={nameOf(g.rows[0].assigneeEmail)} assigneeAvatar={avatarOf(g.rows[0].assigneeEmail)}
+                    byline={`by ${nameOf(g.rows[0].assignerEmail)}`}
+                    onOpen={() => setDetailTaskId(g.rows[0].id)} />
+                ) : (
+                  <GroupCard key={g.key} group={g} byline={`by ${nameOf(g.head.assignerEmail)}`}
+                    onOpen={() => setOpenGroupKey(g.key)} onArchive={() => archiveGroup(g.rows, true)} />
+                )
+              )}
+            </div>
+          </section>
+        )}
       </div>
       </>)}
 
@@ -971,13 +1015,13 @@ function TaskRow({
     : !!task.dueAt && new Date() > new Date(task.dueAt) && task.status !== "complete";
 
   return (
-    <div className="rounded-2xl border border-pine/12 bg-paper p-4 transition-colors hover:border-pine/30">
+    <div className="flex h-full flex-col rounded-2xl border border-pine/12 bg-paper p-3.5 transition-colors hover:border-pine/30">
       <button onClick={onOpen} className="block w-full text-left">
         <div className="flex items-start justify-between gap-3">
-          <p className="font-semibold text-ink">{task.title}</p>
+          <p className="text-[15px] font-semibold leading-snug text-ink">{task.title}</p>
           <div className="flex shrink-0 items-center gap-1.5">{statusChipFor(task.status, wasLate(task))}</div>
         </div>
-        {task.description && <p className="mt-1 line-clamp-2 text-sm text-ink/70">{task.description}</p>}
+        {task.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70">{task.description}</p>}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {task.tags.filter((tag) => !isImportMarker(tag)).map((tag) => (
             <span key={tag} className="rounded-full bg-sage/15 px-2 py-0.5 text-[11px] font-medium text-pine-deep">#{tag}</span>
@@ -1005,14 +1049,14 @@ function TaskRow({
           )}
         </div>
       </button>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-auto flex flex-wrap gap-2 pt-3">
         {role === "assignee" && task.emailTemplate && onComposeEmail && (
-          <button onClick={onComposeEmail} className="inline-flex items-center gap-1.5 rounded-full bg-marigold px-4 py-2 text-xs font-semibold text-pine-deep transition-transform hover:scale-[1.02]">
+          <button onClick={onComposeEmail} className="inline-flex items-center gap-1.5 rounded-full bg-marigold px-3.5 py-1.5 text-xs font-semibold text-pine-deep transition-transform hover:scale-[1.02]">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3.5 7.5 8.5 6 8.5-6" /></svg>
             Compose email
           </button>
         )}
-        <button onClick={onOpen} className="rounded-full border border-pine/20 px-4 py-2 text-xs font-semibold text-pine-deep hover:bg-pine/5">
+        <button onClick={onOpen} className="rounded-full border border-pine/20 px-3.5 py-1.5 text-xs font-semibold text-pine-deep hover:bg-pine/5">
           Open
         </button>
       </div>
@@ -1034,13 +1078,13 @@ function PendingApprovalCard({
   const t = rows[0];
   const [busy, setBusy] = useState<string | null>(null);
   return (
-    <div className="rounded-2xl border border-marigold/45 bg-paper p-4">
+    <div className="h-full rounded-2xl border border-marigold/45 bg-paper p-3.5">
       <div className="flex items-start justify-between gap-3">
         <button onClick={() => (groupSize > 1 ? onOpenGroup() : onOpenRow(t.id))}
-          className="text-left font-semibold text-ink hover:underline">{t.title}</button>
+          className="text-left text-[15px] font-semibold leading-snug text-ink hover:underline">{t.title}</button>
         <span className="shrink-0">{statusChipFor("pending")}</span>
       </div>
-      {t.description && <p className="mt-1 line-clamp-2 text-sm text-ink/70">{t.description}</p>}
+      {t.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70">{t.description}</p>}
       <p className="mt-2 text-xs text-ink/50">
         {t.dueAt && hasRealDueDate(t.tags) ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}
         {groupSize > 1 ? ` · ${rows.length} of ${groupSize} people waiting` : ""}
@@ -1081,14 +1125,14 @@ function PendingApprovalCard({
 
 function EventRow({ event, onOpen }: { event: ClubEvent; onOpen: () => void }) {
   return (
-    <button onClick={onOpen} className="block w-full rounded-2xl border border-pine/12 bg-paper p-4 text-left transition-colors hover:border-pine/30">
+    <button onClick={onOpen} className="block h-full w-full rounded-2xl border border-pine/12 bg-paper p-3.5 text-left transition-colors hover:border-pine/30">
       <div className="flex items-start justify-between gap-3">
-        <p className="font-semibold text-ink">{event.title}</p>
+        <p className="text-[15px] font-semibold leading-snug text-ink">{event.title}</p>
         <span className="shrink-0 rounded-full bg-sage/15 px-2.5 py-1 text-xs font-medium text-pine-deep">
           {event.allDay ? `${fmtDateOnly(event.startAt)} · all day` : fmtDateTime(event.startAt)}
         </span>
       </div>
-      {event.description && <p className="mt-1 line-clamp-2 text-sm text-ink/70">{event.description}</p>}
+      {event.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70">{event.description}</p>}
       <p className="mt-2 text-xs text-ink/45">
         {event.scopeKind === "club" && "Whole club"}
         {event.scopeKind === "all_newbies" && "All newbies"}
@@ -1104,9 +1148,9 @@ function GroupCard({ group, byline, onOpen, onArchive }: { group: TaskGroup; byl
   const done = group.rows.filter((r) => r.status === "complete").length;
   const total = group.rows.length;
   return (
-    <div className="rounded-2xl border border-pine/12 bg-paper p-4">
+    <div className="flex h-full flex-col rounded-2xl border border-pine/12 bg-paper p-3.5">
       <div className="flex items-start justify-between gap-3">
-        <p className="font-semibold text-ink">{t.title}</p>
+        <p className="text-[15px] font-semibold leading-snug text-ink">{t.title}</p>
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="rounded-full bg-sage/15 px-2.5 py-1 text-xs font-semibold text-pine-deep">{done}/{total} complete</span>
           {group.rows.some((r) => r.canManage) && (
@@ -1114,8 +1158,8 @@ function GroupCard({ group, byline, onOpen, onArchive }: { group: TaskGroup; byl
           )}
         </div>
       </div>
-      {t.description && <p className="mt-1 text-sm text-ink/70">{t.description}</p>}
-      <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+      {t.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70">{t.description}</p>}
+      <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs">
         <span className="text-ink/50">{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"} · {total} people{byline ? ` · ${byline}` : ""}</span>
         <button onClick={onOpen} className="rounded-full border border-pine/20 px-3 py-1 font-medium text-pine-deep hover:bg-pine/5">View / manage</button>
       </div>
@@ -1765,16 +1809,26 @@ function FullScreenModal({ title, onClose, children }: { title: string; onClose:
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-[45] flex flex-col bg-ink/60" role="dialog" aria-modal="true" aria-label={title}>
+    // z-[60]: above the site's fixed header (z-50), which used to cover the ✕.
+    <div className="fixed inset-0 z-[60] flex flex-col bg-ink/60" role="dialog" aria-modal="true" aria-label={title}>
       <div className="flex h-full w-full flex-col bg-paper">
         <div className="flex items-center justify-between border-b border-pine/10 px-6 py-4">
           <h3 className="font-display text-2xl font-semibold text-pine-deep">{title}</h3>
           <button data-tour="fs-close" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 pb-24">
           <div className="mx-auto max-w-5xl">{children}</div>
         </div>
       </div>
+      {/* Same floating Back as the rest of the site (BackButton.tsx). The
+          site-wide one sits under overlays, so this one closes the overlay. */}
+      <button onClick={onClose} aria-label="Close and go back" title="Back"
+        className="fixed bottom-6 left-6 z-[61] inline-flex items-center gap-2 rounded-full border border-pine/20 bg-paper/95 px-4 py-2.5 text-sm font-semibold text-pine-deep shadow-lg backdrop-blur transition-colors hover:bg-pine hover:text-paper">
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 12H5M11 6l-6 6 6 6" />
+        </svg>
+        <span className="hidden sm:inline">Back</span>
+      </button>
     </div>
   );
 }
