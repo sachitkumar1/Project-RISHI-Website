@@ -68,6 +68,18 @@ body {
   }
 }
 
+/* Attention pulse — new tasks / new submissions awaiting approval.
+   An overlay tints the card marigold twice (~3s total). Multiply blending keeps
+   the card's text fully legible through the tint. See AttentionPulse.tsx. */
+@keyframes attention-pulse {
+  0%, 100% { background-color: rgba(242, 200, 121, 0); box-shadow: 0 0 0 0 rgba(226, 160, 47, 0); }
+  45%, 55% { background-color: rgba(242, 200, 121, 0.75); box-shadow: 0 0 0 5px rgba(226, 160, 47, 0.45); }
+}
+.attention-pulse {
+  mix-blend-mode: multiply;
+  animation: attention-pulse 1.5s ease-in-out 2;
+}
+
 /* Respect users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html {

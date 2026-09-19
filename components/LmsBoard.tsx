@@ -5,6 +5,8 @@ import Avatar from "@/components/Avatar";
 import { hasRealDueDate, isImportMarker, isPlaceholderEmail, placeholderName } from "@/lib/lms/importedTasks";
 import RichTextEditor from "@/components/editor/RichTextEditor";
 import MessageComposer from "@/components/MessageComposer";
+import AttentionPulse from "@/components/AttentionPulse";
+import { useSeenMarks } from "@/components/useSeenMarks";
 
 // ----- types mirrored from the API JSON -----
 type Group = "E" | "R" | "W" | "H";
@@ -291,21 +293,69 @@ export default function LmsBoard() {
     () => assignedToMe.filter((t) => taskPasses(t, myArchive, myWindow)).sort((a, b) => (a.dueAt ?? "9999").localeCompare(b.dueAt ?? "9999")),
     [assignedToMe, myArchive, myWindow]
   );
+  /** A submission I can approve — mine or a co-lead's / co-NMT's (the same
+   *  people who get the "awaiting approval" email). Never my own work. */
+  const awaitingMe = useCallback(
+    (t: Task) => t.status === "pending" && !t.archived && !!t.canManage
+      && t.assigneeEmail.toLowerCase() !== myEmail.toLowerCase(),
+    [myEmail],
+  );
+  // "Pending Your Approval": one card per TASK (groupId), listing whoever on it
+  // is waiting. Deliberately ignores the Period filter — a submission waiting on
+  // you is urgent whatever its due date. Oldest submission first.
+  const pendingApprovalGroups = useMemo(
+    () => groupByBatch(tasks.filter(awaitingMe))
+      .sort((a, b) =>
+        Math.min(...a.rows.map((r) => Date.parse(r.submittedAt ?? "") || Infinity))
+        - Math.min(...b.rows.map((r) => Date.parse(r.submittedAt ?? "") || Infinity))),
+    [tasks, awaitingMe],
+  );
+  const groupSize = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of tasks) { const k = t.groupId || t.id; m.set(k, (m.get(k) ?? 0) + 1); }
+    return m;
+  }, [tasks]);
+  // A task MOVES to Pending Your Approval: it stays in "Assigned by me" / "by my
+  // co-leads" only while someone on it still has outstanding work that ISN'T a
+  // submission waiting on me.
+  const stillActiveElsewhere = useCallback(
+    (r: Task) => taskPasses(r, myArchive, myWindow) && !awaitingMe(r),
+    [myArchive, myWindow, awaitingMe],
+  );
   const activeByMeGroups = useMemo(() => {
     const rows = tasks.filter(
       (t) => t.assignerEmail.toLowerCase() === myEmail.toLowerCase()
         && t.assigneeEmail.toLowerCase() !== myEmail.toLowerCase()
     );
-    return groupByBatch(rows).filter((g) => g.rows.some((r) => taskPasses(r, myArchive, myWindow)));
-  }, [tasks, myEmail, myArchive, myWindow]);
+    return groupByBatch(rows).filter((g) => g.rows.some(stillActiveElsewhere));
+  }, [tasks, myEmail, stillActiveElsewhere]);
   // Tasks assigned by my CO-LEADS / CO-NMT to other people (visible via shared control).
   const coLeadGroups = useMemo(() => {
     const rows = tasks.filter(
       (t) => t.assignerEmail.toLowerCase() !== myEmail.toLowerCase()
         && t.assigneeEmail.toLowerCase() !== myEmail.toLowerCase()
     );
-    return groupByBatch(rows).filter((g) => g.rows.some((r) => taskPasses(r, myArchive, myWindow)));
-  }, [tasks, myEmail, myArchive, myWindow]);
+    return groupByBatch(rows).filter((g) => g.rows.some(stillActiveElsewhere));
+  }, [tasks, myEmail, stillActiveElsewhere]);
+
+  // ---- "first time on screen" pulses ----
+  // a:<id>              a task handed to me by someone else
+  // p:<id>:<submitted>  a submission awaiting my approval (re-submitting after
+  //                     being sent back is a new key, so it pulses again)
+  const seenKey = {
+    assigned: (t: Task) => `a:${t.id}`,
+    pending: (t: Task) => `p:${t.id}:${t.submittedAt ?? ""}`,
+  };
+  const liveSeenKeys = useMemo(() => {
+    if (!meta || loading) return null; // wait for real data before seeding
+    const keys: string[] = [];
+    for (const t of tasks) {
+      if (t.assigneeEmail.toLowerCase() === myEmail.toLowerCase()) keys.push(`a:${t.id}`);
+      if (t.status === "pending") keys.push(`p:${t.id}:${t.submittedAt ?? ""}`);
+    }
+    return keys;
+  }, [meta, loading, tasks, myEmail]);
+  const { isNew, markSeen } = useSeenMarks(myEmail, liveSeenKeys);
   const pastTaskGroups = useMemo(
     () => groupByBatch(tasks)
       .filter((g) => g.rows.every((r) => r.status === "complete" || r.archived))
@@ -534,15 +584,53 @@ export default function LmsBoard() {
       </div>
       {syncMsg && <p className="mt-2 text-sm text-ink/60">{syncMsg}</p>}
 
+      {pendingApprovalGroups.length > 0 && (
+        <section data-tour="pending-approval" className="mt-10">
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h3 className="font-display text-xl font-semibold text-pine-deep">Pending Your Approval</h3>
+            <span className="rounded-full bg-marigold-soft px-2.5 py-0.5 text-xs font-semibold text-marigold-deep">
+              {pendingApprovalGroups.length} {pendingApprovalGroups.length === 1 ? "task" : "tasks"}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-ink/50">
+            Marked done and waiting on you. Open one to read the submission, approve it, or send it back.
+          </p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {pendingApprovalGroups.map((g) => {
+              const keys = g.rows.map(seenKey.pending);
+              return (
+                <AttentionPulse key={g.key} active={keys.some(isNew)} onSeen={() => markSeen(keys)}>
+                  <PendingApprovalCard
+                    rows={g.rows}
+                    groupSize={groupSize.get(g.key) ?? g.rows.length}
+                    byline={g.head.assignerEmail.toLowerCase() !== myEmail.toLowerCase() ? `by ${nameOf(g.head.assignerEmail)}` : undefined}
+                    nameOf={nameOf} avatarOf={avatarOf}
+                    onOpenRow={(id) => setDetailTaskId(id)}
+                    onOpenGroup={() => setOpenGroupKey(g.key)}
+                    onApprove={(id) => act(id, "approve")} />
+                </AttentionPulse>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <div data-tour="my-tasks" className="mt-10 grid gap-8 lg:grid-cols-2">
         <section>
           <h3 className="font-display text-xl font-semibold text-pine-deep">My tasks</h3>
           <div className="mt-4 space-y-3">
             {activeToMe.length === 0 && <Empty>No active tasks assigned to you. Nice.</Empty>}
-            {activeToMe.map((t) => (
-              <TaskRow key={t.id} task={t} role="assignee" onOpen={() => setDetailTaskId(t.id)}
-                onComposeEmail={() => setComposeTask(t)} />
-            ))}
+            {activeToMe.map((t) => {
+              // Self-assigned work isn't news to anyone — only pulse a hand-off.
+              const fromSomeoneElse = t.assignerEmail.toLowerCase() !== myEmail.toLowerCase();
+              return (
+                <AttentionPulse key={t.id} active={fromSomeoneElse && isNew(seenKey.assigned(t))}
+                  onSeen={() => markSeen([seenKey.assigned(t)])}>
+                  <TaskRow task={t} role="assignee" onOpen={() => setDetailTaskId(t.id)}
+                    onComposeEmail={() => setComposeTask(t)} />
+                </AttentionPulse>
+              );
+            })}
           </div>
 
           {activeByMeGroups.length > 0 && (
@@ -927,6 +1015,65 @@ function TaskRow({
         <button onClick={onOpen} className="rounded-full border border-pine/20 px-4 py-2 text-xs font-semibold text-pine-deep hover:bg-pine/5">
           Open
         </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One task awaiting the viewer's approval. A shared task (several assignees)
+ * stays ONE card, listing each person whose submission is waiting.
+ */
+function PendingApprovalCard({
+  rows, groupSize, byline, nameOf, avatarOf, onOpenRow, onOpenGroup, onApprove,
+}: {
+  rows: Task[]; groupSize: number; byline?: string;
+  nameOf: (email: string) => string; avatarOf: (email: string) => string | null;
+  onOpenRow: (taskId: string) => void; onOpenGroup: () => void; onApprove: (taskId: string) => Promise<void> | void;
+}) {
+  const t = rows[0];
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <div className="rounded-2xl border border-marigold/45 bg-paper p-4">
+      <div className="flex items-start justify-between gap-3">
+        <button onClick={() => (groupSize > 1 ? onOpenGroup() : onOpenRow(t.id))}
+          className="text-left font-semibold text-ink hover:underline">{t.title}</button>
+        <span className="shrink-0">{statusChipFor("pending")}</span>
+      </div>
+      {t.description && <p className="mt-1 line-clamp-2 text-sm text-ink/70">{t.description}</p>}
+      <p className="mt-2 text-xs text-ink/50">
+        {t.dueAt && hasRealDueDate(t.tags) ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}
+        {groupSize > 1 ? ` · ${rows.length} of ${groupSize} people waiting` : ""}
+        {byline ? <span className="text-ink/40"> · {byline}</span> : null}
+      </p>
+      <div className="mt-3 space-y-2">
+        {rows.map((r) => {
+          const late = !!(r.submittedAt && r.dueAt && hasRealDueDate(r.tags) && new Date(r.submittedAt) > new Date(r.dueAt));
+          return (
+            <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-marigold-soft/15 px-3 py-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <Avatar src={avatarOf(r.assigneeEmail)} name={nameOf(r.assigneeEmail)} size={24} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-ink">{nameOf(r.assigneeEmail)}</p>
+                  {r.submittedAt && (
+                    <p className={`text-[11px] ${late ? "font-semibold text-red-600" : "text-ink/50"}`}>
+                      Submitted {fmtDateTime(r.submittedAt)}{late ? " (late)" : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-1.5">
+                <button onClick={() => onOpenRow(r.id)}
+                  className="rounded-full border border-pine/20 px-3 py-1 text-xs font-medium text-pine-deep hover:bg-pine/5">Review</button>
+                <button disabled={busy !== null}
+                  onClick={async () => { setBusy(r.id); try { await onApprove(r.id); } finally { setBusy(null); } }}
+                  className="rounded-full bg-marigold px-3 py-1 text-xs font-semibold text-pine-deep hover:bg-marigold-deep hover:text-paper disabled:opacity-60">
+                  {busy === r.id ? "Approving…" : "Approve"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
