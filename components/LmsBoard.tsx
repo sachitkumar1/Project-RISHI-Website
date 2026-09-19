@@ -593,7 +593,7 @@ export default function LmsBoard() {
             </span>
           </div>
           <p className="mt-1 text-xs text-ink/50">
-            Marked done and waiting on you. Open one to read the submission, approve it, or send it back.
+
           </p>
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {pendingApprovalGroups.map((g) => {
