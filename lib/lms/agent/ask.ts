@@ -20,6 +20,7 @@ import {
 } from "./config";
 import { anthropicGenerate, geminiGenerate, ModelError, type Generation } from "./models";
 import { retrieve, type QueryEmbedder, type Source } from "./retrieve";
+import { indexBacklog } from "./admin";
 
 export type Turn = { q: string; a: string };
 export type AskResult =
@@ -209,9 +210,15 @@ export async function ask(
   const remaining = (n: number) => (unlimited ? 999 : Math.max(0, cfg.dailyLimit - n));
 
   if (!sources.length) {
+    // Tell the truth about WHY nothing was found: an index that's still being
+    // built is not the same as a question the files can't answer.
+    const backlog = await indexBacklog();
+    const building = backlog.chunks === 0 || backlog.filesPending > 50;
     return {
       ok: true,
-      answer: "I couldn't find anything about that in the files you have access to. Try different words — names, places, or the kind of document (meeting notes, survey, budget) often help.",
+      answer: building
+        ? "The archive is still being indexed, so I can't search it properly yet. It builds itself in the background as questions come in — please try again in a few minutes."
+        : "I couldn't find anything about that in the files you have access to. Try different words — names, places, or the kind of document (meeting notes, survey, budget) often help.",
       sources: [], model: null, remainingToday: remaining(used),
     };
   }

@@ -30,7 +30,8 @@ export default function AgentSettingsPanel() {
   async function build() {
     setBusy("build"); setMsg(null);
     try {
-      // Each call works for ~50s; keep going while there's work left (max 6).
+      // Each call works for ~50s (about 80 embeddings, Google's free pace);
+      // keep going while there's work left, up to ~5 minutes per click.
       for (let i = 0; i < 6; i++) {
         const r = await fetch("/api/lms/agent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "build" }) });
         const d = await r.json().catch(() => null);
@@ -38,7 +39,10 @@ export default function AgentSettingsPanel() {
         setMsg(`Passages: ${d.chunk.chunks ?? 0} new. Embedded ${d.embed.embedded ?? 0}` +
           (d.embed.stoppedBy ? ` — paused: ${d.embed.stoppedBy}` : "") + ".");
         await load();
-        if ((d.chunk.remaining ?? 0) === 0 && ((d.embed.remaining ?? 0) === 0 || d.embed.stoppedBy)) break;
+        // Keep going through pacing pauses (Google's per-minute limit); stop when
+        // everything is done or embedding is parked for the day.
+        const pacing = /pacing|another build step/.test(d.embed.stoppedBy ?? "");
+        if ((d.chunk.remaining ?? 0) === 0 && ((d.embed.remaining ?? 0) === 0 || (d.embed.stoppedBy && !pacing))) break;
       }
     } catch (e) { setMsg(e instanceof Error ? e.message : "Build failed."); }
     finally { setBusy(null); }

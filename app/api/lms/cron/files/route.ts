@@ -1,7 +1,7 @@
 import { syncDrive } from "@/lib/lms/drive";
 import { indexContent } from "@/lib/lms/indexer";
 import { startCronJob, type CronOutcome } from "@/lib/lms/cron";
-import { buildIndexStep } from "@/lib/lms/agent/admin";
+import { buildIndexStepLocked } from "@/lib/lms/agent/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,7 +36,7 @@ async function job(): Promise<CronOutcome> {
 
   // Then keep the Ask agent's passages in step with whatever time is left.
   // Search keeps working on the previous passages until this catches up.
-  const agent = left() > 5_000 ? await buildIndexStep(left()) : null;
+  const agent = left() > 5_000 ? await buildIndexStepLocked(left()) : null;
 
   return {
     ok: index.ok,

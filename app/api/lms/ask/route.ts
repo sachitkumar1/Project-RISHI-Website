@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
+import { buildIndexStepLocked, indexBacklog } from "@/lib/lms/agent/admin";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { ask, type Turn } from "@/lib/lms/agent/ask";
 import { agentConfig } from "@/lib/lms/agent/config";
@@ -17,6 +19,7 @@ export async function GET() {
 
 /** Ask a question. Body: { question, history?: [{ q, a }] } */
 export async function POST(req: Request) {
+  const started = Date.now();
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
 
@@ -36,6 +39,15 @@ export async function POST(req: Request) {
   try {
     const result = await ask(me, question, history);
     const status = result.ok ? 200 : result.code === "limit" ? 429 : result.code === "no_model" ? 503 : 500;
+    // Self-healing index: if files are still waiting to be chunked or embedded,
+    // spend what's left of this request's 60s working through them after the
+    // answer is sent. The index never depends on one button or one cron job.
+    waitUntil((async () => {
+      try {
+        const b = await indexBacklog();
+        if (b.filesPending > 0 || b.embedPending > 0) await buildIndexStepLocked(55_000 - (Date.now() - started));
+      } catch (e) { console.error("ask: background index step", e); }
+    })());
     return NextResponse.json(result, { status });
   } catch (e) {
     console.error("ask:", e);

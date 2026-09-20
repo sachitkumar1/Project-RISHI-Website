@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
-import { agentStatus, buildIndexStep, testModels } from "@/lib/lms/agent/admin";
+import { agentStatus, buildIndexStepLocked, testModels } from "@/lib/lms/agent/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,7 +26,8 @@ export async function POST(req: Request) {
   if ("error" in g) return NextResponse.json({ error: g.error }, { status: g.status });
   const { action } = (await req.json().catch(() => ({}))) as { action?: string };
   if (action === "build") {
-    const r = await buildIndexStep(50_000);
+    const r = await buildIndexStepLocked(50_000);
+    if (!r) return NextResponse.json({ ok: true, busy: true, chunk: { chunks: 0 }, embed: { embedded: 0, stoppedBy: "another build step is running — try again in a minute" } });
     return NextResponse.json(r, { status: r.ok ? 200 : 500 });
   }
   if (action === "test") return NextResponse.json(await testModels());

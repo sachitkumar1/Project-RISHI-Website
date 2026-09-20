@@ -50,6 +50,40 @@ export async function agentStatus(): Promise<AgentStatus> {
   };
 }
 
+/** How much of the library is searchable yet. Two tiny count queries. */
+export async function indexBacklog(): Promise<{ chunks: number; filesPending: number; embedPending: number }> {
+  if (!usingSupabase) return { chunks: 0, filesPending: 0, embedPending: 0 };
+  const cfg = agentConfig();
+  const [chunks, filesPending, embedPending] = await Promise.all([
+    count(sb().from("lms_file_chunks").select("id", { count: "exact", head: true })),
+    count(sb().from("lms_files").select("id", { count: "exact", head: true }).is("chunked_at", null)),
+    cfg.geminiKey
+      ? count(sb().from("lms_file_chunks").select("id", { count: "exact", head: true }).or(`embedding.is.null,embed_model.neq.${cfg.embedModel}`))
+      : Promise.resolve(0),
+  ]);
+  return { chunks, filesPending, embedPending };
+}
+
+const BUILD_LOCK = "ai:build-lock";
+
+/**
+ * One bounded build step, skipped if another is already running (a question,
+ * the cron and the Settings button can all trigger this). The lock expires on
+ * its own, so a step killed midway can't block building forever.
+ */
+export async function buildIndexStepLocked(budgetMs: number) {
+  if (!usingSupabase || budgetMs < 5_000) return null;
+  const { data } = await sb().from("lms_settings").select("value").eq("key", BUILD_LOCK).maybeSingle();
+  if (data?.value && Date.now() - Date.parse(data.value) < 75_000) return null;
+  const now = new Date().toISOString();
+  await sb().from("lms_settings").upsert({ key: BUILD_LOCK, value: now, updated_at: now }, { onConflict: "key" });
+  try {
+    return await buildIndexStep(budgetMs);
+  } finally {
+    await sb().from("lms_settings").delete().eq("key", BUILD_LOCK);
+  }
+}
+
 /** Chunk, then embed, within one request's budget. Call until nothing remains. */
 export async function buildIndexStep(budgetMs = 50_000) {
   const t0 = Date.now();
