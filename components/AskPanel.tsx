@@ -325,7 +325,7 @@ export default function AskPanel() {
             {thread.length === 0 && status?.enabled && (
               <section className="pt-6 sm:pt-12">
                 <h2 className="max-w-[18ch] font-display text-4xl font-semibold leading-[1.1] text-paper sm:text-5xl">
-                  Ask the club&apos;s archive anything.
+                  Ask Anything RISHI
                 </h2>
                 <p className="mt-4 max-w-[58ch] text-[15px] leading-7 text-paper/60">
                   RISHI AI reads across every document you have access to — project notes, partner calls, surveys,
