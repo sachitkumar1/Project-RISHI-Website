@@ -328,8 +328,8 @@ export default function AskPanel() {
                   Ask Anything RISHI
                 </h2>
                 <p className="mt-4 max-w-[58ch] text-[15px] leading-7 text-paper/60">
-                  RISHI AI reads across every document you have access to — project notes, partner calls, surveys,
-                  budgets, meeting agendas — and answers with a citation for every claim.
+                  RISHI AI reads across every document you have access to, such project notes, partner calls, surveys,
+                  budgets, meeting agendas, and more, and answers with a citation for every claim.
                 </p>
                 <div className="mt-8 grid gap-2.5 sm:grid-cols-2">
                   {EXAMPLES.map((e) => (
