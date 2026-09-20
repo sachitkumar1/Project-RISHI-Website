@@ -1,6 +1,7 @@
 import { syncDrive } from "@/lib/lms/drive";
 import { indexContent } from "@/lib/lms/indexer";
 import { startCronJob, type CronOutcome } from "@/lib/lms/cron";
+import { buildIndexStep } from "@/lib/lms/agent/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ export const maxDuration = 60;
  * Safe to run as often as you like: syncDrive() only ever upserts and flags,
  * never deletes, and a failed walk aborts before touching the index.
  *
- * Answers 202 at once and runs in the background (see lib/lms/cron.ts) —
+ * Answers 200 at once and runs in the background (see lib/lms/cron.ts) —
  * cron-job.org gives up after 30s and this takes longer.
  */
 async function job(): Promise<CronOutcome> {
@@ -28,14 +29,24 @@ async function job(): Promise<CronOutcome> {
   // Then extract text for whatever's left of the 60s budget, leaving headroom.
   // A bigger Drive makes the walk longer, so the text budget shrinks rather than
   // the whole run overshooting. Anything left over goes to the next run.
-  const budget = Math.min(20_000, 52_000 - (Date.now() - started));
+  const left = () => 52_000 - (Date.now() - started);
+  const budget = Math.min(20_000, left());
   const index = budget > 3_000 ? await indexContent(budget) : { ok: true, skipped: "no time left this run" };
   const remaining = "remaining" in index ? index.remaining : undefined;
+
+  // Then keep the Ask agent's passages in step with whatever time is left.
+  // Search keeps working on the previous passages until this catches up.
+  const agent = left() > 5_000 ? await buildIndexStep(left()) : null;
+
   return {
     ok: index.ok,
     summary: `synced ${sync.indexed ?? 0} items in ${sync.folders ?? 0} folders, ${sync.removed ?? 0} flagged removed; ` +
-      `text: ${"indexed" in index ? index.indexed ?? 0 : 0} extracted, ${remaining ?? "?"} remaining`,
-    detail: { sync, index },
+      `text: ${"indexed" in index ? index.indexed ?? 0 : 0} extracted, ${remaining ?? "?"} remaining; ` +
+      (agent
+        ? `ask: ${agent.chunk.chunks ?? 0} passages, ${agent.embed.embedded ?? 0} embedded` +
+          `${agent.embed.stoppedBy ? ` (embedding paused: ${agent.embed.stoppedBy.slice(0, 60)})` : ""}`
+        : "ask: no time left this run"),
+    detail: { sync, index, agent },
   };
 }
 

@@ -341,7 +341,7 @@ Two endpoints, both authorised with `Authorization: Bearer <CRON_SECRET>`:
 | `/api/lms/cron/files` | hourly | Syncs the Drive mirror, then extracts file text |
 
 The files job takes longer than cron-job.org's 30-second limit, so it answers
-**202 immediately** and finishes in the background (Vercel `waitUntil`, up to
+**200 immediately** and finishes in the background (Vercel `waitUntil`, up to
 60s; see `lib/lms/cron.ts`). Its result is saved in `lms_settings` as
 `cron:files` and returned as `previous` on the next call, so the job history in
 cron-job.org shows whether the last run worked. Add `?wait=1` to run it inline

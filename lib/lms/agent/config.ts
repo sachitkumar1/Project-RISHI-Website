@@ -1,0 +1,103 @@
+/**
+ * Configuration for the "Ask" agent. Everything is an environment variable with
+ * a sensible default, so a model id or limit can change without a code change.
+ *
+ * Required (Secret in Vercel):
+ *   GEMINI_API_KEY      — Google AI Studio key (free tier). Answers + embeddings.
+ *   ANTHROPIC_API_KEY   — optional. Enables the paid Haiku step.
+ * Optional:
+ *   AI_PRIMARY_MODELS       default "gemini-3.7-flash,gemini-3.5-flash" — free Flash
+ *                           models tried in order. Each has its OWN daily free
+ *                           quota, so listing two roughly doubles free capacity.
+ *                           (gemini-3.8-flash was timing out when this was built.)
+ *   AI_FALLBACK_MODEL       default gemini-3.5-flash-lite  (free, fast, large quota)
+ *   ANTHROPIC_WORKSPACE_ID  needed only if the Anthropic key isn't workspace-scoped
+ *   AI_HAIKU_MODEL          default claude-haiku-4-5
+ *   AI_EMBED_MODEL          default gemini-embedding-001
+ *   AI_HAIKU_MONTHLY_USD    default 5
+ *   AI_DAILY_LIMIT          default 15 questions per member per day
+ *   GEMINI_API_BASE / ANTHROPIC_API_BASE — override the API hosts (testing).
+ */
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+const num = (v: string | undefined, d: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : d;
+};
+
+export const agentConfig = () => ({
+  geminiKey: process.env.GEMINI_API_KEY || "",
+  anthropicKey: process.env.ANTHROPIC_API_KEY || "",
+  primaryModels: (process.env.AI_PRIMARY_MODELS || process.env.AI_PRIMARY_MODEL || "gemini-3.7-flash,gemini-3.5-flash")
+    .split(",").map((s) => s.trim()).filter(Boolean),
+  anthropicWorkspace: process.env.ANTHROPIC_WORKSPACE_ID || "",
+  fallbackModel: process.env.AI_FALLBACK_MODEL || "gemini-3.5-flash-lite",
+  haikuModel: process.env.AI_HAIKU_MODEL || "claude-haiku-4-5",
+  embedModel: process.env.AI_EMBED_MODEL || "gemini-embedding-001",
+  haikuMonthlyUsd: num(process.env.AI_HAIKU_MONTHLY_USD, 5),
+  dailyLimit: num(process.env.AI_DAILY_LIMIT, 15),
+  geminiBase: (process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com").replace(/\/$/, ""),
+  anthropicBase: (process.env.ANTHROPIC_API_BASE || "https://api.anthropic.com").replace(/\/$/, ""),
+});
+
+/** Haiku 4.5 list price, USD per token. Used for the spend ledger. If Anthropic
+ *  changes it, update here — the prepaid balance is the real backstop anyway. */
+export const HAIKU_PRICE = { input: 1 / 1_000_000, output: 5 / 1_000_000 };
+
+export const EMBED_DIMS = 768;
+/** A question must finish inside Vercel's 60s. */
+export const ANSWER_DEADLINE_MS = 50_000;
+/** An overloaded / timed-out model is skipped for this long. */
+export const BUSY_BACKOFF_MS = 10 * 60_000;
+export const MAX_ANSWER_TOKENS = 1200;
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const usingSupabase = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+
+let _client: SupabaseClient | null = null;
+export function sb(): SupabaseClient {
+  if (!_client) {
+    _client = createClient(SUPABASE_URL as string, SUPABASE_SERVICE_ROLE_KEY as string, {
+      auth: { persistSession: false },
+    });
+  }
+  return _client;
+}
+
+// ---- Pacific time --------------------------------------------------------------
+// Google's free quotas reset at midnight Pacific, and the club lives there, so
+// "today" and "this month" are Pacific. Every timestamp produced here carries an
+// explicit offset — never a naive local time.
+const TZ = "America/Los_Angeles";
+
+function pacificParts(d: Date) {
+  const f = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", timeZoneName: "longOffset",
+  });
+  const parts = Object.fromEntries(f.formatToParts(d).map((p) => [p.type, p.value]));
+  // timeZoneName looks like "GMT-07:00".
+  const offset = (parts.timeZoneName || "GMT-08:00").replace("GMT", "") || "+00:00";
+  return { y: parts.year, m: parts.month, d: parts.day, offset };
+}
+
+/** Midnight Pacific at the start of the given day, as a UTC ISO string. */
+export function startOfPacificDay(now = new Date()): string {
+  const p = pacificParts(now);
+  return new Date(`${p.y}-${p.m}-${p.d}T00:00:00${p.offset}`).toISOString();
+}
+
+/** Midnight Pacific on the 1st of the current month, as a UTC ISO string. */
+export function startOfPacificMonth(now = new Date()): string {
+  const p = pacificParts(now);
+  const first = new Date(`${p.y}-${p.m}-01T12:00:00Z`); // noon avoids DST edges
+  const q = pacificParts(first);
+  return new Date(`${p.y}-${p.m}-01T00:00:00${q.offset}`).toISOString();
+}
+
+/** The next midnight Pacific — when Google's daily free quotas reset. */
+export function nextPacificMidnight(now = new Date()): string {
+  const start = new Date(startOfPacificDay(now)).getTime();
+  // 26h then snap back to that day's midnight: correct across DST changes.
+  return startOfPacificDay(new Date(start + 26 * 3_600_000));
+}

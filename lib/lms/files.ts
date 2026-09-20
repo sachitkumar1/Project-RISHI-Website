@@ -247,6 +247,9 @@ type Resolved = {
   nodes: FileNode[];
   byKey: Map<string, FileNode>;
   effective: Map<string, VisibilityRule>; // folder key → the rule actually in force
+  /** Folders-only index: keys of folders that directly contain at least one
+   *  non-folder item. Absent on the full index, whose nodes include the files. */
+  withFiles?: Set<string>;
 };
 
 /** Load the whole index and resolve every folder's effective audience. */
@@ -256,7 +259,95 @@ export async function loadIndex(): Promise<Resolved> {
     listVisibilityRules(),
     getDefaultAudience(),
   ]);
+  return resolveIndex(nodes, rules, fallback);
+}
 
+/**
+ * FOLDERS-ONLY index — same rules, a fraction of the data.
+ *
+ * Every visibility rule is resolved by walking up through parent FOLDERS; files
+ * never take part. So resolving from the ~370 folders gives exactly the same
+ * answers as resolving from all ~4,600 rows, without downloading every file's
+ * details (≈2.4 MB) on each request. Both indexes go through resolveIndex()
+ * below, so they cannot drift apart.
+ *
+ * withFiles: whether to also learn which folders directly hold a file — needed
+ * only by the folder browser's "hide a folder if nothing inside is visible".
+ */
+export async function loadFolderIndex(opts: { withFiles?: boolean } = {}): Promise<Resolved> {
+  const [nodes, rules, fallback, withFiles] = await Promise.all([
+    folderRows(),
+    listVisibilityRules(),
+    getDefaultAudience(),
+    opts.withFiles ? foldersWithFiles() : Promise.resolve(undefined),
+  ]);
+  const idx = resolveIndex(nodes, rules, fallback);
+  if (withFiles) idx.withFiles = withFiles;
+  return idx;
+}
+
+const NODE_COLUMNS = "id,source,drive_id,parent_id,name,mime_type,kind,size_bytes,web_view_link,year,path,modified_at,uploaded_by";
+
+/** Every folder, paged (same reasoning as allRows). */
+async function folderRows(): Promise<FileNode[]> {
+  if (!usingSupabase) return SEED.filter((n) => n.kind === "folder");
+  const out: FileNode[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await sb()
+      .from("lms_files").select(NODE_COLUMNS)
+      .eq("deleted", false).eq("kind", "folder")
+      .order("name")
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    out.push(...(data ?? []).map(toNode));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
+
+/** Keys of folders that directly contain a non-folder item. One small database
+ *  call (lms_folders_with_files, from migration-agent.sql); if that function
+ *  isn't installed yet, falls back to paging through just the parent ids. */
+async function foldersWithFiles(): Promise<Set<string>> {
+  if (!usingSupabase) return new Set(SEED.filter((n) => n.kind !== "folder" && n.parentId).map((n) => n.parentId as string));
+  const rpc = await sb().rpc("lms_folders_with_files");
+  if (!rpc.error && Array.isArray(rpc.data)) {
+    return new Set((rpc.data as { parent_id: string | null }[]).map((r) => r.parent_id).filter((p): p is string => !!p));
+  }
+  const out = new Set<string>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await sb()
+      .from("lms_files").select("parent_id")
+      .eq("deleted", false).neq("kind", "folder").not("parent_id", "is", null)
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    for (const r of data ?? []) out.add(r.parent_id as string);
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
+
+/** The files and shortcuts directly inside one folder (paged). */
+async function fileRowsIn(folderKey: string): Promise<FileNode[]> {
+  if (!usingSupabase) return SEED.filter((n) => n.kind !== "folder" && n.parentId === folderKey);
+  const out: FileNode[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await sb()
+      .from("lms_files").select(NODE_COLUMNS)
+      .eq("deleted", false).neq("kind", "folder").eq("parent_id", folderKey)
+      .order("name")
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    out.push(...(data ?? []).map(toNode));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
+
+/** Resolve every folder's effective audience from a set of nodes. Shared by
+ *  both indexes — the ONE place inheritance is worked out. */
+function resolveIndex(nodes: FileNode[], rules: Map<string, VisibilityRule>, fallback: FileAudience): Resolved {
   const byKey = new Map<string, FileNode>();
   for (const n of nodes) byKey.set(nodeKey(n), n);
 
@@ -296,6 +387,16 @@ function canSee(m: Member, idx: Resolved, folderKey: string | null, fallback: Fi
 }
 
 /**
+ * "Can this member see a file that lives in this folder?" — the exact rule the
+ * browser and searchFiles apply, for callers outside this module (the Ask
+ * agent). Loads the index once; the returned check is cheap to call per file.
+ */
+export async function fileVisibilityCheck(m: Member): Promise<(parentId: string | null) => boolean> {
+  const [idx, fallback] = await Promise.all([loadFolderIndex(), getDefaultAudience()]);
+  return (parentId) => canSee(m, idx, parentId, fallback);
+}
+
+/**
  * Should this folder appear at all?
  *
  * Being allowed to open a folder isn't enough — a folder whose contents are all
@@ -311,6 +412,9 @@ function visibleFolder(m: Member, idx: Resolved, folder: FileNode, fallback: Fil
   const childrenOf = (key: string) => idx.nodes.filter((n) => n.parentId === key);
   const reachable = (key: string, depth = 0): boolean | null => {
     if (depth > 12) return null;
+    // Folders-only index: a file directly inside means "something to see",
+    // exactly as finding a file among the children does on the full index.
+    if (idx.withFiles?.has(key)) return true;
     const kids = childrenOf(key);
     if (kids.length === 0) return null; // genuinely empty — not a permission matter
     let sawSomething = false;
@@ -336,7 +440,9 @@ export type FolderView = {
 
 /** One folder's visible contents, plus its breadcrumb trail. */
 export async function listFolder(m: Member, folderKey: string | null): Promise<FolderView | null> {
-  const idx = await loadIndex();
+  // Folders-only index plus this one folder's files — not every file in the
+  // club's Drive on every click.
+  const idx = await loadFolderIndex({ withFiles: true });
   const fallback = await getDefaultAudience();
 
   const decorate = (n: FileNode): FileNode => {
@@ -375,11 +481,14 @@ export async function listFolder(m: Member, folderKey: string | null): Promise<F
   const folderRule = ruleFor(idx, folderKey, fallback);
   const mayClear = canDeleteInFolder(m, folder, folderRule);
 
-  const children = idx.nodes
-    .filter((n) => n.parentId === folderKey)
+  const children = [...idx.nodes.filter((n) => n.parentId === folderKey), ...(await fileRowsIn(folderKey))]
     .filter((n) => (n.kind === "folder" ? visibleFolder(m, idx, n, fallback) : true))
+    // Folders first, then everything else (files AND shortcuts) by name. The
+    // old comparator had no rule between "file" and "shortcut", so their order
+    // depended on how rows arrived from the database. Same-named files (Drive
+    // allows them — 19 folders here have some) fall back to a fixed id order.
     .sort((a, b) =>
-      a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "folder" ? -1 : 1,
+      (a.kind === "folder" ? 0 : 1) - (b.kind === "folder" ? 0 : 1) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
     )
     .map((n) => ({
       ...decorate(n),
@@ -493,7 +602,7 @@ function snippetAround(text: string, term: string, opts: SearchOpts = {}): strin
 
 /** Every folder, for the visibility editor in Settings. */
 export async function listFoldersForSettings(): Promise<FileNode[]> {
-  const idx = await loadIndex();
+  const idx = await loadFolderIndex();
   const rules = await listVisibilityRules();
   const fallback = await getDefaultAudience();
   return idx.nodes

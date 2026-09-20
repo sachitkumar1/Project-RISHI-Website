@@ -1,0 +1,44 @@
+import { NextResponse } from "next/server";
+import { getCurrentMember } from "@/lib/lms/currentUser";
+import { ask, type Turn } from "@/lib/lms/agent/ask";
+import { agentConfig } from "@/lib/lms/agent/config";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+/** Whether Ask is switched on, for the page to render the right state. */
+export async function GET() {
+  const me = await getCurrentMember();
+  if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+  const cfg = agentConfig();
+  return NextResponse.json({ enabled: !!(cfg.geminiKey || cfg.anthropicKey), dailyLimit: cfg.dailyLimit });
+}
+
+/** Ask a question. Body: { question, history?: [{ q, a }] } */
+export async function POST(req: Request) {
+  const me = await getCurrentMember();
+  if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+
+  let body: { question?: unknown; history?: unknown };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Bad request" }, { status: 400 }); }
+  const question = typeof body.question === "string" ? body.question.trim() : "";
+  if (question.length < 3) return NextResponse.json({ error: "Ask a question first." }, { status: 400 });
+
+  // History comes from the browser; keep it small and shaped.
+  const history: Turn[] = Array.isArray(body.history)
+    ? body.history
+        .filter((t): t is Turn => !!t && typeof (t as Turn).q === "string" && typeof (t as Turn).a === "string")
+        .slice(-2)
+        .map((t) => ({ q: t.q.slice(0, 1000), a: t.a.slice(0, 2000) }))
+    : [];
+
+  try {
+    const result = await ask(me, question, history);
+    const status = result.ok ? 200 : result.code === "limit" ? 429 : result.code === "no_model" ? 503 : 500;
+    return NextResponse.json(result, { status });
+  } catch (e) {
+    console.error("ask:", e);
+    return NextResponse.json({ ok: false, code: "error", error: "Something went wrong answering that." }, { status: 500 });
+  }
+}

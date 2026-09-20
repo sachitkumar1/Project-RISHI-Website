@@ -504,3 +504,23 @@ select
      or (source = 'task' and drive_id like 'tasks:%')) as task_folders,
   (select count(*) from lms_file_visibility where folder_id like 'tasks%') as task_rules;
 
+-- ============================================================================
+--  Project RISHI — guided tour
+--  Run once in the Supabase SQL editor. Safe to re-run.
+-- ----------------------------------------------------------------------------
+--  Records who has finished the welcome tour, so it runs automatically the
+--  first time someone signs in and never surprises them again. Stored per
+--  member rather than in the browser so it follows them across devices and
+--  can't be wiped by clearing site data.
+--
+--  Nobody needs to be signed out: every existing member has no timestamp yet,
+--  so the tour starts for them on their next visit.
+-- ============================================================================
+
+alter table lms_profiles add column if not exists tour_completed_at timestamptz;
+
+-- Verify: expect one row.
+select column_name, data_type
+from information_schema.columns
+where table_name = 'lms_profiles' and column_name = 'tour_completed_at';
+

@@ -9,6 +9,7 @@ import Contours from "@/components/Contours";
 import Avatar from "@/components/Avatar";
 import ProfilePhotoModal from "@/components/ProfilePhotoModal";
 import FilesSettingsPanel from "@/components/FilesSettingsPanel";
+import AgentSettingsPanel from "@/components/AgentSettingsPanel";
 
 type Profile = {
   email: string;
@@ -316,6 +317,9 @@ export default function SettingsPage() {
 
             {/* Files (Drive mirror + per-folder visibility) — webmaster only */}
             <FilesSettingsPanel />
+
+            {/* Ask the archive — webmaster only */}
+            <AgentSettingsPanel />
 
             {/* Email sending (Gmail) */}
             {gmail && (

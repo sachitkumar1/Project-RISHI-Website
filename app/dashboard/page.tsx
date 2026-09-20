@@ -111,11 +111,12 @@ export default function DashboardPage() {
             </div>
           </Reveal>
 
-          {/* Files card (meeting notes live inside it) */}
+          {/* Files card (meeting notes live inside it) + Ask the archive (1/3 height) */}
           <Reveal delay={0.05}>
+            <div className="grid h-full grid-rows-[2fr_1fr] gap-4">
             <Link
               href="/dashboard/files"
-              className="group flex h-full flex-col justify-between rounded-3xl border border-pine/15 bg-pine/[0.03] p-6 transition-colors hover:border-pine hover:bg-pine hover:text-paper"
+              className="group flex min-h-0 flex-col justify-between rounded-3xl border border-pine/15 bg-pine/[0.03] p-6 transition-colors hover:border-pine hover:bg-pine hover:text-paper"
             >
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-marigold text-pine-deep">
                 <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -128,6 +129,22 @@ export default function DashboardPage() {
               </span>
               <p className="mt-1 text-sm opacity-70">Club documents and meeting notes</p>
             </Link>
+
+            <Link
+              href="/dashboard/ask"
+              className="group flex min-h-0 items-center gap-4 rounded-3xl border border-pine/15 bg-pine/[0.03] p-5 transition-colors hover:border-pine hover:bg-pine hover:text-paper"
+            >
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-marigold text-pine-deep">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="11" cy="11" r="6.5" />
+                  <path d="M20 20l-4.2-4.2M9 9.2a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.4M11 14.2h.01" />
+                </svg>
+              </span>
+              <span className="font-display text-lg font-semibold leading-tight">
+                Ask the archive
+              </span>
+            </Link>
+            </div>
           </Reveal>
 
           {/* Announcements + Newsletters share the same row height as the other dashboard widgets.

@@ -6,7 +6,7 @@
  * enough consecutive failures). The Drive sync alone walks for ~15-25s and then
  * extracts text, so it can't answer inside 30s.
  *
- * So a cron request is ACCEPTED immediately (202) and the job keeps running in
+ * So a cron request is ACCEPTED immediately (200) and the job keeps running in
  * the background via Vercel's waitUntil, up to the function's maxDuration (60s).
  * The outcome is recorded in lms_settings under `cron:<name>` and echoed back
  * as `previous` on the next call, so cron-job.org's history still shows whether
@@ -33,16 +33,32 @@ function sb(): SupabaseClient {
   return _client;
 }
 
-/** Authorization: Bearer <CRON_SECRET>, x-cron-secret, or ?secret=. */
+/**
+ * Accepts the secret as `Authorization: Bearer <secret>`, `x-cron-secret`, or
+ * `?secret=`. Forgiving about the slips people actually make when pasting into
+ * a scheduler's form: stray spaces or a trailing newline, "bearer" in lower
+ * case, or the secret on its own without "Bearer ". None of these weakens the
+ * check — the secret itself must still match exactly.
+ */
 export function cronAuthorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const auth = req.headers.get("authorization") ?? "";
-  if (auth === `Bearer ${secret}`) return true;
-  if (req.headers.get("x-cron-secret") === secret) return true;
-  const url = new URL(req.url);
-  if (url.searchParams.get("secret") === secret) return true;
-  return false;
+  return authCheck(req).ok;
+}
+
+function authCheck(req: Request): { ok: boolean; reason: string } {
+  const secret = (process.env.CRON_SECRET ?? "").trim();
+  if (!secret) return { ok: false, reason: "CRON_SECRET not set on the server" };
+  const header = (req.headers.get("authorization") ?? "").trim();
+  const bare = header.replace(/^bearer\s+/i, "").trim();
+  if (bare && bare === secret) return { ok: true, reason: "authorization header" };
+  if ((req.headers.get("x-cron-secret") ?? "").trim() === secret) return { ok: true, reason: "x-cron-secret header" };
+  const q = new URL(req.url).searchParams.get("secret");
+  if (q !== null && q.trim() === secret) return { ok: true, reason: "?secret= query" };
+
+  // Describe the failure WITHOUT revealing the secret or what was sent.
+  if (header) return { ok: false, reason: `authorization header present but wrong (${header.length} chars sent, scheme "${header.split(/\s+/)[0].slice(0, 12)}")` };
+  if (q !== null) return { ok: false, reason: `?secret= present but wrong (${q.length} chars sent)` };
+  if (req.headers.get("x-cron-secret") !== null) return { ok: false, reason: "x-cron-secret present but wrong" };
+  return { ok: false, reason: "no secret sent (no Authorization header, x-cron-secret, or ?secret=)" };
 }
 
 export type CronOutcome = { ok: boolean; summary: string; detail?: unknown };
@@ -78,6 +94,17 @@ async function writeStatus(name: string, status: CronStatus): Promise<void> {
   } catch { /* status is informational — never fail the job over it */ }
 }
 
+async function writeRejection(name: string, reason: string, req: Request): Promise<void> {
+  if (!usingSupabase) return;
+  try {
+    const ua = (req.headers.get("user-agent") ?? "").slice(0, 80);
+    await sb().from("lms_settings").upsert(
+      { key: `cron:${name}:rejected`, value: JSON.stringify({ at: new Date().toISOString(), reason, userAgent: ua, method: req.method }), updated_at: new Date().toISOString() },
+      { onConflict: "key" },
+    );
+  } catch { /* diagnostics only */ }
+}
+
 /**
  * Authorize, then run `job` in the background and answer at once.
  *
@@ -93,11 +120,19 @@ export async function startCronJob(
 ): Promise<NextResponse> {
   if (!process.env.CRON_SECRET)
     return NextResponse.json({ error: "CRON_SECRET is not configured." }, { status: 500 });
-  if (!cronAuthorized(req)) return NextResponse.json({ error: "Forbidden" }, { status: 401 });
+  const auth = authCheck(req);
+  if (!auth.ok) {
+    // Leave a trace of WHY, so a failing scheduler can be diagnosed from the
+    // database or Vercel logs instead of guessed at. One row per job,
+    // overwritten each time; it never contains the secret.
+    console.warn(`cron/${name}: rejected — ${auth.reason}`);
+    await writeRejection(name, auth.reason, req);
+    return NextResponse.json({ error: "Forbidden", reason: auth.reason }, { status: 401 });
+  }
 
   const previous = await readStatus(name);
   if (previous?.state === "running" && Date.now() - Date.parse(previous.startedAt) < lockMs) {
-    return NextResponse.json({ job: name, skipped: "previous run still in progress", previous }, { status: 202 });
+    return NextResponse.json({ job: name, skipped: "previous run still in progress", previous }, { status: 200 });
   }
 
   const startedAt = new Date().toISOString();
@@ -132,5 +167,5 @@ export async function startCronJob(
   // by maxDuration). Outside Vercel this is a no-op and Node just finishes it.
   waitUntil(work);
   // Kept small on purpose — cron-job.org only stores a short response body.
-  return NextResponse.json({ job: name, accepted: true, startedAt, previous }, { status: 202 });
+  return NextResponse.json({ job: name, accepted: true, startedAt, previous }, { status: 200 });
 }
