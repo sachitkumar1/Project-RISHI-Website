@@ -141,7 +141,7 @@ export default function DashboardPage() {
                 </svg>
               </span>
               <span className="font-display text-lg font-semibold leading-tight">
-                Ask the archive
+                RISHI AI
               </span>
             </Link>
             </div>

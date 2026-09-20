@@ -151,8 +151,8 @@ export default function AskPanel() {
       {thread.length === 0 && (
         <div className="mb-8">
           <p className="max-w-[60ch] text-[15px] leading-7 text-ink/70">
-            Ask anything about the club&apos;s documents: past projects, calls with partners, surveys, meeting notes.
-            Answers come only from files you can open yourself, and every claim links to where it came from.
+            Ask anything! The agent will pull information from all of the club's files, including past projects, calls with partners, surveys, meeting notes, and much more.
+            Every claim links to where it came from.
           </p>
           <div className="mt-5 flex flex-col items-start gap-2">
             {EXAMPLES.map((e) => (

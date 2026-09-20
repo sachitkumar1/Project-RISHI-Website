@@ -16,7 +16,7 @@ export default function AskPage() {
             </svg>
             Back to dashboard
           </Link>
-          <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">Ask the archive</h1>
+          <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">RISHI AI</h1>
         </div>
       </section>
       <section className="container-rishi py-10">
