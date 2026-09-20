@@ -1,23 +1,10 @@
-import { NextResponse } from "next/server";
 import { syncDrive } from "@/lib/lms/drive";
 import { indexContent } from "@/lib/lms/indexer";
+import { startCronJob, type CronOutcome } from "@/lib/lms/cron";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-// Same auth as the reminders and sheets crons: Authorization: Bearer,
-// x-cron-secret, or ?secret=.
-function authorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const auth = req.headers.get("authorization") ?? "";
-  if (auth === `Bearer ${secret}`) return true;
-  if (req.headers.get("x-cron-secret") === secret) return true;
-  const url = new URL(req.url);
-  if (url.searchParams.get("secret") === secret) return true;
-  return false;
-}
 
 /**
  * Re-index the club's Drive folders on a schedule, so files added or renamed in
@@ -29,28 +16,32 @@ function authorized(req: Request): boolean {
  *
  * Safe to run as often as you like: syncDrive() only ever upserts and flags,
  * never deletes, and a failed walk aborts before touching the index.
+ *
+ * Answers 202 at once and runs in the background (see lib/lms/cron.ts) —
+ * cron-job.org gives up after 30s and this takes longer.
  */
-async function run(req: Request) {
-  if (!authorized(req)) return NextResponse.json({ error: "Forbidden" }, { status: 401 });
-
+async function job(): Promise<CronOutcome> {
   const started = Date.now();
-  const result = await syncDrive();
+  const sync = await syncDrive();
+  if (!sync.ok) return { ok: false, summary: `sync failed: ${sync.error ?? sync.skipped}`, detail: sync };
 
-  if (!result.ok) {
-    console.error("cron/files: sync failed —", result.error ?? result.skipped);
-    return NextResponse.json({ ...result, ms: Date.now() - started }, { status: 500 });
-  }
-
-  // Then extract text, in bounded batches, for as long as the request budget
-  // allows. Whatever's left is picked up by the next run — `index.remaining`
-  // says how much that is.
-  const index = await indexContent(20_000);
-  return NextResponse.json({ ...result, index, ms: Date.now() - started });
+  // Then extract text for whatever's left of the 60s budget, leaving headroom.
+  // A bigger Drive makes the walk longer, so the text budget shrinks rather than
+  // the whole run overshooting. Anything left over goes to the next run.
+  const budget = Math.min(20_000, 52_000 - (Date.now() - started));
+  const index = budget > 3_000 ? await indexContent(budget) : { ok: true, skipped: "no time left this run" };
+  const remaining = "remaining" in index ? index.remaining : undefined;
+  return {
+    ok: index.ok,
+    summary: `synced ${sync.indexed ?? 0} items in ${sync.folders ?? 0} folders, ${sync.removed ?? 0} flagged removed; ` +
+      `text: ${"indexed" in index ? index.indexed ?? 0 : 0} extracted, ${remaining ?? "?"} remaining`,
+    detail: { sync, index },
+  };
 }
 
 export async function GET(req: Request) {
-  return run(req);
+  return startCronJob(req, "files", job);
 }
 export async function POST(req: Request) {
-  return run(req);
+  return startCronJob(req, "files", job);
 }
