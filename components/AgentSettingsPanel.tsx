@@ -9,6 +9,7 @@ type Status = {
   haiku: { spentThisMonth: number; cap: number };
   today: { questions: number; byModel: Record<string, number> };
   exhausted: Record<string, string>;
+  lastErrors: Record<string, { at: string; kind: string; message: string; quota: { id: string; value: string } | null }>;
   dailyLimit: number;
 };
 type Check = { name: string; model: string; ok: boolean; detail: string };
@@ -102,6 +103,22 @@ export default function AgentSettingsPanel() {
           <p className="mt-2 text-xs text-ink/55">
             Skipping for now: {parked.map(([m, until]) => `${m} until ${new Date(until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`).join("; ")}.
           </p>
+        )}
+        {Object.keys(s.lastErrors ?? {}).length > 0 && (
+          <div className="mt-2 space-y-0.5 text-xs text-ink/55">
+            <p className="font-semibold text-ink/60">Last time each model was skipped</p>
+            {Object.entries(s.lastErrors).map(([m, e]) => (
+              <p key={m}>
+                <code>{m}</code>, {new Date(e.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}:{" "}
+                {e.kind === "overloaded" ? "Google said it was busy or it didn't answer in time"
+                  : e.kind === "quota_day" ? "used up its free daily quota"
+                  : e.kind === "quota_minute" ? "hit its per-minute limit"
+                  : e.kind === "no_credit" ? "the Anthropic balance ran out"
+                  : e.kind}
+                {e.quota ? ` (Google's limit: ${e.quota.value}, ${e.quota.id})` : ""}
+              </p>
+            ))}
+          </div>
         )}
         {checks && (
           <ul className="mt-3 space-y-1 text-xs">

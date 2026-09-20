@@ -11,6 +11,7 @@ export type AgentStatus = {
   haiku: { spentThisMonth: number; cap: number };
   today: { questions: number; byModel: Record<string, number> };
   exhausted: Record<string, string>; // model → until (ISO), only while in effect
+  lastErrors: Record<string, { at: string; kind: string; message: string; quota: { id: string; value: string } | null }>;
   dailyLimit: number;
 };
 
@@ -24,7 +25,7 @@ export async function agentStatus(): Promise<AgentStatus> {
     dailyLimit: cfg.dailyLimit,
   };
   if (!usingSupabase)
-    return { ...base, index: { filesPending: 0, chunks: 0, embedded: 0 }, haiku: { spentThisMonth: 0, cap: cfg.haikuMonthlyUsd }, today: { questions: 0, byModel: {} }, exhausted: {} };
+    return { ...base, index: { filesPending: 0, chunks: 0, embedded: 0 }, haiku: { spentThisMonth: 0, cap: cfg.haikuMonthlyUsd }, today: { questions: 0, byModel: {} }, exhausted: {}, lastErrors: {} };
 
   const [filesPending, chunks, embedded, spend, todayRows, flags] = await Promise.all([
     count(sb().from("lms_files").select("id", { count: "exact", head: true }).is("chunked_at", null)),
@@ -32,14 +33,17 @@ export async function agentStatus(): Promise<AgentStatus> {
     count(sb().from("lms_file_chunks").select("id", { count: "exact", head: true }).eq("embed_model", cfg.embedModel)),
     sb().rpc("lms_ai_spend_since", { p_provider: "anthropic", p_since: startOfPacificMonth() }),
     sb().from("lms_ai_usage").select("model").eq("status", "ok").gte("at", startOfPacificDay()).limit(5000),
-    sb().from("lms_settings").select("key,value").like("key", "ai:exhausted:%"),
+    sb().from("lms_settings").select("key,value").or("key.like.ai:exhausted:*,key.like.ai:last-error:*"),
   ]);
 
   const byModel: Record<string, number> = {};
   for (const r of todayRows.data ?? []) byModel[r.model] = (byModel[r.model] ?? 0) + 1;
   const exhausted: Record<string, string> = {};
+  const lastErrors: AgentStatus["lastErrors"] = {};
   for (const f of flags.data ?? []) {
-    if (Date.parse(f.value) > Date.now()) exhausted[f.key.replace("ai:exhausted:", "")] = f.value;
+    if (f.key.startsWith("ai:last-error:")) {
+      try { lastErrors[f.key.replace("ai:last-error:", "")] = JSON.parse(f.value); } catch { /* ignore */ }
+    } else if (Date.parse(f.value) > Date.now()) exhausted[f.key.replace("ai:exhausted:", "")] = f.value;
   }
   return {
     ...base,
@@ -47,6 +51,7 @@ export async function agentStatus(): Promise<AgentStatus> {
     haiku: { spentThisMonth: Number(spend.data ?? 0), cap: cfg.haikuMonthlyUsd },
     today: { questions: (todayRows.data ?? []).length, byModel },
     exhausted,
+    lastErrors,
   };
 }
 

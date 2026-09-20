@@ -19,6 +19,9 @@ export type ModelErrorKind =
   | "other";
 
 export class ModelError extends Error {
+  /** For quota errors: Google's own name and number for the limit that was hit
+   *  (e.g. GenerateRequestsPerDayPerProjectPerModel-FreeTier = 20). */
+  public quota?: { id: string; value: string };
   constructor(public kind: ModelErrorKind, message: string, public retryAfterMs?: number) {
     super(message);
   }
@@ -57,8 +60,12 @@ function geminiError(status: number, body: any): ModelError {
       .flatMap((d) => (d.violations ?? []).map((v: any) => String(v.quotaId ?? "")));
     const retry = details.find((d) => String(d?.["@type"] ?? "").includes("RetryInfo"))?.retryDelay;
     const retryAfterMs = retry ? Math.ceil(parseFloat(String(retry)) * 1000) : undefined;
-    if (quotaIds.some((q) => /PerDay/i.test(q))) return new ModelError("quota_day", msg);
-    return new ModelError("quota_minute", msg, retryAfterMs);
+    const v = details.flatMap((d) => d.violations ?? []).find((x: any) => x?.quotaId);
+    const err = quotaIds.some((q) => /PerDay/i.test(q))
+      ? new ModelError("quota_day", msg)
+      : new ModelError("quota_minute", msg, retryAfterMs);
+    if (v) err.quota = { id: String(v.quotaId), value: String(v.quotaValue ?? "?") };
+    return err;
   }
   if (status === 503 || status === 500 || /high demand|overloaded/i.test(msg)) return new ModelError("overloaded", msg);
   if (status === 404) return new ModelError("not_found", msg);

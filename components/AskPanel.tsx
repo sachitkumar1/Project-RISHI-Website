@@ -187,7 +187,9 @@ export default function AskPanel() {
                 {t.sources && t.sources.length > 0 && (
                   <SourceList sources={t.sources} anchor={`src-${i}`} flash={flash?.i === i ? flash.n : null} />
                 )}
-                {t.model && <p className="mt-3 px-2 text-[11px] text-ink/35">Answered by {t.model}. Check the sources for anything important.</p>}
+                <p className="mt-3 px-2 text-[11px] text-ink/35">
+                  {t.model ? `Answered by ${t.model}. ` : ""}Check the sources for anything important.
+                </p>
               </div>
             )}
           </article>

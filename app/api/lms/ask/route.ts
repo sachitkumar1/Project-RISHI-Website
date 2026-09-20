@@ -17,6 +17,13 @@ export async function GET() {
   return NextResponse.json({ enabled: !!(cfg.geminiKey || cfg.anthropicKey), dailyLimit: cfg.dailyLimit });
 }
 
+/** Only these people see which model answered (and model-specific errors).
+ *  Everyone else just gets the answer. The model name is removed on the
+ *  SERVER, so it never reaches anyone else's browser. */
+const MODEL_VISIBLE_TO = new Set(["sachitk@berkeley.edu"]);
+const canSeeModel = (m: { email: string; roles: { webmaster: boolean } }) =>
+  m.roles.webmaster || MODEL_VISIBLE_TO.has(m.email.toLowerCase());
+
 /** Ask a question. Body: { question, history?: [{ q, a }] } */
 export async function POST(req: Request) {
   const started = Date.now();
@@ -37,8 +44,15 @@ export async function POST(req: Request) {
     : [];
 
   try {
-    const result = await ask(me, question, history);
-    const status = result.ok ? 200 : result.code === "limit" ? 429 : result.code === "no_model" ? 503 : 500;
+    const full = await ask(me, question, history);
+    const status = full.ok ? 200 : full.code === "limit" ? 429 : full.code === "no_model" ? 503 : 500;
+    const result = canSeeModel(me)
+      ? full
+      : full.ok
+        ? { ...full, model: null }
+        : full.code === "no_model"
+          ? { ...full, error: "The assistant is busy right now. Please try again in a few minutes." }
+          : full;
     // Self-healing index: if files are still waiting to be chunked or embedded,
     // spend what's left of this request's 60s working through them after the
     // answer is sent. The index never depends on one button or one cron job.

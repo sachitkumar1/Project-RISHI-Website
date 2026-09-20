@@ -120,6 +120,15 @@ type Attempt = { provider: "gemini" | "anthropic"; model: string };
 /** Skip a model after it fails in a way that will repeat: out of daily quota
  *  (until midnight PT), or overloaded (for a few minutes). */
 async function noteFailure(model: string, err: ModelError) {
+  // Keep the exact reason, so Settings can show it (and Google's quota numbers)
+  // instead of anyone having to guess why a model was skipped.
+  try {
+    await sb().from("lms_settings").upsert({
+      key: `ai:last-error:${model}`,
+      value: JSON.stringify({ at: new Date().toISOString(), kind: err.kind, message: err.message.slice(0, 160), quota: err.quota ?? null }),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "key" });
+  } catch { /* diagnostics only */ }
   if (err.kind === "quota_day") await markExhausted(model, nextPacificMidnight());
   else if (err.kind === "overloaded") await markExhausted(model, new Date(Date.now() + BUSY_BACKOFF_MS).toISOString());
   else if (err.kind === "no_credit") await markExhausted(model, new Date(Date.now() + 3_600_000).toISOString());
@@ -135,9 +144,13 @@ async function tryGemini(model: string, system: string, user: string, email: str
       return g;
     } catch (e) {
       const err = e as ModelError;
-      // One quick retry on a per-minute limit, if Google says it's short and we have time.
-      const wait = Math.max(1_000, err.retryAfterMs ?? 2_000);
-      if (err.kind === "quota_minute" && attempt === 0 && wait <= 8_000 && stopAt - Date.now() > wait + 5_000) {
+      // One quick retry: on a short per-minute limit, or on an INSTANT "high
+      // demand" refusal (a timeout already used its time, so it isn't retried).
+      const wait = err.kind === "overloaded" ? 2_000 : Math.max(1_000, err.retryAfterMs ?? 2_000);
+      const retryable =
+        (err.kind === "quota_minute" && wait <= 8_000) ||
+        (err.kind === "overloaded" && !/no answer within/.test(err.message));
+      if (retryable && attempt === 0 && stopAt - Date.now() > wait + 5_000) {
         await new Promise((r) => setTimeout(r, wait));
         continue;
       }
