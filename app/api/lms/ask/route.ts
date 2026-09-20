@@ -14,7 +14,14 @@ export async function GET() {
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   const cfg = agentConfig();
-  return NextResponse.json({ enabled: !!(cfg.geminiKey || cfg.anthropicKey), dailyLimit: cfg.dailyLimit });
+  // Archive coverage for the status readout: how many passages are searchable,
+  // and what share also have meaning-search embeddings. Two count queries.
+  let index = { passages: 0, semanticPct: 0 };
+  try {
+    const b = await indexBacklog();
+    index = { passages: b.chunks, semanticPct: b.chunks ? Math.round((100 * (b.chunks - b.embedPending)) / b.chunks) : 0 };
+  } catch { /* status only */ }
+  return NextResponse.json({ enabled: !!(cfg.geminiKey || cfg.anthropicKey), dailyLimit: cfg.dailyLimit, index });
 }
 
 /** Only these people see which model answered (and model-specific errors).

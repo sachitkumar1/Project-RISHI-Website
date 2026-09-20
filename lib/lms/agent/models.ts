@@ -117,7 +117,7 @@ function normalize(v: number[]): number[] {
 
 /** Embed up to 100 texts. RETRIEVAL_DOCUMENT for passages, RETRIEVAL_QUERY for
  *  questions. Vectors are normalized (required below the model's full size). */
-export async function geminiEmbed(texts: string[], task: "RETRIEVAL_DOCUMENT" | "RETRIEVAL_QUERY"): Promise<number[][]> {
+export async function geminiEmbed(texts: string[], task: "RETRIEVAL_DOCUMENT" | "RETRIEVAL_QUERY", timeoutMs = TIMEOUT_MS): Promise<number[][]> {
   const cfg = agentConfig();
   if (!cfg.geminiKey) throw new ModelError("auth", "GEMINI_API_KEY is not set.");
   const model = `models/${cfg.embedModel}`;
@@ -132,6 +132,7 @@ export async function geminiEmbed(texts: string[], task: "RETRIEVAL_DOCUMENT" | 
         outputDimensionality: EMBED_DIMS,
       })),
     },
+    timeoutMs,
   );
   const body: any = await res.json().catch(() => ({}));
   if (!res.ok) throw geminiError(res.status, body);

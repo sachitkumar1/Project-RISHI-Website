@@ -62,7 +62,7 @@ export default function AgentSettingsPanel() {
 
   return (
     <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8" data-agent-settings>
-      <h2 className="font-display text-lg font-semibold text-pine-deep">Ask the archive</h2>
+      <h2 className="font-display text-lg font-semibold text-pine-deep">RISHI AI</h2>
       <p className="mt-1 text-sm text-ink/60">
         Members ask questions and get answers built only from files they can open, with links to each file.
       </p>

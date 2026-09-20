@@ -31,8 +31,11 @@ export type Source = {
 };
 
 export type QueryEmbedder = (q: string) => Promise<number[] | null>;
+// Capped at 5s: meaning-search is a bonus on top of keyword search, and a slow
+// embedding call must never eat the time the answer itself needs (it used to be
+// able to wait 40s before any model ran).
 export const defaultQueryEmbedder: QueryEmbedder = async (q) => {
-  try { return (await geminiEmbed([q], "RETRIEVAL_QUERY"))[0]; } catch { return null; }
+  try { return (await geminiEmbed([q], "RETRIEVAL_QUERY", 5_000))[0]; } catch { return null; }
 };
 
 const MATCH = 80;          // candidates from each half of the search
