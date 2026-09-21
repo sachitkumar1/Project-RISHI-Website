@@ -50,6 +50,7 @@ const D = {
   // theme's pine so large banners sit quietly on the dark page.
   pineSolid: "#1F5541", pineDeepSolid: "#173D2F", pineSoftSolid: "#275E48",
   marigoldText: "#F2C879",
+  midnight: "#0F2A1F", // the "Midnight" banner colour: hover colour for green buttons/tiles in dark mode
   redText: "#F4A095",
 };
 
@@ -171,6 +172,9 @@ for (const [cls, info] of [...found.entries()].sort(([a], [b]) => a.localeCompar
   const props = PROP[info.prefix]; if (!props) { skipped++; continue; }
 
   const vs = info.variants.split(":").filter(Boolean);
+  // Dark mode: anything that turns solid green (pine) on hover turns Midnight.
+  if ((vs.includes("hover") || vs.includes("group-hover")) && info.prefix === "bg" && info.alpha === null
+      && (info.color === "pine" || info.color === "pine-deep")) value = [hex(D.midnight), 1];
   let group = "", pseudo = "", element = "";
   for (const v of vs) {
     if (v === "group-hover") group = ".group:hover ";
@@ -205,11 +209,27 @@ html.dark ::selection { background-color: rgb(226 160 47 / 0.35); color: #fff; }
   background-color: ${D.surface2};
 }
 
+/* Colours the dashboard sets as inline styles (calendar entries, lanes, history
+   chips, notification panels) read these variables; light values in globals.css. */
+html.dark {
+  --cal-event-bg: rgb(124 196 160 / 0.22);  --cal-event-fg: #D9EEE2;
+  --cal-to-bg: rgb(226 160 47 / 0.26);      --cal-to-fg: #F2C879;
+  --cal-by-bg: rgb(110 150 220 / 0.26);     --cal-by-fg: #C3D4F4;
+  --lane-e-bg: rgb(226 160 47 / 0.26);      --lane-e-fg: #F2C879;
+  --lane-r-bg: rgb(110 150 220 / 0.26);     --lane-r-fg: #C3D4F4;
+  --lane-w-bg: rgb(190 140 200 / 0.26);     --lane-w-fg: #E6CDEB;
+  --lane-h-bg: rgb(230 130 140 / 0.26);     --lane-h-fg: #F4C3C9;
+  --lane-nmt-bg: rgb(124 196 160 / 0.22);   --lane-nmt-fg: #D9EEE2;
+  --lane-other-bg: rgb(230 226 213 / 0.12); --lane-other-fg: ${D.text};
+  --chip-archived-bg: rgb(230 226 213 / 0.1); --chip-archived-fg: ${D.text};
+  --notif-panel-bg: ${D.surface};
+}
+
 /* Shared styles that aren't utility classes (globals.css / page-local CSS). */
 html.dark .btn-primary { background-color: ${D.pineSolid}; }
-html.dark .btn-primary:hover { background-color: ${D.pineDeepSolid}; }
+html.dark .btn-primary:hover { background-color: ${D.midnight}; }
 html.dark .btn-ghost { border-color: rgb(124 196 160 / 0.4); color: ${D.mint}; }
-html.dark .btn-ghost:hover { background-color: ${D.pineSolid}; border-color: ${D.pineSolid}; color: ${LIGHT.paper}; }
+html.dark .btn-ghost:hover { background-color: ${D.midnight}; border-color: rgb(124 196 160 / 0.55); color: ${LIGHT.paper}; }
 html.dark .field { background: ${D.surface2}; color: ${D.text}; border-color: rgb(124 196 160 / 0.25); }
 html.dark .field::placeholder { color: rgb(230 226 213 / 0.4); }
 html.dark .familytree { --ft-line: rgb(124 196 160 / 0.35); }

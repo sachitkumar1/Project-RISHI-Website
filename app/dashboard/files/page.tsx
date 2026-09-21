@@ -1,15 +1,14 @@
 import Link from "next/link";
-import Contours from "@/components/Contours";
 import FilesBrowser from "@/components/FilesBrowser";
 import { PROJECT_GROUPS, PROJECT_GROUP_LABELS } from "@/lib/lms/types";
+import DashboardBanner from "@/components/DashboardBanner";
 
 export const metadata = { title: "Files" };
 
 export default function FilesHome() {
   return (
     <>
-      <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
+      <DashboardBanner>
         <div className="container-rishi relative z-10 py-12">
           <Link
             href="/dashboard"
@@ -23,7 +22,7 @@ export default function FilesHome() {
           <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">Files</h1>
           
         </div>
-      </section>
+      </DashboardBanner>
 
       {/* Meetings — pinned above the folders, since it's the thing people open most. */}
       <section className="container-rishi pt-10">

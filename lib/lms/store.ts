@@ -6,6 +6,7 @@
 // ============================================================================
 
 import crypto from "crypto";
+import { resolveStoredAvatar, storeAvatar } from "@/lib/lms/avatars";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Member } from "@/lib/members";
 import { visibleAssignerEmails } from "@/lib/lms/permissions";
@@ -631,14 +632,19 @@ export async function setEventArchived(id: string, archived: boolean): Promise<C
 
 const memProfiles = new Map<string, string>();
 
-export async function getAvatar(email: string): Promise<string | null> {
-  const key = lc(email);
+// Photos themselves live in Storage (lib/lms/avatars.ts); these return each
+// photo's short, cacheable ADDRESS — never the image data.
+async function storedAvatar(key: string): Promise<string | null> {
   if (usingSupabase) {
     const { data, error } = await sb().from("lms_profiles").select("avatar").eq("email", key).maybeSingle();
     if (error) throw new Error(error.message);
     return data?.avatar ?? null;
   }
   return memProfiles.get(key) ?? null;
+}
+export async function getAvatar(email: string): Promise<string | null> {
+  const key = lc(email);
+  return resolveStoredAvatar(key, await storedAvatar(key));
 }
 
 export async function getAvatars(emails: string[]): Promise<Record<string, string>> {
@@ -648,23 +654,31 @@ export async function getAvatars(emails: string[]): Promise<Record<string, strin
     const { data, error } = await sb().from("lms_profiles").select("email, avatar").in("email", keys);
     if (error) throw new Error(error.message);
     const out: Record<string, string> = {};
-    for (const r of data ?? []) if (r.avatar) out[String(r.email).toLowerCase()] = r.avatar;
+    await Promise.all((data ?? []).map(async (r) => {
+      const e = String(r.email).toLowerCase();
+      const url = await resolveStoredAvatar(e, r.avatar ?? null);
+      if (url) out[e] = url;
+    }));
     return out;
   }
   const out: Record<string, string> = {};
-  for (const k of keys) { const v = memProfiles.get(k); if (v) out[k] = v; }
+  for (const k of keys) { const url = await resolveStoredAvatar(k, memProfiles.get(k) ?? null); if (url) out[k] = url; }
   return out;
 }
 
+/** Save a new photo (a data URL from the settings cropper) or remove it (null).
+ *  The image goes to Storage; the database keeps only a pointer to it. */
 export async function setAvatar(email: string, avatar: string | null): Promise<void> {
   const key = lc(email);
+  const previous = await storedAvatar(key);
+  const pointer = await storeAvatar(key, avatar, previous);
   if (usingSupabase) {
     const { error } = await sb()
       .from("lms_profiles")
-      .upsert({ email: key, avatar, updated_at: now() }, { onConflict: "email" });
+      .upsert({ email: key, avatar: pointer, updated_at: now() }, { onConflict: "email" });
     if (error) throw new Error(error.message);
     return;
   }
-  if (avatar) memProfiles.set(key, avatar);
+  if (pointer) memProfiles.set(key, pointer);
   else memProfiles.delete(key);
 }

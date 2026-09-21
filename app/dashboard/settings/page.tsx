@@ -5,12 +5,12 @@ import { formatPhoneInput } from "@/lib/lms/phone";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
-import Contours from "@/components/Contours";
 import Avatar from "@/components/Avatar";
 import ProfilePhotoModal from "@/components/ProfilePhotoModal";
 import FilesSettingsPanel from "@/components/FilesSettingsPanel";
 import AgentSettingsPanel from "@/components/AgentSettingsPanel";
 import { ThemeSetting } from "@/components/ThemeToggle";
+import DashboardBanner from "@/components/DashboardBanner";
 
 type Profile = {
   email: string;
@@ -171,8 +171,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
+      <DashboardBanner>
         <div className="container-rishi relative z-10 py-12">
           <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-semibold text-paper/80 hover:text-paper">
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -182,7 +181,7 @@ export default function SettingsPage() {
           </Link>
           <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">Account settings</h1>
         </div>
-      </section>
+      </DashboardBanner>
 
       <section className="container-rishi py-12">
         {loading && <p className="text-ink/60">Loading…</p>}

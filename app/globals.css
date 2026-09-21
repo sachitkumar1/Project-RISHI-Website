@@ -3,6 +3,20 @@
 @tailwind utilities;
 
 :root {
+  /* Calendar / lane / chip colours used as inline styles in the dashboard.
+     Dark-mode values live in app/dark-theme.css. */
+  --cal-event-bg: rgba(91, 124, 106, 0.3);  --cal-event-fg: #143628;
+  --cal-to-bg: rgba(226, 160, 47, 0.4);     --cal-to-fg: #5c3d00;
+  --cal-by-bg: rgba(70, 107, 176, 0.28);    --cal-by-fg: #1c3559;
+  --lane-e-bg: rgba(226, 160, 47, 0.4);     --lane-e-fg: #5c3d00;
+  --lane-r-bg: rgba(70, 107, 176, 0.3);     --lane-r-fg: #1c3559;
+  --lane-w-bg: rgba(150, 90, 160, 0.3);     --lane-w-fg: #48214f;
+  --lane-h-bg: rgba(193, 84, 96, 0.28);     --lane-h-fg: #5c2230;
+  --lane-nmt-bg: rgba(91, 124, 106, 0.34);  --lane-nmt-fg: #143628;
+  --lane-other-bg: rgba(60, 60, 60, 0.16);  --lane-other-fg: #333333;
+  --chip-archived-bg: rgba(27, 38, 32, 0.08); --chip-archived-fg: #1B2620;
+  --notif-panel-bg: #eef1ec;
+
   --header-h: 76px;
 }
 

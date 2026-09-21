@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import Reveal from "@/components/Reveal";
-import Contours from "@/components/Contours";
 import {
   LINEAGES,
   orderLineagesFor,
   treeContains,
   type LineageNode,
 } from "@/lib/lineage";
+import DashboardBanner from "@/components/DashboardBanner";
 
 function TreeNode({
   node,
@@ -95,8 +95,7 @@ export default function LineagePage() {
   return (
     <>
       {/* Header */}
-      <section className="relative overflow-hidden bg-pine-deep pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.1} />
+      <DashboardBanner>
         <div className="container-rishi relative z-10 py-14">
           <Reveal>
             <Link
@@ -113,7 +112,7 @@ export default function LineagePage() {
             </h1>
           </Reveal>
         </div>
-      </section>
+      </DashboardBanner>
 
       {/* Trees */}
       <section className="container-rishi space-y-6 py-14">

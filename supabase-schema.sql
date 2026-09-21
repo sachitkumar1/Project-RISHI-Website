@@ -775,4 +775,8 @@ grant execute on function lms_folders_with_files() to service_role;
 alter table lms_ai_usage add column if not exists depth  text;
 alter table lms_ai_usage add column if not exists weight int not null default 2;
 
+-- Dashboard banner choice per member. Safe to re-run.
+-- The choice is small JSON text; uploaded photos live in Storage (bucket
+-- lms-files, under banners/), not in this table.
+alter table lms_profiles add column if not exists banner text;
 

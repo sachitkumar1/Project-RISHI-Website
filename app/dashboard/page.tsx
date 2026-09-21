@@ -34,7 +34,7 @@ export default function DashboardPage() {
   return (
     <>
       {/* Welcome hero — background is each member's own choice (DashboardBanner) */}
-      <DashboardBanner>
+      <DashboardBanner customizable>
         <div className="container-rishi relative z-10 py-16 lg:py-20">
           <Reveal>
             <div className="flex items-start justify-between gap-4">

@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Contours from "@/components/Contours";
 import { formatPhoneInput } from "@/lib/lms/phone";
+import DashboardBanner from "@/components/DashboardBanner";
 
 type Entry = {
   loginEmail: string; name: string; role: string; group: string; email: string; phone: string;
@@ -127,8 +127,7 @@ export default function DirectoryPage() {
 
   return (
     <>
-      <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
+      <DashboardBanner>
         {/* Close (X) */}
         <Link href="/dashboard" aria-label="Close directory"
           className="absolute right-5 top-[calc(var(--header-h)+1.25rem)] z-20 grid h-10 w-10 place-items-center rounded-full border border-paper/30 text-paper transition-colors hover:bg-paper hover:text-pine-deep">
@@ -141,7 +140,7 @@ export default function DirectoryPage() {
           </Link>
           <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">Member Directory</h1>
         </div>
-      </section>
+      </DashboardBanner>
 
       <section className="container-rishi py-10">
         {loading && <p className="text-ink/60">Loading…</p>}

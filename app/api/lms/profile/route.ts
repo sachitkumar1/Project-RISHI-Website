@@ -52,6 +52,11 @@ export async function PUT(req: Request) {
   }
 
   // A member can only ever change their OWN avatar (email comes from the session).
-  await setAvatar(me.email, avatar);
-  return NextResponse.json({ ok: true, avatar });
+  try {
+    await setAvatar(me.email, avatar);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
+  }
+  // Hand back the photo's address (not the image data) for the page to show.
+  return NextResponse.json({ ok: true, avatar: await getAvatar(me.email) });
 }

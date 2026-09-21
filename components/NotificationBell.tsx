@@ -14,7 +14,7 @@ type Notification = {
 };
 
 // Distinct panel background so the dropdown doesn't blend into the page.
-const PANEL_BG = "#eef1ec"; // soft pine-tinted off-white
+const PANEL_BG = "var(--notif-panel-bg)"; // soft pine-tinted off-white (dark mode: app/dark-theme.css)
 
 const fmtWhen = (iso: string) => {
   const d = new Date(iso);

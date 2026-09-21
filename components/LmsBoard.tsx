@@ -101,9 +101,11 @@ const toDateInput = (iso: string) => {
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
-const CAL_EVENT = { bg: "rgba(91,124,106,0.30)", fg: "#143628" };
-const CAL_TO = { bg: "rgba(226,160,47,0.40)", fg: "#5c3d00" };
-const CAL_BY = { bg: "rgba(70,107,176,0.28)", fg: "#1c3559" };
+// Theme-aware: light values are in app/globals.css (:root), dark values in
+// app/dark-theme.css — so these inline colours follow dark mode too.
+const CAL_EVENT = { bg: "var(--cal-event-bg)", fg: "var(--cal-event-fg)" };
+const CAL_TO = { bg: "var(--cal-to-bg)", fg: "var(--cal-to-fg)" };
+const CAL_BY = { bg: "var(--cal-by-bg)", fg: "var(--cal-by-fg)" };
 const taskKind = (t: Task, email: string): "to" | "by" =>
   t.assigneeEmail.toLowerCase() === email.toLowerCase() ? "to" : "by";
 
@@ -157,12 +159,12 @@ const LANE_LABEL: Record<Lane, string> = {
   NMT: "New Member Training", OTHER: "Other",
 };
 const LANE_COLOR: Record<Lane, { bg: string; fg: string; dot: string }> = {
-  E: { bg: "rgba(226,160,47,0.40)", fg: "#5c3d00", dot: "#e2a02f" },
-  R: { bg: "rgba(70,107,176,0.30)", fg: "#1c3559", dot: "#466bb0" },
-  W: { bg: "rgba(150,90,160,0.30)", fg: "#48214f", dot: "#965aa0" },
-  H: { bg: "rgba(193,84,96,0.28)", fg: "#5c2230", dot: "#c15460" },
-  NMT: { bg: "rgba(91,124,106,0.34)", fg: "#143628", dot: "#5b7c6a" },
-  OTHER: { bg: "rgba(60,60,60,0.16)", fg: "#333333", dot: "#777777" },
+  E: { bg: "var(--lane-e-bg)", fg: "var(--lane-e-fg)", dot: "#e2a02f" },
+  R: { bg: "var(--lane-r-bg)", fg: "var(--lane-r-fg)", dot: "#466bb0" },
+  W: { bg: "var(--lane-w-bg)", fg: "var(--lane-w-fg)", dot: "#965aa0" },
+  H: { bg: "var(--lane-h-bg)", fg: "var(--lane-h-fg)", dot: "#c15460" },
+  NMT: { bg: "var(--lane-nmt-bg)", fg: "var(--lane-nmt-fg)", dot: "#5b7c6a" },
+  OTHER: { bg: "var(--lane-other-bg)", fg: "var(--lane-other-fg)", dot: "#777777" },
 };
 
 // Keys for the "first time on screen" pulse (see useSeenMarks).
@@ -1860,7 +1862,7 @@ function PastTaskRow({ g, onOpen, onUnarchive }: {
       <div className="flex items-center justify-between gap-2">
         <button onClick={onOpen} className="text-left font-medium text-ink hover:underline">{t.title}</button>
         <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-          style={{ backgroundColor: anyArchived ? "rgba(27,38,32,0.08)" : CAL_TO.bg, color: anyArchived ? "#1B2620" : CAL_TO.fg }}>
+          style={{ backgroundColor: anyArchived ? "var(--chip-archived-bg)" : CAL_TO.bg, color: anyArchived ? "var(--chip-archived-fg)" : CAL_TO.fg }}>
           {anyArchived ? "Archived" : "Complete"}
         </span>
       </div>

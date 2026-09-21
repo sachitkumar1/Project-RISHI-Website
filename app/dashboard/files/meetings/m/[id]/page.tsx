@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Contours from "@/components/Contours";
 import AgendaDocPanel from "@/components/AgendaDocPanel";
 import TaskDetailModal from "@/components/TaskDetailModal";
 import { AGENDA_DOCS } from "@/lib/lms/agendaDocs";
@@ -13,6 +12,7 @@ import { getBrowserSupabase } from "@/lib/supabase-browser";
 import { TaskForm, PendingApprovalCard, type Meta } from "@/components/LmsBoard";
 import AttentionPulse from "@/components/AttentionPulse";
 import { useSeenMarks } from "@/components/useSeenMarks";
+import DashboardBanner from "@/components/DashboardBanner";
 
 const GROUP_LABEL: Record<string, string> = {
   E: "Education", R: "Water & Sanitation", W: "Women's Empowerment", H: "Health",
@@ -205,8 +205,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
 
   return (
     <>
-      <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
+      <DashboardBanner>
         <div className="container-rishi relative z-10 py-10">
           <div className="flex items-center justify-between">
             <Link href={`/dashboard/files/meetings/g/${m.group}`} className="inline-flex items-center gap-2 text-sm font-semibold text-paper/80 hover:text-paper">
@@ -222,7 +221,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
             <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">{m.title || "Untitled meeting"}</h1>
           )}
         </div>
-      </section>
+      </DashboardBanner>
 
       <section className="container-rishi max-w-4xl py-8">
         {/* ---- header details ---- */}
