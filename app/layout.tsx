@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import "./dark-theme.css"; // dashboard dark mode (generated: scripts/gen-dark-theme.mjs)
+import "./ai-theme.css";   // RISHI AI light/dark (generated: scripts/gen-ai-theme.mjs)
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BackButton from "@/components/BackButton";
