@@ -61,10 +61,12 @@ function map(kind, color, alpha) {
   const tint = (h, k = 1) => [hex(h), Math.min(1, a * k)];
   switch (color) {
     case "paper":
-      if (kind === "bg" || kind === "grad") return [hex(D.surface), a];
+      // ring-offset is the gap between an element and its focus/selection ring;
+      // it must match the surface behind it, which is dark here.
+      if (kind === "bg" || kind === "grad" || kind === "ring-offset") return [hex(D.surface), a];
       return null; // text/border/ring in paper sit on dark or green backgrounds already
     case "white":
-      if (kind === "bg" || kind === "grad") return [hex(D.surface2), a];
+      if (kind === "bg" || kind === "grad" || kind === "ring-offset") return [hex(D.surface2), a];
       return null;
     case "ink":
       if (kind === "bg" && solid) return null; // a solid dark chip keeps its light text

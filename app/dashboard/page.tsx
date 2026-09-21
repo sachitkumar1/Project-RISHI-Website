@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Reveal from "@/components/Reveal";
-import Contours from "@/components/Contours";
 import LmsBoard from "@/components/LmsBoard";
 import Avatar from "@/components/Avatar";
 import SettingsGear from "@/components/SettingsGear";
 import ThemeToggle from "@/components/ThemeToggle";
+import DashboardBanner from "@/components/DashboardBanner";
 import NotificationBell from "@/components/NotificationBell";
 import AnnouncementsPanel from "@/components/AnnouncementsPanel";
 import NewsletterPanel from "@/components/NewsletterPanel";
@@ -33,9 +33,8 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* Welcome hero */}
-      <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
+      {/* Welcome hero — background is each member's own choice (DashboardBanner) */}
+      <DashboardBanner>
         <div className="container-rishi relative z-10 py-16 lg:py-20">
           <Reveal>
             <div className="flex items-start justify-between gap-4">
@@ -50,7 +49,9 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="mt-5 flex items-center gap-5">
-              <Avatar src={avatar} name={fullName || firstName} size={72} className="ring-2 ring-paper/30" />
+              {/* The banner is always dark (colour or darkened photo), so the no-photo
+                  placeholder is light-on-dark here. */}
+              <Avatar src={avatar} name={fullName || firstName} size={72} className="ring-2 ring-paper/30 !bg-paper/15 !text-paper/75" />
               <h1 className="font-display text-5xl font-semibold leading-[1.02] sm:text-6xl">
                 Welcome, {firstName}
               </h1>
@@ -63,7 +64,7 @@ export default function DashboardPage() {
             </button>
           </Reveal>
         </div>
-      </section>
+      </DashboardBanner>
 
       {/* Dashboard tiles */}
       <section className="container-rishi py-16">
