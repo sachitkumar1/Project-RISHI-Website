@@ -74,7 +74,10 @@ function geminiError(status: number, body: any): ModelError {
   return new ModelError("other", msg);
 }
 
-export async function geminiGenerate(model: string, system: string, user: string, timeoutMs = TIMEOUT_MS): Promise<Generation> {
+export async function geminiGenerate(
+  model: string, system: string, user: string, timeoutMs = TIMEOUT_MS,
+  opts: { maxTokens?: number; thinking?: "low" | "medium" } = {},
+): Promise<Generation> {
   const cfg = agentConfig();
   if (!cfg.geminiKey) throw new ModelError("auth", "GEMINI_API_KEY is not set.");
   const res = await post(
@@ -88,8 +91,9 @@ export async function geminiGenerate(model: string, system: string, user: string
       // thinking level (older ones reject the field, so it's only sent to 3.x).
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: MAX_ANSWER_TOKENS * 4,
-        ...(/^gemini-3/.test(model) ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
+        // Reasoning tokens count against this too, hence the headroom.
+        maxOutputTokens: (opts.maxTokens ?? MAX_ANSWER_TOKENS) * 4,
+        ...(/^gemini-3/.test(model) ? { thinkingConfig: { thinkingLevel: opts.thinking ?? "low" } } : {}),
       },
     },
     timeoutMs,
@@ -151,7 +155,7 @@ export async function geminiListModels(): Promise<string[]> {
 }
 
 // ------------------------------------------------------------- Anthropic
-export async function anthropicGenerate(model: string, system: string, user: string, timeoutMs = TIMEOUT_MS): Promise<Generation> {
+export async function anthropicGenerate(model: string, system: string, user: string, timeoutMs = TIMEOUT_MS, maxTokens = MAX_ANSWER_TOKENS): Promise<Generation> {
   const cfg = agentConfig();
   if (!cfg.anthropicKey) throw new ModelError("auth", "ANTHROPIC_API_KEY is not set.");
   const res = await post(
@@ -164,7 +168,7 @@ export async function anthropicGenerate(model: string, system: string, user: str
     },
     {
       model,
-      max_tokens: MAX_ANSWER_TOKENS,
+      max_tokens: maxTokens,
       temperature: 0.2,
       system,
       messages: [{ role: "user", content: user }],

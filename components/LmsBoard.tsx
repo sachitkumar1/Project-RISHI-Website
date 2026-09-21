@@ -1068,7 +1068,7 @@ function TaskRow({
  * One task awaiting the viewer's approval. A shared task (several assignees)
  * stays ONE card, listing each person whose submission is waiting.
  */
-function PendingApprovalCard({
+export function PendingApprovalCard({
   rows, groupSize, byline, nameOf, avatarOf, onOpenRow, onOpenGroup, onApprove,
 }: {
   rows: Task[]; groupSize: number; byline?: string;

@@ -15,7 +15,7 @@
  */
 import type { Member } from "@/lib/members";
 import {
-  agentConfig, ANSWER_DEADLINE_MS, BUSY_BACKOFF_MS, HAIKU_PRICE, MAX_ANSWER_TOKENS, nextPacificMidnight, sb,
+  agentConfig, DEFAULT_DEPTH, DEPTHS, type Depth, ANSWER_DEADLINE_MS, BUSY_BACKOFF_MS, HAIKU_PRICE, nextPacificMidnight, sb,
   startOfPacificDay, startOfPacificMonth, usingSupabase,
 } from "./config";
 import { anthropicGenerate, geminiGenerate, ModelError, type Generation } from "./models";
@@ -37,7 +37,22 @@ export const labelFor = (provider: string, model: string) =>
   provider === "anthropic" ? "Claude Haiku" : /lite/i.test(model) ? "Gemini Flash-Lite" : "Gemini Flash";
 
 // ------------------------------------------------------------- prompt
-export function buildPrompt(question: string, sources: Source[], history: Turn[], today = new Date()) {
+/** How to write, per depth. Detail comes from specifics — names, dates,
+ *  numbers, what was decided and what happened next — not from padding. */
+const STYLE: Record<Depth, string> = {
+  quick: "Answer briefly: two to four sentences with the key facts. Use a short '- ' list only if it's genuinely a list.",
+  standard:
+    "Give a thorough, specific answer. Open with a one- or two-sentence direct answer, then the supporting detail: " +
+    "who was involved, when (dates), what was decided or done, numbers and outcomes, and what happened next. " +
+    "Use short paragraphs or a '- ' list; roughly 150–300 words when the documents support it.",
+  detailed:
+    "Give a comprehensive, well-organised answer. Open with a two- or three-sentence summary, then cover every relevant " +
+    "document: organise by time (a timeline) or by theme, whichever fits, with names, dates, figures, decisions, outcomes " +
+    "and open questions. Point out where documents disagree or where the record has gaps. Use short **bold** lead-ins " +
+    "for sections and '- ' lists where helpful; roughly 300–600 words when the documents support it.",
+};
+
+export function buildPrompt(question: string, sources: Source[], history: Turn[], today = new Date(), depth: Depth = DEFAULT_DEPTH) {
   const system = [
     "You answer questions for members of Project RISHI at UC Berkeley, a student-run nonprofit doing rural development work in Bharog Baneri, India.",
     "Answer ONLY from the club documents provided in the user message. They are excerpts from the club's Google Drive.",
@@ -45,7 +60,8 @@ export function buildPrompt(question: string, sources: Source[], history: Turn[]
     "If the documents don't contain the answer, say so plainly in one or two sentences and, if useful, say which kind of document would have it. Never guess or fill gaps with general knowledge.",
     "Never invent names, dates, numbers, organisations or quotes.",
     "For questions about the 'last' or 'latest' time something happened, compare the dates shown for each source and any dates inside the text, and say which date you're going by.",
-    "Be concise: lead with a direct answer in one or two sentences, then supporting detail as short paragraphs or a short '- ' list. No headings. Plain text; **bold** is fine sparingly.",
+    STYLE[depth] + " No markdown headings (#); plain text, with **bold** and '- ' lists as described.",
+    "Use every source that is relevant, not just the first one, and never pad: if the documents only support a short answer, give a short answer.",
     `Today's date is ${today.toISOString().slice(0, 10)}.`,
   ].join("\n");
 
@@ -84,20 +100,37 @@ export function checkCitations(text: string, count: number): { text: string; cit
 }
 
 // ------------------------------------------------------------ ledger
-async function questionsToday(email: string): Promise<number> {
-  const { count } = await sb()
-    .from("lms_ai_usage").select("id", { count: "exact", head: true })
-    .eq("user_email", email.toLowerCase()).eq("status", "ok")
-    .gte("at", startOfPacificDay());
-  return count ?? 0;
+/** Credits spent today: the sum of each answered question's depth weight.
+ *  Before the weight column exists (migration not run yet) every question
+ *  counts as a standard one. */
+export async function creditsUsedToday(email: string): Promise<number> {
+  const base = () => sb().from("lms_ai_usage").select("weight")
+    .eq("user_email", email.toLowerCase()).eq("status", "ok").gte("at", startOfPacificDay()).limit(1000);
+  const { data, error } = await base();
+  if (!error) return (data ?? []).reduce((a, r) => a + (Number((r as { weight?: number }).weight) || 1), 0);
+  const { count } = await sb().from("lms_ai_usage").select("id", { count: "exact", head: true })
+    .eq("user_email", email.toLowerCase()).eq("status", "ok").gte("at", startOfPacificDay());
+  return (count ?? 0) * DEPTHS[DEFAULT_DEPTH].weight;
 }
 
-async function logFree(email: string, model: string, g: Generation | null, status: "ok" | "failed", question: string) {
-  await sb().from("lms_ai_usage").insert({
+/** Write with the depth columns; if they don't exist yet, write without them. */
+const missingColumn = (e: { code?: string; message?: string } | null) =>
+  !!e && (e.code === "PGRST204" || e.code === "42703" || /column .* (does not exist|could not find)|schema cache/i.test(e.message ?? ""));
+async function insertUsage(row: Record<string, unknown>, extra: Record<string, unknown>) {
+  const { error } = await sb().from("lms_ai_usage").insert({ ...row, ...extra });
+  if (missingColumn(error)) await sb().from("lms_ai_usage").insert(row);
+}
+async function updateUsage(id: unknown, row: Record<string, unknown>, extra: Record<string, unknown>) {
+  const { error } = await sb().from("lms_ai_usage").update({ ...row, ...extra }).eq("id", id);
+  if (missingColumn(error)) await sb().from("lms_ai_usage").update(row).eq("id", id);
+}
+
+async function logFree(email: string, model: string, g: Generation | null, status: "ok" | "failed", question: string, depth: Depth) {
+  await insertUsage({
     user_email: email.toLowerCase(), provider: "gemini", model, status,
     input_tokens: g?.inputTokens ?? null, output_tokens: g?.outputTokens ?? null,
     cost_usd: 0, question: question.slice(0, 500),
-  });
+  }, { depth, weight: DEPTHS[depth].weight });
 }
 
 const EXHAUSTED_KEY = (model: string) => `ai:exhausted:${model}`;
@@ -134,13 +167,14 @@ async function noteFailure(model: string, err: ModelError) {
   else if (err.kind === "no_credit") await markExhausted(model, new Date(Date.now() + 3_600_000).toISOString());
 }
 
-async function tryGemini(model: string, system: string, user: string, email: string, question: string, timeoutMs: number): Promise<Generation | null> {
+async function tryGemini(model: string, system: string, user: string, email: string, question: string, timeoutMs: number, depth: Depth): Promise<Generation | null> {
   if (Date.now() < (await exhaustedUntil(model))) return null;
   const stopAt = Date.now() + timeoutMs;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const g = await geminiGenerate(model, system, user, Math.max(2_000, stopAt - Date.now()));
-      await logFree(email, model, g, "ok", question);
+      const g = await geminiGenerate(model, system, user, Math.max(2_000, stopAt - Date.now()),
+        { maxTokens: DEPTHS[depth].maxTokens, thinking: DEPTHS[depth].thinking });
+      await logFree(email, model, g, "ok", question, depth);
       return g;
     } catch (e) {
       const err = e as ModelError;
@@ -156,21 +190,21 @@ async function tryGemini(model: string, system: string, user: string, email: str
       }
       await noteFailure(model, err);
       if (err.kind === "not_found" || err.kind === "auth") console.error(`ask: gemini ${model} — ${err.kind}: ${err.message}`);
-      await logFree(email, model, null, "failed", question);
+      await logFree(email, model, null, "failed", question, depth);
       return null;
     }
   }
   return null;
 }
 
-async function tryHaiku(system: string, user: string, email: string, question: string, timeoutMs: number): Promise<Generation | null> {
+async function tryHaiku(system: string, user: string, email: string, question: string, timeoutMs: number, depth: Depth): Promise<Generation | null> {
   const cfg = agentConfig();
   if (!cfg.anthropicKey || cfg.haikuMonthlyUsd <= 0) return null;
   if (Date.now() < (await exhaustedUntil(cfg.haikuModel))) return null;
 
   // Worst case for THIS call: the whole prompt in, a maximum-length answer out.
   const estInput = Math.ceil((system.length + user.length) / 3.5);
-  const estimate = estInput * HAIKU_PRICE.input + MAX_ANSWER_TOKENS * HAIKU_PRICE.output;
+  const estimate = estInput * HAIKU_PRICE.input + DEPTHS[depth].maxTokens * HAIKU_PRICE.output;
   const { data: reservation, error } = await sb().rpc("lms_ai_reserve", {
     p_user: email.toLowerCase(), p_provider: "anthropic", p_model: cfg.haikuModel,
     p_estimate: Number(estimate.toFixed(6)), p_cap: cfg.haikuMonthlyUsd,
@@ -179,11 +213,11 @@ async function tryHaiku(system: string, user: string, email: string, question: s
   if (error || reservation == null) return null; // budget reached (or ledger unavailable — fail closed)
 
   try {
-    const g = await anthropicGenerate(cfg.haikuModel, system, user, timeoutMs);
+    const g = await anthropicGenerate(cfg.haikuModel, system, user, timeoutMs, DEPTHS[depth].maxTokens);
     const cost = g.inputTokens * HAIKU_PRICE.input + g.outputTokens * HAIKU_PRICE.output;
-    await sb().from("lms_ai_usage").update({
+    await updateUsage(reservation, {
       status: "ok", input_tokens: g.inputTokens, output_tokens: g.outputTokens, cost_usd: Number(cost.toFixed(6)),
-    }).eq("id", reservation);
+    }, { depth, weight: DEPTHS[depth].weight });
     return g;
   } catch (e) {
     const err = e as ModelError;
@@ -204,8 +238,10 @@ export async function ask(
   m: Member,
   question: string,
   history: Turn[] = [],
-  opts: { embedQuery?: QueryEmbedder } = {},
+  opts: { embedQuery?: QueryEmbedder; depth?: Depth } = {},
 ): Promise<AskResult> {
+  const depth: Depth = opts.depth ?? DEFAULT_DEPTH;
+  const D = DEPTHS[depth];
   const deadline = Date.now() + ANSWER_DEADLINE_MS;
   if (!usingSupabase) return { ok: false, code: "not_configured", error: "The Ask agent needs the database." };
   const cfg = agentConfig();
@@ -213,14 +249,22 @@ export async function ask(
     return { ok: false, code: "not_configured", error: "No AI model is configured yet." };
 
   const q = question.trim().slice(0, 1000);
-  const used = await questionsToday(m.email);
+  const used = await creditsUsedToday(m.email);
   const unlimited = m.roles.webmaster;
-  if (!unlimited && used >= cfg.dailyLimit)
-    return { ok: false, code: "limit", error: `You've asked ${cfg.dailyLimit} questions today — the limit resets at midnight.`, remainingToday: 0 };
+  if (!unlimited && used + D.weight > cfg.dailyCredits) {
+    const left = Math.max(0, cfg.dailyCredits - used);
+    const fits = (Object.keys(DEPTHS) as Depth[]).filter((k) => DEPTHS[k].weight <= left).map((k) => DEPTHS[k].label);
+    return {
+      ok: false, code: "limit", remainingToday: left,
+      error: fits.length
+        ? `Not enough left today for a ${D.label} answer — try ${fits.join(" or ")}. It resets at midnight.`
+        : "You've used today's questions — they reset at midnight.",
+    };
+  }
 
   const context = history.length ? history[history.length - 1].q : undefined;
-  const { sources } = await retrieve(m, q, { context, embedQuery: opts.embedQuery });
-  const remaining = (n: number) => (unlimited ? 999 : Math.max(0, cfg.dailyLimit - n));
+  const { sources } = await retrieve(m, q, { context, embedQuery: opts.embedQuery, budget: D });
+  const remaining = (n: number) => (unlimited ? 999 : Math.max(0, cfg.dailyCredits - n));
 
   if (!sources.length) {
     // Tell the truth about WHY nothing was found: an index that's still being
@@ -236,7 +280,7 @@ export async function ask(
     };
   }
 
-  const { system, user } = buildPrompt(q, sources, history);
+  const { system, user } = buildPrompt(q, sources, history, new Date(), depth);
   const chain: Attempt[] = [];
   if (cfg.geminiKey) for (const model of cfg.primaryModels) chain.push({ provider: "gemini", model });
   if (cfg.anthropicKey) chain.push({ provider: "anthropic", model: cfg.haikuModel });
@@ -250,8 +294,8 @@ export async function ask(
     const timeoutMs = Math.min(30_000, deadline - Date.now() - reserve);
     if (timeoutMs < 4_000) continue;
     const g = step.provider === "gemini"
-      ? await tryGemini(step.model, system, user, m.email, q, timeoutMs)
-      : await tryHaiku(system, user, m.email, q, timeoutMs);
+      ? await tryGemini(step.model, system, user, m.email, q, timeoutMs, depth)
+      : await tryHaiku(system, user, m.email, q, timeoutMs, depth);
     if (!g) continue;
     const { text, cited } = checkCitations(g.text, sources.length);
     return {
@@ -259,7 +303,7 @@ export async function ask(
       answer: text,
       sources: sources.map((s) => ({ ...s, cited: cited.has(s.n) })),
       model: labelFor(step.provider, step.model),
-      remainingToday: remaining(used + 1),
+      remainingToday: remaining(used + D.weight),
     };
   }
 

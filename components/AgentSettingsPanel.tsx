@@ -140,7 +140,7 @@ export default function AgentSettingsPanel() {
           Haiku this month: ${s.haiku.spentThisMonth.toFixed(2)} of ${s.haiku.cap.toFixed(2)}.{" "}
           {s.today.questions} {s.today.questions === 1 ? "answer" : "answers"} today
           {Object.keys(s.today.byModel).length ? ` (${Object.entries(s.today.byModel).map(([m, n]) => `${m}: ${n}`).join(", ")})` : ""}.
-          Members can ask {s.dailyLimit} questions a day.
+          Members get {s.dailyLimit} credits a day: Quick answers cost 1, Standard 2, Detailed 4.
         </p>
       </div>
 

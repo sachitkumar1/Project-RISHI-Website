@@ -3,7 +3,8 @@ import { waitUntil } from "@vercel/functions";
 import { buildIndexStepLocked, indexBacklog } from "@/lib/lms/agent/admin";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { ask, type Turn } from "@/lib/lms/agent/ask";
-import { agentConfig } from "@/lib/lms/agent/config";
+import { agentConfig, DEFAULT_DEPTH, DEPTHS, isDepth } from "@/lib/lms/agent/config";
+import { creditsUsedToday } from "@/lib/lms/agent/ask";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,7 +22,15 @@ export async function GET() {
     const b = await indexBacklog();
     index = { passages: b.chunks, semanticPct: b.chunks ? Math.round((100 * (b.chunks - b.embedPending)) / b.chunks) : 0 };
   } catch { /* status only */ }
-  return NextResponse.json({ enabled: !!(cfg.geminiKey || cfg.anthropicKey), dailyLimit: cfg.dailyLimit, index });
+  // Today's credits, so the depth picker can show what's left before asking.
+  let used = 0;
+  try { used = await creditsUsedToday(me.email); } catch { /* status only */ }
+  return NextResponse.json({
+    enabled: !!(cfg.geminiKey || cfg.anthropicKey), index,
+    credits: { daily: cfg.dailyCredits, left: me.roles.webmaster ? 999 : Math.max(0, cfg.dailyCredits - used) },
+    depths: Object.fromEntries(Object.entries(DEPTHS).map(([k, d]) => [k, { label: d.label, weight: d.weight }])),
+    defaultDepth: DEFAULT_DEPTH,
+  });
 }
 
 /** Only these people see which model answered (and model-specific errors).
@@ -37,7 +46,7 @@ export async function POST(req: Request) {
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
 
-  let body: { question?: unknown; history?: unknown };
+  let body: { question?: unknown; history?: unknown; depth?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Bad request" }, { status: 400 }); }
   const question = typeof body.question === "string" ? body.question.trim() : "";
   if (question.length < 3) return NextResponse.json({ error: "Ask a question first." }, { status: 400 });
@@ -51,7 +60,7 @@ export async function POST(req: Request) {
     : [];
 
   try {
-    const full = await ask(me, question, history);
+    const full = await ask(me, question, history, { depth: isDepth(body.depth) ? body.depth : DEFAULT_DEPTH });
     const status = full.ok ? 200 : full.code === "limit" ? 429 : full.code === "no_model" ? 503 : 500;
     const result = canSeeModel(me)
       ? full

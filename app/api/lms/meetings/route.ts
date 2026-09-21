@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ensureUpcomingMeetings } from "@/lib/lms/meetingSchedule";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { canCreateMeeting } from "@/lib/lms/permissions";
 import { createMeeting, listMeetings } from "@/lib/lms/meetings";
@@ -13,6 +14,9 @@ export async function GET(req: Request) {
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   const group = new URL(req.url).searchParams.get("group");
   if (!isGroup(group)) return NextResponse.json({ error: "Unknown group." }, { status: 400 });
+  // Make sure next Tuesday's pages exist before listing (cheap when they do —
+  // one query). Never blocks the list if it fails.
+  try { await ensureUpcomingMeetings(); } catch (e) { console.error("meetings: auto-create", e); }
   const meetings = await listMeetings(group);
   // Lightweight list: drop the heavy blocks payload.
   const list = meetings.map(({ blocks, ...m }) => ({ ...m, blockCount: blocks.length }));

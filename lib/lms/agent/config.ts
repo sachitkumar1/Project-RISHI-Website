@@ -35,7 +35,8 @@ export const agentConfig = () => ({
   haikuModel: process.env.AI_HAIKU_MODEL || "claude-haiku-4-5",
   embedModel: process.env.AI_EMBED_MODEL || "gemini-embedding-001",
   haikuMonthlyUsd: num(process.env.AI_HAIKU_MONTHLY_USD, 5),
-  dailyLimit: num(process.env.AI_DAILY_LIMIT, 15),
+  dailyLimit: num(process.env.AI_DAILY_LIMIT, 15), // legacy: questions/day before depth levels
+  dailyCredits: num(process.env.AI_DAILY_CREDITS, 30),
   geminiBase: (process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com").replace(/\/$/, ""),
   anthropicBase: (process.env.ANTHROPIC_API_BASE || "https://api.anthropic.com").replace(/\/$/, ""),
 });
@@ -51,7 +52,27 @@ export const ANSWER_DEADLINE_MS = 50_000;
  *  which let one "high demand" reply from Google push every question for the
  *  next 10 minutes onto paid Haiku. */
 export const BUSY_BACKOFF_MS = 2 * 60_000;
-export const MAX_ANSWER_TOKENS = 1200;
+export const MAX_ANSWER_TOKENS = 1200; // Haiku's "Test models" ping; answers use DEPTHS below
+
+/**
+ * Answer depth. The biggest levers on how detailed an answer is are how much of
+ * the archive the model reads and what it's told to write — reasoning effort
+ * matters less, and on Google's free tier "high" reasoning regularly runs past
+ * the 60s request limit, so the top level uses "medium".
+ *   weight: credits it costs. Members get AI_DAILY_CREDITS a day (default 30):
+ *           30 quick, 15 standard (the old daily limit), or 7 detailed.
+ */
+export type Depth = "quick" | "standard" | "detailed";
+export const DEPTHS: Record<Depth, {
+  label: string; weight: number; maxFiles: number; perFile: number; charBudget: number;
+  maxTokens: number; thinking: "low" | "medium";
+}> = {
+  quick:    { label: "Quick",    weight: 1, maxFiles: 5,  perFile: 2, charBudget: 12_000, maxTokens: 700,  thinking: "low" },
+  standard: { label: "Standard", weight: 2, maxFiles: 8,  perFile: 3, charBudget: 26_000, maxTokens: 1600, thinking: "low" },
+  detailed: { label: "Detailed", weight: 4, maxFiles: 12, perFile: 4, charBudget: 40_000, maxTokens: 2600, thinking: "medium" },
+};
+export const DEFAULT_DEPTH: Depth = "standard";
+export const isDepth = (v: unknown): v is Depth => v === "quick" || v === "standard" || v === "detailed";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;

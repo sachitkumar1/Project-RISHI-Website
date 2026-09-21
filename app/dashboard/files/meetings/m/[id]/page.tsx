@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Contours from "@/components/Contours";
@@ -10,7 +10,9 @@ import { AGENDA_DOCS } from "@/lib/lms/agendaDocs";
 import type { ProjectGroup } from "@/lib/lms/types";
 import type { Block } from "@/components/MeetingOutline";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
-import { TaskForm, type Meta } from "@/components/LmsBoard";
+import { TaskForm, PendingApprovalCard, type Meta } from "@/components/LmsBoard";
+import AttentionPulse from "@/components/AttentionPulse";
+import { useSeenMarks } from "@/components/useSeenMarks";
 
 const GROUP_LABEL: Record<string, string> = {
   E: "Education", R: "Water & Sanitation", W: "Women's Empowerment", H: "Health",
@@ -21,7 +23,7 @@ type Meeting = {
   location: string; notetaker: string; snack: string;
   attendees: string[]; blocks: Block[]; body: string; createdBy: string;
 };
-type Task = { id: string; groupId: string; title: string; description: string; assigneeEmail: string; assigneeName: string; dueAt: string; status: string; archived: boolean; tags?: string[]; submittedAt?: string | null; canOpen?: boolean };
+type Task = { id: string; groupId: string; title: string; description: string; assigneeEmail: string; assigneeName: string; assignerEmail?: string; dueAt: string; status: string; archived: boolean; tags?: string[]; submittedAt?: string | null; canOpen?: boolean; canManage?: boolean };
 
 /** Finished after the deadline? Imported stand-in dates never count as late. */
 function lateSubmission(t: Task): boolean {
@@ -86,6 +88,40 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
       g.people.find((p) => p.assigneeEmail.toLowerCase() === (meta?.me.email ?? "").toLowerCase()) ?? g.head,
     [meta],
   );
+  // ---- Pending Your Approval (same behaviour as the dashboard) ----
+  // A submission from this meeting that the viewer can approve (they assigned
+  // it, or co-lead / co-NMT), never their own work. It MOVES here from the
+  // table below while it waits, and pulses the first time it's on screen.
+  const myEmail = (meta?.me.email ?? "").toLowerCase();
+  const awaitingMe = useCallback(
+    (t: Task) => t.status === "pending" && !t.archived && !!t.canManage && t.assigneeEmail.toLowerCase() !== myEmail,
+    [myEmail],
+  );
+  const pendingKey = (t: Task) => `p:${t.id}:${t.submittedAt ?? ""}`; // same keys as the dashboard
+  const pendingGroups = useMemo(() => groupTasks(tasks.filter(awaitingMe)), [tasks, awaitingMe]);
+  const groupSize = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const t of tasks) { const k = t.groupId || t.id; n.set(k, (n.get(k) ?? 0) + 1); }
+    return n;
+  }, [tasks]);
+  const liveKeys = useMemo(() => (meta && !loading ? tasks.filter((t) => t.status === "pending").map(pendingKey) : null), [meta, loading, tasks]);
+  const { isNew, markSeen } = useSeenMarks(myEmail, liveKeys);
+  const pinned = useRef(new Set<string>());
+  const pendingOrdered = useMemo(() => {
+    const flag = pendingGroups.map((g) => g.people.map(pendingKey).some((k) => { if (isNew(k)) pinned.current.add(k); return pinned.current.has(k); }));
+    return [...pendingGroups.filter((_, i) => flag[i]), ...pendingGroups.filter((_, i) => !flag[i])];
+  }, [pendingGroups, isNew]);
+  // The table keeps a task only while someone on it has work that ISN'T a
+  // submission waiting on the viewer.
+  const tableGroups = useMemo(
+    () => groupTasks(tasks).filter((g) => {
+      const unfinished = g.people.filter((p) => p.status !== "complete");
+      const movedUp = g.people.some(awaitingMe) && unfinished.every(awaitingMe);
+      return !movedUp;
+    }),
+    [tasks, awaitingMe],
+  );
+
   const [liveNote, setLiveNote] = useState(false); // brief "updated" flash
   const clientId = useRef(Math.random().toString(36).slice(2)).current;
   const dirtyRef = useRef(false);        // unsaved local edits pending
@@ -98,6 +134,12 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
       .catch((e) => setError(e instanceof Error ? e.message : "Something went wrong."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const approve = useCallback(async (taskId: string) => {
+    const r = await fetch(`/api/lms/tasks/${taskId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "approve" }) });
+    if (!r.ok) alert("Couldn't approve that — try opening it instead.");
+    await load();
+  }, [load]);
 
   // Quiet refetch triggered by a live "changed" broadcast. Skips applying while
   // the user is actively typing so it never overwrites in-progress edits.
@@ -240,6 +282,33 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
+        {/* ---- Pending Your Approval (only when something is waiting) ---- */}
+        {pendingOrdered.length > 0 && (
+          <section data-tour="meeting-pending-approval" className="mt-8">
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h2 className="font-display text-2xl font-semibold text-pine-deep">Pending Your Approval</h2>
+              <span className="rounded-full bg-marigold-soft px-2.5 py-0.5 text-xs font-semibold text-marigold-deep">
+                {pendingOrdered.length} {pendingOrdered.length === 1 ? "task" : "tasks"}
+              </span>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {pendingOrdered.map((g) => {
+                const keys = g.people.map(pendingKey);
+                const nameByEmail = new Map(tasks.map((t) => [t.assigneeEmail.toLowerCase(), t.assigneeName]));
+                return (
+                  <AttentionPulse key={g.key} className="h-full" active={keys.some(isNew)} onSeen={() => markSeen(keys)}>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    <PendingApprovalCard rows={g.people as any} groupSize={groupSize.get(g.key) ?? g.people.length}
+                      nameOf={(e) => nameByEmail.get(e.toLowerCase()) ?? e} avatarOf={() => null}
+                      onOpenRow={(tid) => setOpenTaskId(tid)} onOpenGroup={() => setOpenTaskId(g.people[0].id)}
+                      onApprove={approve} />
+                  </AttentionPulse>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* ---- tasks (real dashboard tasks) ---- */}
         <div className="mt-8">
           <div className="flex items-center justify-between">
@@ -251,8 +320,8 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
             )}
           </div>
           <div className="mt-3 overflow-hidden rounded-3xl border border-pine/12">
-            {tasks.length === 0 ? (
-              <p className="p-6 text-sm text-ink/45">No tasks assigned from this meeting yet.{canManage ? " Use “Assign task” to create real dashboard tasks that everyone tracks." : ""}</p>
+            {tableGroups.length === 0 ? (
+              <p className="p-6 text-sm text-ink/45">{tasks.length > 0 ? "Everything from this meeting is waiting on your approval above." : "No tasks assigned from this meeting yet."}{canManage ? " Use “Assign task” to create real dashboard tasks that everyone tracks." : ""}</p>
             ) : (
               <table className="w-full text-left text-sm">
                 <thead><tr className="border-b border-pine/10 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/50">
@@ -261,7 +330,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
                   <th className="px-4 py-3 font-semibold">Due</th><th className="px-4 py-3 font-semibold">Progress</th>
                 </tr></thead>
                 <tbody>
-                  {groupTasks(tasks).map((g) => {
+                  {tableGroups.map((g) => {
                     const done = g.people.filter((p) => p.status === "complete").length;
                     const hasDue = !(g.head.tags ?? []).includes("imported:no-due-date");
                     return (

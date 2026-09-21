@@ -33,7 +33,21 @@ type Exchange = {
   model?: string | null;
   error?: string;
 };
-type Status = { enabled: boolean; dailyLimit: number; index?: { passages: number; semanticPct: number } };
+type DepthKey = "quick" | "standard" | "detailed";
+type Status = {
+  enabled: boolean;
+  index?: { passages: number; semanticPct: number };
+  credits?: { daily: number; left: number };
+  depths?: Record<DepthKey, { label: string; weight: number }>;
+  defaultDepth?: DepthKey;
+};
+const DEPTH_ORDER: DepthKey[] = ["quick", "standard", "detailed"];
+const DEPTH_HINT: Record<DepthKey, string> = {
+  quick: "Short answer, fewer files",
+  standard: "Thorough answer",
+  detailed: "Reads more files, longest answer — slower",
+};
+const DEPTH_STORE = "rishi:ai-depth";
 
 const EXAMPLES = [
   { q: "What happened with the microfinance initiative by Women's Empowerment?", tag: "Projects" },
@@ -195,7 +209,12 @@ export default function AskPanel() {
   const [status, setStatus] = useState<Status | null>(null);
   const [thread, setThread] = useState<Exchange[]>([]);
   const [draft, setDraft] = useState("");
-  const [remaining, setRemaining] = useState<number | null>(null);
+  const [remaining, setRemaining] = useState<number | null>(null); // credits left today
+  const [depth, setDepth] = useState<DepthKey>("standard");
+  useEffect(() => {
+    try { const v = window.localStorage.getItem(DEPTH_STORE); if (v === "quick" || v === "standard" || v === "detailed") setDepth(v); } catch { /* ignore */ }
+  }, []);
+  const chooseDepth = (d: DepthKey) => { setDepth(d); try { window.localStorage.setItem(DEPTH_STORE, d); } catch { /* ignore */ } };
   const [selected, setSelected] = useState<number | null>(null); // exchange id shown in the inspector
   const [activeN, setActiveN] = useState<number | null>(null);
   const nextId = useRef(1);
@@ -206,7 +225,9 @@ export default function AskPanel() {
   const busy = thread.some((t) => t.status === "asking");
 
   useEffect(() => {
-    fetch("/api/lms/ask").then((r) => (r.ok ? r.json() : null)).then((d) => setStatus(d ?? { enabled: false, dailyLimit: 0 })).catch(() => setStatus({ enabled: false, dailyLimit: 0 }));
+    fetch("/api/lms/ask").then((r) => (r.ok ? r.json() : null))
+      .then((d) => { setStatus(d ?? { enabled: false }); if (typeof d?.credits?.left === "number") setRemaining(d.credits.left); })
+      .catch(() => setStatus({ enabled: false }));
   }, []);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [thread.length]);
   useEffect(() => { // grow the composer with its content
@@ -228,7 +249,7 @@ export default function AskPanel() {
     const startedAt = Date.now();
     setThread((t) => [...t.filter((x) => x.id !== replaceId), { id, q, status: "asking", startedAt }]);
     try {
-      const r = await fetch("/api/lms/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, history }) });
+      const r = await fetch("/api/lms/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, history, depth }) });
       const d = await r.json().catch(() => ({}));
       if (typeof d.remainingToday === "number") setRemaining(d.remainingToday);
       const ms = Date.now() - startedAt;
@@ -241,7 +262,7 @@ export default function AskPanel() {
         ? { ...x, status: "error", ms: Date.now() - startedAt, error: "The connection dropped before the answer arrived. This can happen if the page is left or the phone sleeps while it's working." }
         : x)));
     }
-  }, [draft, busy, status, thread]);
+  }, [draft, busy, status, thread, depth]);
 
   const cite = (exId: number, n: number) => {
     setSelected(exId);
@@ -403,9 +424,29 @@ export default function AskPanel() {
                     : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 19V5M5 12l7-7 7 7" /></svg>}
                 </button>
               </div>
-              <div className="flex items-center justify-between px-3 pb-1 pt-1.5 font-mono text-[10px] text-paper/30">
-                <span className="hidden sm:inline">enter to send · shift+enter for a new line</span>
-                {remaining !== null && remaining < 999 && <span>{remaining} left today</span>}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-2 pb-1 pt-1.5">
+                <div role="radiogroup" aria-label="Answer depth" className="flex rounded-lg border border-paper/10 p-0.5">
+                  {DEPTH_ORDER.map((d) => {
+                    const w = status?.depths?.[d]?.weight ?? { quick: 1, standard: 2, detailed: 4 }[d];
+                    const disabled = remaining !== null && remaining < 999 && remaining < w;
+                    return (
+                      <button key={d} type="button" role="radio" aria-checked={depth === d} title={DEPTH_HINT[d]}
+                        onClick={() => chooseDepth(d)} disabled={disabled}
+                        className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-30 ${depth === d ? "bg-marigold text-pine-deep" : "text-paper/55 hover:text-paper"}`}>
+                        {status?.depths?.[d]?.label ?? d[0].toUpperCase() + d.slice(1)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="font-mono text-[10px] text-paper/35">
+                  {remaining !== null && remaining < 999
+                    ? (() => {
+                        const w = status?.depths?.[depth]?.weight ?? { quick: 1, standard: 2, detailed: 4 }[depth];
+                        const n = Math.floor(remaining / w);
+                        return `${n} ${status?.depths?.[depth]?.label ?? depth} ${n === 1 ? "answer" : "answers"} left today`;
+                      })()
+                    : <span className="hidden sm:inline">enter to send · shift+enter for a new line</span>}
+                </span>
               </div>
             </form>
           </div>

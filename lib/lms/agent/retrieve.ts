@@ -39,10 +39,10 @@ export const defaultQueryEmbedder: QueryEmbedder = async (q) => {
 };
 
 const MATCH = 80;          // candidates from each half of the search
-const MAX_FILES = 8;
-const MAX_PER_FILE = 3;
-const CHAR_BUDGET = 22_000; // ~5.5k tokens of excerpts in the prompt
 const RRF_K = 60;
+/** How much to read; set per answer depth (see DEPTHS in config.ts). */
+export type ReadBudget = { maxFiles: number; perFile: number; charBudget: number };
+const DEFAULT_BUDGET: ReadBudget = { maxFiles: 8, perFile: 3, charBudget: 22_000 };
 
 /** School years a question points at: "2024" → 2023-2024 and 2024-2025. */
 export function yearHints(q: string): Set<string> {
@@ -83,8 +83,9 @@ const stripHeader = (s: string) => (s.startsWith("[") ? s.slice(s.indexOf("\n") 
 export async function retrieve(
   m: Member,
   question: string,
-  opts: { context?: string; embedQuery?: QueryEmbedder } = {},
+  opts: { context?: string; embedQuery?: QueryEmbedder; budget?: ReadBudget } = {},
 ): Promise<{ sources: Source[]; usedEmbedding: boolean; candidates: number }> {
+  const { maxFiles: MAX_FILES, perFile: MAX_PER_FILE, charBudget: CHAR_BUDGET } = opts.budget ?? DEFAULT_BUDGET;
   if (!usingSupabase) return { sources: [], usedEmbedding: false, candidates: 0 };
   const q = [question, opts.context].filter(Boolean).join(" ").slice(0, 2000);
 

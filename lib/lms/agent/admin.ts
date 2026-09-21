@@ -22,7 +22,7 @@ export async function agentStatus(): Promise<AgentStatus> {
   const base = {
     keys: { gemini: !!cfg.geminiKey, anthropic: !!cfg.anthropicKey },
     models: { primary: cfg.primaryModels, fallback: cfg.fallbackModel, haiku: cfg.haikuModel, embed: cfg.embedModel },
-    dailyLimit: cfg.dailyLimit,
+    dailyLimit: cfg.dailyCredits,
   };
   if (!usingSupabase)
     return { ...base, index: { filesPending: 0, chunks: 0, embedded: 0 }, haiku: { spentThisMonth: 0, cap: cfg.haikuMonthlyUsd }, today: { questions: 0, byModel: {} }, exhausted: {}, lastErrors: {} };

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ensureUpcomingMeetings } from "@/lib/lms/meetingSchedule";
 import { hasRealDueDate, isPlaceholderEmail } from "@/lib/lms/importedTasks";
 import { listRemindableTasks, markRemindersSent } from "@/lib/lms/store";
 import { notifyTaskReminder } from "@/lib/lms/notify";
@@ -91,7 +92,12 @@ async function run(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, scanned: tasks.length, sent });
+  // Also create next Tuesday's meeting pages once the Wednesday after a meeting
+  // begins (idempotent; see lib/lms/meetingSchedule.ts).
+  let meetings: unknown = null;
+  try { meetings = await ensureUpcomingMeetings(); } catch (e) { meetings = { error: (e as Error).message }; }
+
+  return NextResponse.json({ ok: true, scanned: tasks.length, sent, meetings });
 }
 
 export async function GET(req: Request) {

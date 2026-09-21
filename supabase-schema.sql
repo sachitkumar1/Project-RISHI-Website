@@ -523,4 +523,256 @@ alter table lms_profiles add column if not exists tour_completed_at timestamptz;
 select column_name, data_type
 from information_schema.columns
 where table_name = 'lms_profiles' and column_name = 'tour_completed_at';
+-- --------------------------------------------------------------------------------
+-- Ask Agent Changes -- 
+-- ============================================================================
+--  Project RISHI — "Ask" agent (search over the Drive mirror). Safe to re-run.
+--  Run in the Supabase SQL editor AFTER supabase-schema.sql.
+--
+--  Adds:
+--    • lms_file_chunks     — each file's text split into ~1,500-char passages,
+--                            with a full-text index and an embedding (vector)
+--    • lms_files.chunked_at + a trigger that re-queues a file when its text changes
+--    • lms_search_chunks() — hybrid search (keywords + meaning) in one call
+--    • lms_ai_usage        — one row per model call: per-member daily limits and
+--                            the monthly Haiku budget are counted from here
+--    • lms_ai_reserve()    — atomically reserves budget before a paid call, so
+--                            two simultaneous questions can't both overspend
+-- ============================================================================
+
+-- pgvector. Supabase keeps extensions in their own schema.
+create extension if not exists vector with schema extensions;
+
+-- ---- Re-chunk when a file's text changes -----------------------------------
+alter table lms_files add column if not exists chunked_at timestamptz;
+
+create or replace function lms_files_rechunk_on_change() returns trigger as $$
+begin
+  if new.content_text is distinct from old.content_text then
+    new.chunked_at := null;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+-- Named "zz_" on purpose: BEFORE triggers fire in name order, so this runs
+-- AFTER lms_files_reindex (which clears content_text when a Drive file is
+-- edited) and sees that change.
+drop trigger if exists lms_files_zz_rechunk on lms_files;
+create trigger lms_files_zz_rechunk
+  before update on lms_files
+  for each row execute function lms_files_rechunk_on_change();
+
+create index if not exists lms_files_unchunked_idx on lms_files (id) where chunked_at is null;
+
+-- ---- Passages ---------------------------------------------------------------
+create table if not exists lms_file_chunks (
+  id           bigint generated always as identity primary key,
+  file_id      uuid not null references lms_files(id) on delete cascade,
+  chunk_index  int  not null,
+  content      text not null,
+  fts          tsvector generated always as (to_tsvector('english', content)) stored,
+  embedding    extensions.vector(768),
+  embed_model  text,
+  created_at   timestamptz not null default now(),
+  unique (file_id, chunk_index)
+);
+create index if not exists lms_file_chunks_fts_idx     on lms_file_chunks using gin (fts);
+create index if not exists lms_file_chunks_file_idx    on lms_file_chunks (file_id);
+create index if not exists lms_file_chunks_pending_idx on lms_file_chunks (id) where embedding is null;
+-- No approximate (HNSW) index: a few thousand passages are scanned exactly in
+-- milliseconds, and exact search never silently drops a match.
+
+alter table lms_file_chunks enable row level security;
+grant all privileges on table lms_file_chunks to service_role;
+
+-- ---- Hybrid search ------------------------------------------------------------
+-- Returns the best passages by keyword match AND by meaning, each with its
+-- position in its own ranking; the server fuses the two (reciprocal rank
+-- fusion) and applies folder permissions.
+--
+-- Keyword ranking weights each question word by how RARE it is across all
+-- passages (IDF, as in BM25). Postgres's own ts_rank treats every word alike,
+-- so in "what did we say to Asha ji the last time we talked" the common words
+-- (say, last, time, talk) swamped the one that matters (asha) and the newest
+-- notes about her ranked below generic documents. Words are OR-ed, so a
+-- passage doesn't need every word to be found.
+-- (Signature changed when phrases were added: drop the old one so there's
+--  never an ambiguous overload.)
+drop function if exists lms_search_chunks(text, extensions.vector, int);
+create or replace function lms_search_chunks(
+  q text,
+  q_embedding extensions.vector(768) default null,
+  match_count int default 60,
+  phrases text[] default '{}'
+)
+returns table (
+  chunk_id bigint, file_id uuid, chunk_index int, content text,
+  fts_pos int, vec_pos int
+)
+language sql stable
+set search_path = public, extensions
+as $$
+  with lex as (
+    select distinct w from unnest(tsvector_to_array(to_tsvector('english', coalesce(q, '')))) as w
+  ),
+  n as (select greatest(count(*), 1)::float8 as total from lms_file_chunks),
+  idf as (
+    select lex.w,
+           ln(((select total from n) - df.cnt + 0.5) / (df.cnt + 0.5) + 1) as weight
+    from lex
+    cross join lateral (
+      select count(*)::float8 as cnt from lms_file_chunks c where c.fts @@ to_tsquery('simple', quote_literal(lex.w))
+    ) df
+    where df.cnt > 0
+  ),
+  -- Adjacent word pairs from the question ("asha ji", "rainwater harvesting"),
+  -- weighted by rarity like single words, but doubled: a phrase match is much
+  -- stronger evidence. It's what separates "Asha ji" (a person) from the many
+  -- documents about ASHA workers.
+  ph as (
+    select p.phrase, ln(((select total from n) - df.cnt + 0.5) / (df.cnt + 0.5) + 1) * 2 as weight
+    from unnest(coalesce(phrases, '{}')) as p(phrase)
+    cross join lateral (
+      select count(*)::float8 as cnt from lms_file_chunks c where c.fts @@ phraseto_tsquery('english', p.phrase)
+    ) df
+    where df.cnt > 0 and numnode(phraseto_tsquery('english', p.phrase)) > 1
+  ),
+  anyq as (
+    select to_tsquery('simple', string_agg(quote_literal(w), ' | ')) as query from idf
+  ),
+  kw as (
+    select c.id,
+           row_number() over (order by s.score desc, c.id)::int as pos
+    from lms_file_chunks c
+    join lms_files f on f.id = c.file_id and f.deleted = false
+    cross join anyq
+    cross join lateral (
+      select coalesce(sum(idf.weight), 0)
+           + coalesce((select sum(ph.weight) from ph where c.fts @@ phraseto_tsquery('english', ph.phrase)), 0)
+           + 0.1 * ts_rank_cd(c.fts, anyq.query, 32) as score
+      from idf where c.fts @@ to_tsquery('simple', quote_literal(idf.w))
+    ) s
+    where anyq.query is not null and c.fts @@ anyq.query
+    order by s.score desc, c.id
+    limit match_count
+  ),
+  sem as (
+    select c.id, row_number() over (order by c.embedding <=> q_embedding)::int as pos
+    from lms_file_chunks c
+    join lms_files f on f.id = c.file_id and f.deleted = false
+    where q_embedding is not null and c.embedding is not null
+    order by c.embedding <=> q_embedding
+    limit match_count
+  )
+  select c.id, c.file_id, c.chunk_index, c.content, kw.pos, sem.pos
+  from (select id from kw union select id from sem) ids
+  join lms_file_chunks c on c.id = ids.id
+  left join kw  on kw.id  = c.id
+  left join sem on sem.id = c.id;
+$$;
+grant execute on function lms_search_chunks(text, extensions.vector, int, text[]) to service_role;
+
+-- Bulk-write embeddings in one round trip (PostgREST upserts can't do a
+-- partial update of rows with NOT NULL columns).
+create or replace function lms_set_chunk_embeddings(p_ids bigint[], p_embeddings text[], p_model text)
+returns int
+language plpgsql
+set search_path = public, extensions
+as $$
+declare n int;
+begin
+  update lms_file_chunks c
+     set embedding = e.emb::extensions.vector, embed_model = p_model
+    from unnest(p_ids, p_embeddings) as e(id, emb)
+   where c.id = e.id;
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+grant execute on function lms_set_chunk_embeddings(bigint[], text[], text) to service_role;
+
+-- ---- Usage ledger -----------------------------------------------------------
+create table if not exists lms_ai_usage (
+  id             bigint generated always as identity primary key,
+  at             timestamptz not null default now(),
+  user_email     text not null,
+  provider       text not null,               -- gemini | anthropic
+  model          text not null default '',
+  status         text not null default 'reserved',  -- reserved | ok | failed
+  input_tokens   int,
+  output_tokens  int,
+  cost_usd       numeric(12,6) not null default 0,
+  question       text
+);
+create index if not exists lms_ai_usage_at_idx   on lms_ai_usage (at);
+create index if not exists lms_ai_usage_user_idx on lms_ai_usage (user_email, at);
+
+alter table lms_ai_usage enable row level security;
+grant all privileges on table lms_ai_usage to service_role;
+
+-- Reserve the worst-case cost of a paid call, or refuse if it would pass the cap.
+-- The advisory lock makes check-then-insert atomic across simultaneous requests.
+-- Returns the ledger row id, or NULL when the budget can't cover it.
+create or replace function lms_ai_reserve(
+  p_user text, p_provider text, p_model text,
+  p_estimate numeric, p_cap numeric, p_since timestamptz, p_question text
+)
+returns bigint
+language plpgsql
+as $$
+declare spent numeric; new_id bigint;
+begin
+  perform pg_advisory_xact_lock(hashtext('lms_ai_reserve:' || p_provider));
+  select coalesce(sum(cost_usd), 0) into spent
+    from lms_ai_usage where provider = p_provider and at >= p_since;
+  if spent + p_estimate > p_cap then
+    return null;
+  end if;
+  insert into lms_ai_usage (user_email, provider, model, status, cost_usd, question)
+  values (p_user, p_provider, p_model, 'reserved', p_estimate, p_question)
+  returning id into new_id;
+  return new_id;
+end;
+$$;
+grant execute on function lms_ai_reserve(text, text, text, numeric, numeric, timestamptz, text) to service_role;
+
+create or replace function lms_ai_spend_since(p_provider text, p_since timestamptz)
+returns numeric
+language sql stable
+as $$
+  select coalesce(sum(cost_usd), 0) from lms_ai_usage where provider = p_provider and at >= p_since;
+$$;
+grant execute on function lms_ai_spend_since(text, timestamptz) to service_role;
+
+-- ---- Verify -----------------------------------------------------------------
+-- Expect: vector extension present, both tables, chunked_at column.
+select
+  (select count(*) from pg_extension where extname = 'vector')                         as vector_ext,
+  (select count(*) from information_schema.tables where table_name = 'lms_file_chunks') as chunks_table,
+  (select count(*) from information_schema.tables where table_name = 'lms_ai_usage')    as usage_table,
+  (select count(*) from information_schema.columns
+     where table_name = 'lms_files' and column_name = 'chunked_at')                     as chunked_at_col;
+
+-- ---- Folders that contain files -------------------------------------------
+-- Lets the Files browser (and the permission check) work from the ~370 folders
+-- instead of downloading all ~4,600 file rows on every click: the browser only
+-- needs to know WHICH folders hold a file, not every file's details.
+create or replace function lms_folders_with_files()
+returns table (parent_id text)
+language sql stable
+as $$
+  select distinct f.parent_id
+  from lms_files f
+  where f.deleted = false and f.kind <> 'folder' and f.parent_id is not null;
+$$;
+grant execute on function lms_folders_with_files() to service_role;
+
+-- ---- Answer depth (Quick / Standard / Detailed) ------------------------------
+-- Each answered question records its depth and how many daily credits it cost
+-- (quick 1, standard 2, detailed 4). Members' daily allowance is counted in
+-- credits. Safe to re-run; the app keeps working before this is applied.
+alter table lms_ai_usage add column if not exists depth  text;
+alter table lms_ai_usage add column if not exists weight int not null default 2;
+
 
