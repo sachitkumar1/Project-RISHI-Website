@@ -50,6 +50,12 @@ const STYLE: Record<Depth, string> = {
     "document: organise by time (a timeline) or by theme, whichever fits, with names, dates, figures, decisions, outcomes " +
     "and open questions. Point out where documents disagree or where the record has gaps. Use short **bold** lead-ins " +
     "for sections and '- ' lists where helpful; roughly 300–600 words when the documents support it.",
+  deep:
+    "Write a research report. Start with a short executive summary (3–5 sentences). Then a structured account with " +
+    "**bold** section lead-ins: background, a dated timeline of what happened, people and partner organisations " +
+    "involved, decisions and outcomes with figures, and lessons or open questions. Draw on as many of the documents " +
+    "as are relevant and cite each claim. Call out contradictions between documents and gaps in the record. " +
+    "Roughly 600–1,000 words when the documents support it; never pad beyond what they contain.",
 };
 
 export function buildPrompt(question: string, sources: Source[], history: Turn[], today = new Date(), depth: Depth = DEFAULT_DEPTH) {

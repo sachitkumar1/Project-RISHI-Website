@@ -93,7 +93,8 @@ export async function retrieve(
   const { data: hits, error } = await sb().rpc("lms_search_chunks", {
     q,
     q_embedding: vec ? `[${vec.join(",")}]` : null,
-    match_count: MATCH,
+    // Deep Research needs more distinct files than the default pool supplies.
+    match_count: Math.max(MATCH, MAX_FILES * MAX_PER_FILE * 2),
     phrases: questionPhrases(q),
   });
   if (error) throw new Error(`search failed: ${dbErr(error)}`);
