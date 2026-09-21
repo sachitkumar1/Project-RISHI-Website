@@ -57,8 +57,8 @@ const DEPTH_STORE = "rishi:ai-depth";
 const EXAMPLES = [
   { q: "What happened with the microfinance initiative by Women's Empowerment?", tag: "Projects" },
   { q: "What did we say to Asha ji the last time we talked to her?", tag: "Partners" },
-  { q: "Have we worked with an NGO that deals with classroom infrastructure?", tag: "NGOs" },
-  { q: "Who did we survey during the 2024 India trip?", tag: "Fieldwork" },
+  { q: "What are some NGOs Women's Empowerment has worked with in the past?", tag: "NGOs" },
+  { q: "What projects has Health worked on in the past year?", tag: "Health" },
 ];
 
 // The pipeline's real stages, in order. Timing is approximate — the server
