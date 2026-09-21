@@ -49,7 +49,7 @@ const DEPTH_HINT: Record<DepthKey, string> = {
   detailed: "Comprehensive answer from up to 12 files",
   deep: "Research report from up to 24 files — slowest",
 };
-const DEFAULT_WEIGHTS: Record<DepthKey, number> = { quick: 1, standard: 2, detailed: 4, deep: 8 };
+const DEFAULT_WEIGHTS: Record<DepthKey, number> = { quick: 0.5, standard: 2, detailed: 4, deep: 8 };
 const DEFAULT_LABELS: Record<DepthKey, string> = { quick: "Quick", standard: "Standard", detailed: "Detailed", deep: "Deep Research" };
 const isDepthKey = (v: unknown): v is DepthKey => v === "quick" || v === "standard" || v === "detailed" || v === "deep";
 const DEPTH_STORE = "rishi:ai-depth";

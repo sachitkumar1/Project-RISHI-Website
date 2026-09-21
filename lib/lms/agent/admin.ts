@@ -1,5 +1,5 @@
 /** Webmaster-facing status, index building and model checks for the Ask agent. */
-import { agentConfig, sb, startOfPacificDay, startOfPacificMonth, usingSupabase } from "./config";
+import { agentConfig, DEPTHS, toCredits, sb, startOfPacificDay, startOfPacificMonth, usingSupabase } from "./config";
 import { buildChunks } from "./chunker";
 import { embedPending } from "./embed";
 import { anthropicGenerate, geminiEmbed, geminiGenerate, geminiListModels, ModelError } from "./models";
@@ -13,6 +13,7 @@ export type AgentStatus = {
   exhausted: Record<string, string>; // model → until (ISO), only while in effect
   lastErrors: Record<string, { at: string; kind: string; message: string; quota: { id: string; value: string } | null }>;
   dailyLimit: number;
+  depthCosts: { label: string; weight: number }[];
 };
 
 const count = async (q: PromiseLike<{ count: number | null }>) => (await q).count ?? 0;
@@ -22,7 +23,8 @@ export async function agentStatus(): Promise<AgentStatus> {
   const base = {
     keys: { gemini: !!cfg.geminiKey, anthropic: !!cfg.anthropicKey },
     models: { primary: cfg.primaryModels, fallback: cfg.fallbackModel, haiku: cfg.haikuModel, embed: cfg.embedModel },
-    dailyLimit: cfg.dailyCredits,
+    dailyLimit: toCredits(cfg.dailyCredits),
+    depthCosts: Object.values(DEPTHS).map((d) => ({ label: d.label, weight: toCredits(d.weight) })),
   };
   if (!usingSupabase)
     return { ...base, index: { filesPending: 0, chunks: 0, embedded: 0 }, haiku: { spentThisMonth: 0, cap: cfg.haikuMonthlyUsd }, today: { questions: 0, byModel: {} }, exhausted: {}, lastErrors: {} };

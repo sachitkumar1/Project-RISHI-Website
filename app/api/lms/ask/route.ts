@@ -3,7 +3,7 @@ import { waitUntil } from "@vercel/functions";
 import { buildIndexStepLocked, indexBacklog } from "@/lib/lms/agent/admin";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { ask, type Turn } from "@/lib/lms/agent/ask";
-import { agentConfig, DEFAULT_DEPTH, DEPTHS, isDepth, nextPacificMidnight } from "@/lib/lms/agent/config";
+import { agentConfig, DEFAULT_DEPTH, DEPTHS, isDepth, nextPacificMidnight, toCredits } from "@/lib/lms/agent/config";
 import { creditsUsedToday } from "@/lib/lms/agent/ask";
 
 export const dynamic = "force-dynamic";
@@ -28,12 +28,12 @@ export async function GET() {
   return NextResponse.json({
     enabled: !!(cfg.geminiKey || cfg.anthropicKey), index,
     credits: {
-      daily: cfg.dailyCredits,
-      left: me.roles.webmaster ? 999 : Math.max(0, cfg.dailyCredits - used),
+      daily: toCredits(cfg.dailyCredits),
+      left: me.roles.webmaster ? 999 : toCredits(Math.max(0, cfg.dailyCredits - used)),
       unlimited: me.roles.webmaster,
       resetsAt: nextPacificMidnight(), // credits reset at midnight Pacific
     },
-    depths: Object.fromEntries(Object.entries(DEPTHS).map(([k, d]) => [k, { label: d.label, weight: d.weight }])),
+    depths: Object.fromEntries(Object.entries(DEPTHS).map(([k, d]) => [k, { label: d.label, weight: toCredits(d.weight) }])),
     defaultDepth: DEFAULT_DEPTH,
   });
 }

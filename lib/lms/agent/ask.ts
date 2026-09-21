@@ -15,7 +15,7 @@
  */
 import type { Member } from "@/lib/members";
 import {
-  agentConfig, DEFAULT_DEPTH, DEPTHS, type Depth, ANSWER_DEADLINE_MS, BUSY_BACKOFF_MS, HAIKU_PRICE, nextPacificMidnight, sb,
+  agentConfig, DEFAULT_DEPTH, DEPTHS, toCredits, type Depth, ANSWER_DEADLINE_MS, BUSY_BACKOFF_MS, HAIKU_PRICE, nextPacificMidnight, sb,
   startOfPacificDay, startOfPacificMonth, usingSupabase,
 } from "./config";
 import { anthropicGenerate, geminiGenerate, ModelError, type Generation } from "./models";
@@ -264,7 +264,7 @@ export async function ask(
     const left = Math.max(0, cfg.dailyCredits - used);
     const fits = (Object.keys(DEPTHS) as Depth[]).filter((k) => DEPTHS[k].weight <= left).map((k) => DEPTHS[k].label);
     return {
-      ok: false, code: "limit", remainingToday: left,
+      ok: false, code: "limit", remainingToday: toCredits(left),
       error: fits.length
         ? `Not enough left today for a ${D.label} answer — try ${fits.join(" or ")}. It resets at midnight.`
         : "You've used today's questions — they reset at midnight.",
@@ -273,7 +273,8 @@ export async function ask(
 
   const context = history.length ? history[history.length - 1].q : undefined;
   const { sources } = await retrieve(m, q, { context, embedQuery: opts.embedQuery, budget: D });
-  const remaining = (n: number) => (unlimited ? 999 : Math.max(0, cfg.dailyCredits - n));
+  // Reported in ordinary credits (costs are counted in half-credits).
+  const remaining = (n: number) => (unlimited ? 999 : toCredits(Math.max(0, cfg.dailyCredits - n)));
 
   if (!sources.length) {
     // Tell the truth about WHY nothing was found: an index that's still being
@@ -291,10 +292,17 @@ export async function ask(
 
   const { system, user } = buildPrompt(q, sources, history, new Date(), depth);
   const chain: Attempt[] = [];
+  const lite = cfg.geminiKey && cfg.fallbackModel && !cfg.primaryModels.includes(cfg.fallbackModel);
+  // Quick answers go to Flash-Lite FIRST: in testing it answered every question
+  // in ~2s, while the Flash models were often busy or slow. That keeps short
+  // answers fast and saves the Flash models' small daily quotas (and paid Haiku)
+  // for the longer levels. Other levels: Flash → Haiku → Flash-Lite.
+  // Quick costs only half a credit, so it only ever uses FREE models — never paid
+  // Haiku; heavy Quick use can't drain the monthly budget.
+  if (depth === "quick" && lite) chain.push({ provider: "gemini", model: cfg.fallbackModel });
   if (cfg.geminiKey) for (const model of cfg.primaryModels) chain.push({ provider: "gemini", model });
-  if (cfg.anthropicKey) chain.push({ provider: "anthropic", model: cfg.haikuModel });
-  if (cfg.geminiKey && cfg.fallbackModel && !cfg.primaryModels.includes(cfg.fallbackModel))
-    chain.push({ provider: "gemini", model: cfg.fallbackModel });
+  if (cfg.anthropicKey && depth !== "quick") chain.push({ provider: "anthropic", model: cfg.haikuModel });
+  if (depth !== "quick" && lite) chain.push({ provider: "gemini", model: cfg.fallbackModel });
 
   for (let i = 0; i < chain.length; i++) {
     const step = chain[i];

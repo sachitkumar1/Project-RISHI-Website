@@ -11,6 +11,7 @@ type Status = {
   exhausted: Record<string, string>;
   lastErrors: Record<string, { at: string; kind: string; message: string; quota: { id: string; value: string } | null }>;
   dailyLimit: number;
+  depthCosts?: { label: string; weight: number }[];
 };
 type Check = { name: string; model: string; ok: boolean; detail: string };
 
@@ -140,7 +141,7 @@ export default function AgentSettingsPanel() {
           Haiku this month: ${s.haiku.spentThisMonth.toFixed(2)} of ${s.haiku.cap.toFixed(2)}.{" "}
           {s.today.questions} {s.today.questions === 1 ? "answer" : "answers"} today
           {Object.keys(s.today.byModel).length ? ` (${Object.entries(s.today.byModel).map(([m, n]) => `${m}: ${n}`).join(", ")})` : ""}.
-          Members get {s.dailyLimit} credits a day: Quick answers cost 1, Standard 2, Detailed 4.
+          Members get {s.dailyLimit} credits a day: {(s.depthCosts ?? []).map((d) => `${d.label} ${d.weight}`).join(", ")}.
         </p>
       </div>
 
