@@ -462,7 +462,8 @@ export default function AskPanel() {
     : "indexing";
 
   return (
-    <div className="relative min-h-[calc(100vh-var(--header-h))] bg-pine-deep text-paper">
+    // data-theme-fixed: RISHI AI is designed dark already; the dashboard dark theme leaves it alone.
+    <div data-theme-fixed className="relative min-h-[calc(100vh-var(--header-h))] bg-pine-deep text-paper">
       {/* texture: a faint survey grid */}
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.07]"
         style={{ backgroundImage: "linear-gradient(to right, #FBF8F1 1px, transparent 1px), linear-gradient(to bottom, #FBF8F1 1px, transparent 1px)", backgroundSize: "44px 44px", maskImage: "radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%)" }} />

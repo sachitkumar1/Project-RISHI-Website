@@ -10,6 +10,7 @@ import Avatar from "@/components/Avatar";
 import ProfilePhotoModal from "@/components/ProfilePhotoModal";
 import FilesSettingsPanel from "@/components/FilesSettingsPanel";
 import AgentSettingsPanel from "@/components/AgentSettingsPanel";
+import { ThemeSetting } from "@/components/ThemeToggle";
 
 type Profile = {
   email: string;
@@ -97,7 +98,7 @@ export default function SettingsPage() {
       const r = await fetch("/api/lms/roster/sync", { method: "POST" });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d?.error || "Roster sync failed.");
-      setRMsg(`Synced \u2014 ${d.members} member${d.members === 1 ? "" : "s"} loaded from the sheet.${d.note ? ` ${d.note}` : ""}`);
+      setRMsg(`Synced — ${d.members} member${d.members === 1 ? "" : "s"} loaded from the sheet.${d.note ? ` ${d.note}` : ""}`);
       const s2 = await fetch("/api/lms/roster/sync").then((x) => (x.ok ? x.json() : null)).catch(() => null);
       if (s2) setRoster(s2);
     } catch (e) {
@@ -118,8 +119,8 @@ export default function SettingsPage() {
       const s2 = await fetch("/api/lms/roster/sync").then((x) => (x.ok ? x.json() : null)).catch(() => null);
       if (s2) setRoster(s2);
       setRMsg(next === "sheet"
-        ? "Google Sheet sync is ON \u2014 the sheet now controls the roster."
-        : "Google Sheet sync is OFF \u2014 the roster now comes from members.ts only.");
+        ? "Google Sheet sync is ON — the sheet now controls the roster."
+        : "Google Sheet sync is OFF — the roster now comes from members.ts only.");
     } catch (e) {
       setRMsg(e instanceof Error ? e.message : "Couldn't change the roster source.");
     }
@@ -134,7 +135,7 @@ export default function SettingsPage() {
       setExportCode(d.code);
       try {
         await navigator.clipboard.writeText(d.code);
-        setExportMsg(`Copied \u2014 ${d.count} members. Paste over the BASE_MEMBERS array in lib/members.ts.`);
+        setExportMsg(`Copied — ${d.count} members. Paste over the BASE_MEMBERS array in lib/members.ts.`);
       } catch {
         // Clipboard blocked (e.g. non-HTTPS) — the textarea below is the fallback.
         setExportMsg("Select the code below and copy it manually.");
@@ -220,6 +221,9 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* Appearance — dark mode for the dashboard, every member */}
+            <ThemeSetting />
+
             {/* Directory contact info (editable) */}
             <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
               <h2 className="font-display text-lg font-semibold text-pine-deep">Directory contact info</h2>
@@ -257,7 +261,7 @@ export default function SettingsPage() {
                   By default the roster comes from <code>lib/members.ts</code>. Turn on Google Sheet sync to
                   manage members and roles from the{" "}
                   <a href={roster.sheetUrl} target="_blank" rel="noreferrer" className="text-pine underline">roster Google Sheet</a>
-                  {" "}instead \u2014 no code needed.
+                  {" "}instead — no code needed.
                 </p>
 
                 {/* On/off toggle for sheet sync */}
@@ -266,8 +270,8 @@ export default function SettingsPage() {
                     <p className="text-sm font-semibold text-ink">Sync roster with Google Sheet</p>
                     <p className="mt-0.5 text-xs text-ink/50">
                       {roster.mode === "sheet"
-                        ? `On \u2014 the Google Sheet controls the roster (${roster.rows} row${roster.rows === 1 ? "" : "s"}).`
-                        : "Off \u2014 using members.ts only. The Google Sheet is ignored."}
+                        ? `On — the Google Sheet controls the roster (${roster.rows} row${roster.rows === 1 ? "" : "s"}).`
+                        : "Off — using members.ts only. The Google Sheet is ignored."}
                     </p>
                   </div>
                   <button
@@ -293,7 +297,7 @@ export default function SettingsPage() {
                   <p className="text-sm font-semibold text-ink">Keep the code roster in step</p>
                   <p className="mt-1 text-xs text-ink/55">
                     The sheet is what the site uses. <code>lib/members.ts</code> is the fallback if the sheet
-                    roster is ever empty \u2014 so it&apos;s worth refreshing now and then (say, once a semester).
+                    roster is ever empty — so it&apos;s worth refreshing now and then (say, once a semester).
                     This copies the roster as code; paste it over the <code>BASE_MEMBERS</code> array and commit.
                   </p>
                   <div className="mt-3 flex items-center gap-3">

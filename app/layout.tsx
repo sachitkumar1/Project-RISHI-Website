@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import "./dark-theme.css"; // dashboard dark mode (generated: scripts/gen-dark-theme.mjs)
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BackButton from "@/components/BackButton";
@@ -45,7 +46,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${inter.variable}`}>
+    <html lang="en" className={`${fraunces.variable} ${inter.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Apply dashboard dark mode before first paint (no flash of light theme). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(location.pathname.indexOf("/dashboard")===0&&localStorage.getItem("rishi:theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-screen antialiased">
         <AuthProvider>
           <Navbar />

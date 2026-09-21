@@ -8,6 +8,7 @@ import Contours from "@/components/Contours";
 import LmsBoard from "@/components/LmsBoard";
 import Avatar from "@/components/Avatar";
 import SettingsGear from "@/components/SettingsGear";
+import ThemeToggle from "@/components/ThemeToggle";
 import NotificationBell from "@/components/NotificationBell";
 import AnnouncementsPanel from "@/components/AnnouncementsPanel";
 import NewsletterPanel from "@/components/NewsletterPanel";
@@ -44,6 +45,7 @@ export default function DashboardPage() {
               </span>
               <div className="flex items-center gap-2">
                 <NotificationBell />
+                <ThemeToggle />
                 <SettingsGear />
               </div>
             </div>

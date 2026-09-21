@@ -17,6 +17,16 @@ function Wordmark() {
         width={260}
         height={130}
         priority
+        data-logo="light"
+        className="h-12 w-auto"
+      />
+      {/* Same logo with light lettering, shown only in dashboard dark mode. */}
+      <Image
+        src="/images/project-rishi-logo-dark.png"
+        alt="Project RISHI"
+        width={260}
+        height={130}
+        data-logo="dark"
         className="h-12 w-auto"
       />
     </Link>
