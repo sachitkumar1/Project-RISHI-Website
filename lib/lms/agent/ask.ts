@@ -40,22 +40,25 @@ export const labelFor = (provider: string, model: string) =>
 /** How to write, per depth. Detail comes from specifics — names, dates,
  *  numbers, what was decided and what happened next — not from padding. */
 const STYLE: Record<Depth, string> = {
-  quick: "Answer briefly: two to four sentences with the key facts. Use a short '- ' list only if it's genuinely a list.",
+  quick:
+    "Answer in one solid paragraph of four to six sentences (roughly 80–130 words) with the key facts: who, what, " +
+    "when, and how it turned out. Use a short '- ' list only if the answer is genuinely a list of items.",
   standard:
     "Give a thorough, specific answer. Open with a one- or two-sentence direct answer, then the supporting detail: " +
     "who was involved, when (dates), what was decided or done, numbers and outcomes, and what happened next. " +
-    "Use short paragraphs or a '- ' list; roughly 150–300 words when the documents support it.",
+    "Include the concrete specifics the documents give — names, dates, amounts, places and outcomes — rather than " +
+    "summarising them away. Use short paragraphs or a '- ' list; roughly 250–450 words when the documents support it.",
   detailed:
     "Give a comprehensive, well-organised answer. Open with a two- or three-sentence summary, then cover every relevant " +
     "document: organise by time (a timeline) or by theme, whichever fits, with names, dates, figures, decisions, outcomes " +
     "and open questions. Point out where documents disagree or where the record has gaps. Use short **bold** lead-ins " +
-    "for sections and '- ' lists where helpful; roughly 300–600 words when the documents support it.",
+    "for sections and '- ' lists where helpful; roughly 500–800 words when the documents support it.",
   deep:
     "Write a research report. Start with a short executive summary (3–5 sentences). Then a structured account with " +
     "**bold** section lead-ins: background, a dated timeline of what happened, people and partner organisations " +
     "involved, decisions and outcomes with figures, and lessons or open questions. Draw on as many of the documents " +
     "as are relevant and cite each claim. Call out contradictions between documents and gaps in the record. " +
-    "Roughly 600–1,000 words when the documents support it; never pad beyond what they contain.",
+    "Roughly 800–1,200 words when the documents support it; never pad beyond what they contain.",
 };
 
 export function buildPrompt(question: string, sources: Source[], history: Turn[], today = new Date(), depth: Depth = DEFAULT_DEPTH) {
@@ -63,7 +66,7 @@ export function buildPrompt(question: string, sources: Source[], history: Turn[]
     "You answer questions for members of Project RISHI at UC Berkeley, a student-run nonprofit doing rural development work in Bharog Baneri, India.",
     "Answer ONLY from the club documents provided in the user message. They are excerpts from the club's Google Drive.",
     "Cite every factual claim with the source number in square brackets, e.g. [2] or [1][3], placed right after the claim. Use only the numbers given.",
-    "If the documents don't contain the answer, say so plainly in one or two sentences and, if useful, say which kind of document would have it. Never guess or fill gaps with general knowledge.",
+    "If the documents answer only PART of the question, give everything they do contain — with citations — and then say briefly what's missing. Don't open with \"the documents don't contain…\" when they contain useful pieces. Only if nothing relevant is there at all, say so plainly and, if useful, say which kind of document would have it. Never guess or fill gaps with general knowledge.",
     "Never invent names, dates, numbers, organisations or quotes.",
     "For questions about the 'last' or 'latest' time something happened, compare the dates shown for each source and any dates inside the text, and say which date you're going by.",
     STYLE[depth] + " No markdown headings (#); plain text, with **bold** and '- ' lists as described.",

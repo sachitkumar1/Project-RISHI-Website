@@ -67,12 +67,12 @@ export const DEPTHS: Record<Depth, {
   label: string; weight: number; maxFiles: number; perFile: number; charBudget: number;
   maxTokens: number; thinking: "low" | "medium";
 }> = {
-  quick:    { label: "Quick",    weight: 1, maxFiles: 5,  perFile: 2, charBudget: 12_000, maxTokens: 700,  thinking: "low" },
-  standard: { label: "Standard", weight: 2, maxFiles: 8,  perFile: 3, charBudget: 26_000, maxTokens: 1600, thinking: "low" },
-  detailed: { label: "Detailed", weight: 4, maxFiles: 12, perFile: 4, charBudget: 40_000, maxTokens: 2600, thinking: "medium" },
+  quick:    { label: "Quick",    weight: 1, maxFiles: 5,  perFile: 2, charBudget: 12_000, maxTokens: 1000, thinking: "low" },
+  standard: { label: "Standard", weight: 2, maxFiles: 8,  perFile: 3, charBudget: 26_000, maxTokens: 2200, thinking: "low" },
+  detailed: { label: "Detailed", weight: 4, maxFiles: 12, perFile: 4, charBudget: 40_000, maxTokens: 3200, thinking: "medium" },
   // Double Detailed's reading (24 files, ~20k tokens of source text) and a long,
   // structured report. Slowest level: 30–60s on a busy free tier.
-  deep:     { label: "Deep Research", weight: 8, maxFiles: 24, perFile: 3, charBudget: 80_000, maxTokens: 3600, thinking: "medium" },
+  deep:     { label: "Deep Research", weight: 8, maxFiles: 24, perFile: 3, charBudget: 80_000, maxTokens: 4000, thinking: "medium" },
 };
 export const DEFAULT_DEPTH: Depth = "standard";
 export const isDepth = (v: unknown): v is Depth => v === "quick" || v === "standard" || v === "detailed" || v === "deep";
