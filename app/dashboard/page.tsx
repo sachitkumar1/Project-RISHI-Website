@@ -135,9 +135,15 @@ export default function DashboardPage() {
               className="group flex min-h-0 items-center gap-4 rounded-3xl border border-pine/15 bg-pine/[0.03] p-5 transition-colors hover:border-pine hover:bg-pine hover:text-paper"
             >
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-marigold text-pine-deep">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <circle cx="11" cy="11" r="6.5" />
-                  <path d="M20 20l-4.2-4.2M9 9.2a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.4M11 14.2h.01" />
+                {/* robot: antenna, head, eyes, mouth, side "ears" */}
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 3.5v3" />
+                  <circle cx="12" cy="3" r="0.9" fill="currentColor" stroke="none" />
+                  <rect x="5" y="6.5" width="14" height="11" rx="3" />
+                  <circle cx="9.5" cy="11.5" r="1.1" fill="currentColor" stroke="none" />
+                  <circle cx="14.5" cy="11.5" r="1.1" fill="currentColor" stroke="none" />
+                  <path d="M9.5 14.8h5" />
+                  <path d="M3 10.5v3M21 10.5v3" />
                 </svg>
               </span>
               <span className="font-display text-lg font-semibold leading-tight">
