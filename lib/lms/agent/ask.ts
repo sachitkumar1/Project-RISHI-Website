@@ -31,7 +31,7 @@ export type AskResult =
       model: string | null;       // label shown under the answer
       remainingToday: number;
     }
-  | { ok: false; error: string; code: "limit" | "no_model" | "not_configured" | "error"; remainingToday?: number };
+  | { ok: false; error: string; code: "limit" | "no_model" | "quick_unavailable" | "not_configured" | "error"; remainingToday?: number };
 
 export const labelFor = (provider: string, model: string) =>
   provider === "anthropic" ? "Claude Haiku" : /lite/i.test(model) ? "Gemini Flash-Lite" : "Gemini Flash";
@@ -297,12 +297,16 @@ export async function ask(
   // in ~2s, while the Flash models were often busy or slow. That keeps short
   // answers fast and saves the Flash models' small daily quotas (and paid Haiku)
   // for the longer levels. Other levels: Flash → Haiku → Flash-Lite.
-  // Quick costs only half a credit, so it only ever uses FREE models — never paid
-  // Haiku; heavy Quick use can't drain the monthly budget.
-  if (depth === "quick" && lite) chain.push({ provider: "gemini", model: cfg.fallbackModel });
-  if (cfg.geminiKey) for (const model of cfg.primaryModels) chain.push({ provider: "gemini", model });
-  if (cfg.anthropicKey && depth !== "quick") chain.push({ provider: "anthropic", model: cfg.haikuModel });
-  if (depth !== "quick" && lite) chain.push({ provider: "gemini", model: cfg.fallbackModel });
+  // Quick uses Flash-Lite and NOTHING else (it's half a credit because it's
+  // free and fast). If Flash-Lite can't answer, the member is offered Standard
+  // instead — see the "quick_unavailable" result below.
+  if (depth === "quick") {
+    if (lite) chain.push({ provider: "gemini", model: cfg.fallbackModel });
+  } else {
+    if (cfg.geminiKey) for (const model of cfg.primaryModels) chain.push({ provider: "gemini", model });
+    if (cfg.anthropicKey) chain.push({ provider: "anthropic", model: cfg.haikuModel });
+    if (lite) chain.push({ provider: "gemini", model: cfg.fallbackModel });
+  }
 
   for (let i = 0; i < chain.length; i++) {
     const step = chain[i];
@@ -324,6 +328,13 @@ export async function ask(
     };
   }
 
+  if (depth === "quick") {
+    // Nothing was charged. The page offers to re-ask at Standard.
+    return {
+      ok: false, code: "quick_unavailable", remainingToday: remaining(used),
+      error: "Quick answers aren't available right now — the fast model behind them isn't responding. You can ask the same question with Standard detail instead.",
+    };
+  }
   return {
     ok: false, code: "no_model", remainingToday: remaining(used),
     error: "The assistant couldn't get an answer right now — its free models are busy or used up for today, and the monthly paid budget is spent or unavailable. Try again in a few minutes.",

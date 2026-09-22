@@ -36,8 +36,7 @@ export const agentConfig = () => ({
   embedModel: process.env.AI_EMBED_MODEL || "gemini-embedding-001",
   haikuMonthlyUsd: num(process.env.AI_HAIKU_MONTHLY_USD, 5),
   dailyLimit: num(process.env.AI_DAILY_LIMIT, 15), // legacy: questions/day before depth levels
-  // Internal units (half-credits): AI_DAILY_CREDITS is in ordinary credits.
-  dailyCredits: num(process.env.AI_DAILY_CREDITS, 30) * UNITS_PER_CREDIT,
+  dailyCredits: num(process.env.AI_DAILY_CREDITS, 60) * UNITS_PER_CREDIT,
   geminiBase: (process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com").replace(/\/$/, ""),
   anthropicBase: (process.env.ANTHROPIC_API_BASE || "https://api.anthropic.com").replace(/\/$/, ""),
 });
@@ -60,15 +59,15 @@ export const MAX_ANSWER_TOKENS = 1200; // Haiku's "Test models" ping; answers us
  * the archive the model reads and what it's told to write — reasoning effort
  * matters less, and on Google's free tier "high" reasoning regularly runs past
  * the 60s request limit, so the top level uses "medium".
- *   weight: cost in HALF-credits (the database stores whole numbers, and Quick
- *           costs half a credit). Members see ordinary credits: Quick 0.5,
- *           Standard 2, Detailed 4, Deep Research 8, out of AI_DAILY_CREDITS a
- *           day (default 30) — i.e. 60 quick, 15 standard, 7 detailed or 3 deep.
- *           Quick is cheap because it only ever uses free models (see ask.ts).
+ *   weight: credits it costs. Members get AI_DAILY_CREDITS a day (default 60):
+ *           60 quick, 15 standard, 7 detailed or 3 deep. Quick is the cheapest
+ *           because it only ever uses the free, fast Flash-Lite (see ask.ts).
  */
 export type Depth = "quick" | "standard" | "detailed" | "deep";
-/** Costs are counted in half-credits internally; this converts for display. */
-export const UNITS_PER_CREDIT = 2;
+/** Stored cost units per displayed credit. 1 = costs are shown exactly as
+ *  stored. (Set to 2 to allow half-credit prices while the database keeps whole
+ *  numbers.) */
+export const UNITS_PER_CREDIT = 1;
 export const toCredits = (units: number) => units / UNITS_PER_CREDIT;
 export const DEPTHS: Record<Depth, {
   label: string; weight: number; maxFiles: number; perFile: number; charBudget: number;

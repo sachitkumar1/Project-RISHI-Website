@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
   try {
     const full = await ask(me, question, history, { depth: isDepth(body.depth) ? body.depth : DEFAULT_DEPTH });
-    const status = full.ok ? 200 : full.code === "limit" ? 429 : full.code === "no_model" ? 503 : 500;
+    const status = full.ok ? 200 : full.code === "limit" ? 429 : full.code === "no_model" || full.code === "quick_unavailable" ? 503 : 500;
     const result = canSeeModel(me)
       ? full
       : full.ok

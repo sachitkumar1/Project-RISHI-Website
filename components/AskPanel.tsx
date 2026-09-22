@@ -32,6 +32,7 @@ type Exchange = {
   sources?: Source[];
   model?: string | null;
   error?: string;
+  code?: string; // server's reason for an error, e.g. "quick_unavailable"
   depth?: DepthKey;
 };
 type DepthKey = "quick" | "standard" | "detailed" | "deep";
@@ -49,7 +50,7 @@ const DEPTH_HINT: Record<DepthKey, string> = {
   detailed: "Comprehensive answer from up to 12 files",
   deep: "Research report from up to 24 files — slowest",
 };
-const DEFAULT_WEIGHTS: Record<DepthKey, number> = { quick: 0.5, standard: 2, detailed: 4, deep: 8 };
+const DEFAULT_WEIGHTS: Record<DepthKey, number> = { quick: 1, standard: 4, detailed: 8, deep: 16 };
 const DEFAULT_LABELS: Record<DepthKey, string> = { quick: "Quick", standard: "Standard", detailed: "Detailed", deep: "Deep Research" };
 const isDepthKey = (v: unknown): v is DepthKey => v === "quick" || v === "standard" || v === "detailed" || v === "deep";
 const DEPTH_STORE = "rishi:ai-depth";
@@ -420,22 +421,23 @@ export default function AskPanel() {
     [thread, selected],
   );
 
-  const submit = useCallback(async (text?: string, replaceId?: number) => {
+  const submit = useCallback(async (text?: string, replaceId?: number, depthOverride?: DepthKey) => {
+    const useDepth = depthOverride ?? depth;
     const q = (text ?? draft).trim();
     if (q.length < 3 || busy || !status?.enabled) return;
     if (text === undefined) setDraft("");
     const history = thread.filter((t) => t.status === "done" && t.answer).slice(-2).map((t) => ({ q: t.q, a: t.answer! }));
     const id = nextId.current++;
     const startedAt = Date.now();
-    setThread((t) => [...t.filter((x) => x.id !== replaceId), { id, q, status: "asking", startedAt, depth }]);
+    setThread((t) => [...t.filter((x) => x.id !== replaceId), { id, q, status: "asking", startedAt, depth: useDepth }]);
     try {
-      const r = await fetch("/api/lms/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, history, depth }) });
+      const r = await fetch("/api/lms/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, history, depth: useDepth }) });
       const d = await r.json().catch(() => ({}));
       if (typeof d.remainingToday === "number") setRemaining(d.remainingToday);
       const ms = Date.now() - startedAt;
       setThread((t) => t.map((x) => (x.id !== id ? x : d.ok
         ? { ...x, status: "done", ms, answer: d.answer, sources: d.sources, model: d.model }
-        : { ...x, status: "error", ms, error: d.error || "Something went wrong answering that." })));
+        : { ...x, status: "error", ms, code: d.code, error: d.error || "Something went wrong answering that." })));
       if (d.ok) { setSelected(id); setActiveN(null); }
     } catch {
       setThread((t) => t.map((x) => (x.id === id
@@ -570,7 +572,32 @@ export default function AskPanel() {
                   <h2 className="font-display text-xl font-semibold leading-snug text-paper sm:text-2xl">{t.q}</h2>
                   <div className="mt-4"><Trace ex={t} /></div>
 
-                  {t.status === "error" && (
+                  {t.status === "error" && t.code === "quick_unavailable" && (() => {
+                    // Quick uses one fast model only. When it's down, offer to
+                    // re-ask this exact question at Standard detail.
+                    const cost = status?.depths?.standard?.weight ?? DEFAULT_WEIGHTS.standard;
+                    const canAfford = remaining === null || remaining >= 999 || remaining >= cost;
+                    return (
+                      <div className="mt-4 rounded-xl border border-marigold/30 bg-marigold/[0.07] p-4" data-quick-unavailable>
+                        <p className="text-sm font-semibold text-paper">Quick isn&apos;t available right now</p>
+                        <p className="mt-1 text-sm text-paper/75">{t.error} Nothing was charged for this attempt.</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <button onClick={(e) => { e.stopPropagation(); applyDepth("standard"); void submit(t.q, t.id, "standard"); }}
+                            disabled={busy || !canAfford}
+                            className="rounded-lg bg-marigold px-3.5 py-1.5 text-xs font-semibold text-pine-deep hover:bg-marigold-soft disabled:opacity-40">
+                            Switch to Standard &amp; ask ({cost} {cost === 1 ? "credit" : "credits"})
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); void submit(t.q, t.id, "quick"); }} disabled={busy}
+                            className="rounded-lg border border-paper/20 px-3.5 py-1.5 text-xs font-semibold text-paper/80 hover:border-marigold/60 hover:text-paper disabled:opacity-40">
+                            Try Quick again
+                          </button>
+                          {!canAfford && <span className="text-xs text-paper/55">Not enough credits left today for Standard.</span>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {t.status === "error" && t.code !== "quick_unavailable" && (
                     <div className="mt-4 rounded-xl border border-marigold/30 bg-marigold/[0.07] p-4">
                       <p className="text-sm text-paper/80">{t.error}</p>
                       <button onClick={(e) => { e.stopPropagation(); void submit(t.q, t.id); }} disabled={busy}
