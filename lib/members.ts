@@ -21,6 +21,7 @@
 
 import type { ProjectGroup, RoleFlags } from "@/lib/lms/types";
 import { PROJECT_GROUP_LABELS } from "@/lib/lms/types";
+import { devNull } from "os";
 
 /** Every role flag, in the order they appear as columns on the roster sheet. */
 export const ROLE_KEYS = [
@@ -84,7 +85,7 @@ export const BASE_MEMBERS: Member[] = [
   { email: "sachitkumar2025@gmail.com", firstName: "SachitLead", lastName: "Kumar", phone: "", group: "W", roles: roles({ lead: true }), hidden: true },
   { email: "sachitkumar2020@gmail.com", firstName: "SachitInternal", lastName: "Kumar", phone: "", group: "W", roles: roles({ internal: true }), hidden: true },
   { email: "kumarsachit2007@gmail.com", firstName: "SachitNMT", lastName: "Kumar", phone: "", group: "E", roles: roles({ nmtLeader: true, newbie: true, lead: true, internal: true, vpp: true, exec: true, outreach: true, webmaster: true, financeDirector: true, internationalDirector: true, president: true, vpProjects: true, vpInternal: true }), hidden: true },
-  { email: "anonymousposter1029@gmail.com", firstName: "SachitNewbie", lastName: "Kumar", phone: "", group: "W", roles: roles({ newbie: true }), hidden: true },
+  { email: "anonymousposter1029@gmail.com", firstName: "SachitNewbie", lastName: "Kumar", phone: "", group: null, roles: roles({ newbie: true }), hidden: true },
   { email: "ryancr@berkeley.edu", firstName: "Ryan", lastName: "Raphael", phone: "6696661405", group: "R", roles: roles({ vpp: true, exec: true, vpInternal: true }) },
   { email: "narayannirali@berkeley.edu", firstName: "Nirali", lastName: "Narayan", phone: "7205488016", group: "R", roles: roles({ nmtLeader: true }) },
   { email: "dilpreetvohra@berkeley.edu", firstName: "Jannat", lastName: "Vohra", phone: "9253023115", group: "W", roles: roles({ lead: true }) },
