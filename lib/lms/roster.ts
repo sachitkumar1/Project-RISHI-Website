@@ -85,7 +85,7 @@ const rowToMember = (r: any): RosterRow => ({
   email: r.email,
   firstName: r.first_name ?? "",
   lastName: r.last_name ?? "",
-  group: (r.group_code ?? "E") as ProjectGroup,
+  group: (r.group_code || null) as ProjectGroup | null, // no default group: blank = not placed yet
   phone: r.phone ?? "",
   hidden: Boolean(r.hidden),
   active: r.active !== false,

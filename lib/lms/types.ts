@@ -37,7 +37,7 @@ export type MemberProfile = {
   email: string;
   firstName: string;
   lastName: string;
-  group: ProjectGroup;
+  group: ProjectGroup | null;
   roles: RoleFlags;
 };
 

@@ -19,7 +19,7 @@ function memberLine(m: Member): string {
     .map((k) => `${k}: true`)
     .join(", ");
   const hidden = m.hidden ? ", hidden: true" : "";
-  return `  { email: ${q(m.email)}, firstName: ${q(m.firstName)}, lastName: ${q(m.lastName)}, phone: ${q(m.phone ?? "")}, group: ${q(m.group)}, roles: roles({ ${flags} })${hidden} },`;
+  return `  { email: ${q(m.email)}, firstName: ${q(m.firstName)}, lastName: ${q(m.lastName)}, phone: ${q(m.phone ?? "")}, group: ${m.group ? q(m.group) : "null"}, roles: roles({ ${flags} })${hidden} },`;
 }
 
 /**

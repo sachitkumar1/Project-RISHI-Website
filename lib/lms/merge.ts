@@ -77,7 +77,7 @@ function defaultsFor(email: string): Record<string, string> {
       firstname: m.firstName,
       lastname: m.lastName,
       email: m.email,
-      projectgroup: GROUP_LABELS[m.group] ?? m.group,
+      projectgroup: m.group ? (GROUP_LABELS[m.group] ?? m.group) : "",
     };
   }
   const n = nameFromEmail(email);

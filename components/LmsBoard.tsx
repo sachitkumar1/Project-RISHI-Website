@@ -1913,7 +1913,7 @@ function MemberPicker({ members, selected, onToggle, single }: {
         {filtered.map((m) => (
           <label key={m.email} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-pine/5">
             <input type={single ? "radio" : "checkbox"} checked={selected.includes(m.email)} onChange={() => onToggle(m.email)} />
-            {m.name} <span className="text-xs text-ink/40">· {GROUP_LABEL[m.group]}</span>
+            {m.name} <span className="text-xs text-ink/40">· {m.group ? GROUP_LABEL[m.group] : "No group yet"}</span>
           </label>
         ))}
       </div>

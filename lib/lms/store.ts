@@ -95,7 +95,7 @@ function eventVisibleTo(e: ClubEvent, m: Member): boolean {
     case "club":
       return true;
     case "group":
-      return e.scopeGroups.includes(m.group);
+      return m.group !== null && e.scopeGroups.includes(m.group);
     case "members":
       return e.scopeEmails.some((x) => eq(x, m.email));
     case "all_newbies":

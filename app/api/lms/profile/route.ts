@@ -20,7 +20,7 @@ export async function GET() {
     firstName: me.firstName,
     lastName: me.lastName,
     group: me.group,
-    groupLabel: PROJECT_GROUP_LABELS[me.group],
+    groupLabel: me.group ? PROJECT_GROUP_LABELS[me.group] : "Not assigned yet",
     roles: me.roles,
     roleLabels: roleLabels(me.roles),
     avatar,

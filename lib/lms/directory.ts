@@ -128,7 +128,7 @@ export async function listDirectory(): Promise<DirectoryEntry[]> {
         loginEmail: lc(m.email),
         name: memberFullName(m),
         role,
-        group: PROJECT_GROUP_LABELS[m.group],
+        group: m.group ? PROJECT_GROUP_LABELS[m.group] : "Not assigned yet",
         email: o?.contactEmail ?? m.email,
         phone: formatPhone(o?.phone ?? m.phone ?? ""),
         year: memberYear(m.email),

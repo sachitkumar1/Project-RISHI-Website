@@ -32,7 +32,8 @@ export type Member = {
   email: string;
   firstName: string;
   lastName: string;
-  group: ProjectGroup;
+  /** null = not in a project group yet (e.g. new members before they're placed). */
+  group: ProjectGroup | null;
   roles: RoleFlags;
   /** Contact phone number (used for the member directory + SMS). Empty = none. */
   phone?: string;
@@ -116,8 +117,26 @@ export const BASE_MEMBERS: Member[] = [
   //{ email: "sara.khemani@berkeley.edu", firstName: "Sara", lastName: "Khemani", phone: "5107172645", group: "H", roles: roles({  }) },
   { email: "shipra_jha1@berkeley.edu", firstName: "Shipra", lastName: "Jha", phone: "8473458295", group: "H", roles: roles({  }) },
   { email: "surabhikhanna@berkeley.edu", firstName: "Surabhi", lastName: "Khanna", phone: "5594005999", group: "E", roles: roles({  }) },
-  { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "8588475623", group: "R", roles: roles({  }) }
-  
+  { email: "viploverahate@berkeley.edu", firstName: "Viplove", lastName: "Rahate", phone: "8588475623", group: "R", roles: roles({  }) },
+
+  // ── New members, Fall 2026 (added Sep 22). Newbie only; no project group yet,
+  //    so project leads can't assign them tasks — NMT leaders and VP/P can.
+  { email: "aasma_dhawan@berkeley.edu", firstName: "Aasma", lastName: "Dhawan", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "anish.joshi@berkeley.edu", firstName: "Anish", lastName: "Joshi", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "arryj@berkeley.edu", firstName: "Arry", lastName: "Jeejeebhoy", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "arya_bhardia@berkeley.edu", firstName: "Arya", lastName: "Bhardia", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "eanil2008@berkeley.edu", firstName: "Elijah", lastName: "Anil", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "keyavaidya@berkeley.edu", firstName: "Keya", lastName: "Vaidya", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "krishiv.bhatia@berkeley.edu", firstName: "Krishiv", lastName: "Bhatia", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "laasya_mallapragada@berkeley.edu", firstName: "Laasya", lastName: "Mallapragada", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "maisha_sharna@berkeley.edu", firstName: "Maisha", lastName: "Sharma", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "neevsheth@berkeley.edu", firstName: "Neev", lastName: "Sheth", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "prabhavgoel@berkeley.edu", firstName: "Prabhav", lastName: "Goel", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "pranayarishi@berkeley.edu", firstName: "Pranaya", lastName: "Rishi", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "rheagosain@berkeley.edu", firstName: "Rhea", lastName: "Gosain", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "varda_qudratullah@berkeley.edu", firstName: "Varda", lastName: "Qudratullah", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "yash_guruprakash@berkeley.edu", firstName: "Yash", lastName: "Advik Guruprakash", phone: "", group: null, roles: roles({ newbie: true }) },
+  { email: "yak0912@berkeley.edu", firstName: "Yashashvi", lastName: "Kamboj", phone: "", group: null, roles: roles({ newbie: true }) },
 ];
 
 /**
@@ -164,7 +183,7 @@ export function memberFullName(m: Member): string {
 /** A short, human-readable role label for the member directory. */
 export function memberRoleLabel(m: Member): string {
   const r = m.roles;
-  const g = PROJECT_GROUP_LABELS[m.group];
+  const g = m.group ? PROJECT_GROUP_LABELS[m.group] : null;
   // A specific leadership title is shown on its own — it replaces the umbrella
   // "Exec" / "VP / President" terms and any other roles that person holds.
   if (r.president) return "President";
@@ -176,12 +195,12 @@ export function memberRoleLabel(m: Member): string {
   // Otherwise, the general multi-role label.
   const parts: string[] = [];
   if (r.vpp) parts.push("VP / President");
-  if (r.lead) parts.push(`${g} Lead`);
+  if (r.lead && g) parts.push(`${g} Lead`);
   if (r.nmtLeader) parts.push("NMT Leader");
   if (r.exec) parts.push("Exec");
   if (r.internal && parts.length === 0) parts.push("Internal");
   if (r.newbie && parts.length === 0) parts.push("Newbie");
-  if (parts.length === 0) parts.push(`${g} Member`);
+  if (parts.length === 0) parts.push(g ? `${g} Member` : "Member");
   return parts.join(" · ");
 }
 

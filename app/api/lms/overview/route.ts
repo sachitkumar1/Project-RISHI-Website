@@ -15,7 +15,7 @@ export type Lane = ProjectGroup | "NMT" | "OTHER";
 function laneFor(email: string): Lane {
   const m = findMember(email);
   if (!m) return "OTHER";
-  if (m.roles.lead) return m.group; // lead-first precedence
+  if (m.roles.lead && m.group) return m.group; // lead-first precedence
   if (m.roles.nmtLeader) return "NMT";
   return "OTHER";
 }
@@ -38,7 +38,7 @@ export async function GET() {
 
   // Name/group/avatar map for everyone (names aren't sensitive; used for display).
   const avatarMap = await getAvatars(MEMBERS.map((m) => m.email));
-  const members: Record<string, { name: string; group: ProjectGroup; avatar: string | null }> = {};
+  const members: Record<string, { name: string; group: ProjectGroup | null; avatar: string | null }> = {};
   for (const m of MEMBERS) {
     members[m.email.toLowerCase()] = {
       name: `${m.firstName} ${m.lastName}`,

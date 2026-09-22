@@ -48,7 +48,7 @@ export function allowedAssignScopes(m: Member): AssignScopeKind[] {
 /** Which whole groups this person can assign a task to. */
 export function assignableGroups(m: Member): ProjectGroup[] {
   if (m.roles.vpp) return ["E", "R", "W", "H"];
-  if (m.roles.lead) return [m.group];
+  if (m.roles.lead && m.group) return [m.group];
   return [];
 }
 
@@ -132,7 +132,7 @@ export function allowedEventScopes(m: Member): EventScopeKind[] {
  */
 export function targetableGroups(m: Member): ProjectGroup[] {
   if (m.roles.internal || m.roles.vpp) return ["E", "R", "W", "H"];
-  if (m.roles.lead) return [m.group];
+  if (m.roles.lead && m.group) return [m.group];
   return [];
 }
 
@@ -248,7 +248,7 @@ export function announceScopes(m: Member): AnnounceScopeKind[] {
 /** Whole groups this member may address. Exec → all; Lead → own group only. */
 export function announceGroups(m: Member): ProjectGroup[] {
   if (m.roles.exec) return ["E", "R", "W", "H"];
-  if (m.roles.lead) return [m.group];
+  if (m.roles.lead && m.group) return [m.group];
   return [];
 }
 

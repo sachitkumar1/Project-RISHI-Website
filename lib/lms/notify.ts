@@ -223,7 +223,7 @@ function eventAudience(event: ClubEvent): string[] {
       MEMBERS.forEach((m) => add(m.email));
       break;
     case "group":
-      MEMBERS.filter((m) => event.scopeGroups.includes(m.group)).forEach((m) => add(m.email));
+      MEMBERS.filter((m) => m.group !== null && event.scopeGroups.includes(m.group)).forEach((m) => add(m.email));
       break;
     case "all_newbies":
       MEMBERS.filter((m) => m.roles.newbie).forEach((m) => add(m.email));

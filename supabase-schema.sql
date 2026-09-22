@@ -780,3 +780,10 @@ alter table lms_ai_usage add column if not exists weight int not null default 2;
 -- lms-files, under banners/), not in this table.
 alter table lms_profiles add column if not exists banner text;
 
+-- Allow roster rows with NO project group (new members before placement).
+-- Only matters if the roster is synced from the Google Sheet; the default
+-- "code" roster (lib/members.ts) doesn't use this table. Safe to re-run.
+-- Before this, a blank group silently became Education ('E').
+alter table lms_roster alter column group_code drop not null;
+alter table lms_roster alter column group_code drop default;
+

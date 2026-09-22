@@ -451,20 +451,21 @@ const yesNo = (v: boolean) => (v ? "TRUE" : "FALSE");
 /** Lenient truthiness so TRUE / yes / y / x / 1 / ✓ all work in the sheet. */
 const isTrue = (v: unknown) => /^(true|yes|y|x|1|✓)$/i.test(String(v ?? "").trim());
 
-/** Accept "E" or "Education" (etc). Falls back to Education. */
-function parseGroup(v: unknown): ProjectGroup {
+/** Accept "E" or "Education" (etc). A blank or unrecognised cell means "not in
+ *  a project group yet" — it used to silently fall back to Education. */
+function parseGroup(v: unknown): ProjectGroup | null {
   const raw = String(v ?? "").trim();
   const code = raw.toUpperCase();
   if (["E", "R", "W", "H"].includes(code)) return code as ProjectGroup;
   const match = (Object.entries(PROJECT_GROUP_LABELS) as [ProjectGroup, string][]).find(
     ([, label]) => label.toLowerCase() === raw.toLowerCase(),
   );
-  return match ? match[0] : "E";
+  return match ? match[0] : null;
 }
 
 function rosterRowToSheet(m: RosterRow): Row {
   return [
-    m.email, m.firstName, m.lastName, m.group, m.phone ?? "",
+    m.email, m.firstName, m.lastName, m.group ?? "", m.phone ?? "",
     yesNo(m.active !== false), yesNo(Boolean(m.hidden)),
     ...ROLE_KEYS.map((k) => yesNo(Boolean(m.roles[k as keyof RoleFlags]))),
   ];

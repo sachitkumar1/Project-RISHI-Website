@@ -304,7 +304,7 @@ export default function MessageComposer({
                     {filteredAnn.map((m) => (
                       <label key={m.email} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm text-ink hover:bg-ink/5">
                         <input type="checkbox" checked={annMembers.includes(m.email)} onChange={() => setAnnMembers((l) => toggle(l, m.email))} className="accent-pine" />
-                        {m.name} <span className="text-xs text-ink/40">{GROUP_LABELS[m.group] ?? m.group}</span>
+                        {m.name} <span className="text-xs text-ink/40">{m.group ? (GROUP_LABELS[m.group] ?? m.group) : "No group yet"}</span>
                       </label>
                     ))}
                   </div>
@@ -342,7 +342,7 @@ export default function MessageComposer({
                     {filteredEmail.map((m) => (
                       <label key={m.email} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm text-ink hover:bg-ink/5">
                         <input type="checkbox" checked={emailMembers.includes(m.email)} onChange={() => setEmailMembers((l) => toggle(l, m.email))} className="accent-pine" />
-                        {m.name} <span className="text-xs text-ink/40">{GROUP_LABELS[m.group] ?? m.group}</span>
+                        {m.name} <span className="text-xs text-ink/40">{m.group ? (GROUP_LABELS[m.group] ?? m.group) : "No group yet"}</span>
                       </label>
                     ))}
                   </div>

@@ -170,11 +170,11 @@ export function memberMatches(m: Member, rule: { audience: FileAudience; groups:
     case "vpp":
       return m.roles.vpp;
     case "groups":
-      return m.roles.vpp || rule.groups.includes(m.group);
+      return m.roles.vpp || (m.group !== null && rule.groups.includes(m.group));
     // A lead sees their OWN group's submissions and nobody else's. Deliberately
     // not m.roles.lead alone — that would let every lead read every group.
     case "group_leads":
-      return m.roles.vpp || (m.roles.lead && rule.groups.includes(m.group));
+      return m.roles.vpp || (m.roles.lead && (m.group !== null && rule.groups.includes(m.group)));
     case "nmt":
       return m.roles.vpp || m.roles.nmtLeader;
   }
@@ -963,9 +963,9 @@ export function canDeleteInFolder(m: Member, folder: FileNode | null, rule: Visi
   if (m.roles.vpp || m.roles.webmaster) return true;
   if (rule.audience === "nmt") return m.roles.nmtLeader;
   if ((rule.audience === "group_leads" || rule.audience === "groups") && m.roles.lead)
-    return rule.groups.includes(m.group);
+    return (m.group !== null && rule.groups.includes(m.group));
   // Elsewhere in the tree, a lead may remove things from their own group's area.
-  if (m.roles.lead && folder?.path)
+  if (m.roles.lead && m.group && folder?.path)
     return folder.path.toLowerCase().includes(GROUP_PATH_HINT[m.group].toLowerCase());
   return false;
 }

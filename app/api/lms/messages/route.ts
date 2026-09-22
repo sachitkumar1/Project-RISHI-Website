@@ -143,7 +143,8 @@ export async function POST(req: Request) {
       const allowedGroups = new Set(announceGroups(me));
       const picked = (body.groups ?? []).filter((g) => allowedGroups.has(g as ProjectGroup));
       if (picked.length === 0) return NextResponse.json({ error: "Pick at least one group." }, { status: 400 });
-      recipients = MEMBERS.filter((m) => picked.includes(m.group)).map((m) => m.email);
+      // Members not in a project group yet aren't part of any group mailing.
+      recipients = MEMBERS.filter((m) => m.group !== null && picked.includes(m.group)).map((m) => m.email);
     } else {
       const picked = body.memberEmails ?? [];
       if (picked.length === 0) return NextResponse.json({ error: "Pick at least one person." }, { status: 400 });
@@ -189,7 +190,7 @@ export async function POST(req: Request) {
     scopeMembers = MEMBERS.map((m) => m.email);
   } else if (emailScope === "group") {
     const picked = (body.groups ?? []).filter((g) => ["E", "R", "W", "H"].includes(g));
-    scopeMembers = MEMBERS.filter((m) => picked.includes(m.group)).map((m) => m.email);
+    scopeMembers = MEMBERS.filter((m) => m.group !== null && picked.includes(m.group)).map((m) => m.email);
   } else {
     scopeMembers = (body.memberEmails ?? []).filter((e) => findMember(e));
   }
