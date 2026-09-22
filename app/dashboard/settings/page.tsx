@@ -1,6 +1,7 @@
 "use client";
 
 import { formatPhoneInput } from "@/lib/lms/phone";
+import ContactRequestForm from "@/components/ContactRequestForm";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -50,6 +51,7 @@ export default function SettingsPage() {
   const [gmail, setGmail] = useState<GmailStatus | null>(null);
   const [cEmail, setCEmail] = useState("");
   const [cPhone, setCPhone] = useState("");
+  const [canEditContact, setCanEditContact] = useState(false);
   const [cSaving, setCSaving] = useState(false);
   const [cMsg, setCMsg] = useState<string | null>(null);
   const [roster, setRoster] = useState<{ source: string; mode: "sheet" | "code"; rows: number; sheetUrl: string } | null>(null);
@@ -87,6 +89,7 @@ export default function SettingsPage() {
           (e) => e.loginEmail === d.me,
         );
         if (mine) { setCEmail(mine.email); setCPhone(mine.phone); }
+        setCanEditContact(!!d.canEditAll); // webmaster edits directly; members request
       })
       .catch(() => {});
   }, []);
@@ -223,7 +226,19 @@ export default function SettingsPage() {
             {/* Appearance — dark mode for the dashboard, every member */}
             <ThemeSetting />
 
-            {/* Directory contact info (editable) */}
+            {/* Directory contact info — members REQUEST changes (emailed to the
+                webmaster); only the webmaster edits directly. */}
+            {!canEditContact && (
+              <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
+                <h2 className="font-display text-lg font-semibold text-pine-deep">Directory contact info</h2>
+                <p className="mt-1 mb-4 text-sm text-ink/60">
+                  How you appear in the <a href="/dashboard/directory" className="text-pine underline">member directory</a>.
+                  To change it, send a request and the webmaster will update it.
+                </p>
+                <ContactRequestForm current={{ email: cEmail, phone: cPhone }} />
+              </div>
+            )}
+            {canEditContact && (
             <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
               <h2 className="font-display text-lg font-semibold text-pine-deep">Directory contact info</h2>
               <p className="mt-1 text-sm text-ink/60">
@@ -251,6 +266,7 @@ export default function SettingsPage() {
                 {cMsg && <span className="text-sm text-pine-deep">{cMsg}</span>}
               </div>
             </div>
+            )}
 
             {/* Roster (Google Sheet) — exec only */}
             {roster && (

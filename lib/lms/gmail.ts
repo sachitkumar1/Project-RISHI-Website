@@ -197,6 +197,8 @@ export type SendArgs = {
   bcc?: string[];
   subject: string;
   html: string;
+  /** Where replies go (e.g. the member who sent a request). */
+  replyTo?: string;
   attachments?: OutgoingAttachment[];
 };
 
@@ -207,6 +209,7 @@ function buildMime(a: SendArgs): string {
     `To: ${a.to.join(", ")}`,
     a.cc && a.cc.length ? `Cc: ${a.cc.join(", ")}` : null,
     a.bcc && a.bcc.length ? `Bcc: ${a.bcc.join(", ")}` : null,
+    a.replyTo ? `Reply-To: ${a.replyTo.replace(/[\r\n]/g, "")}` : null,
     `Subject: ${encHeader(a.subject)}`,
     "MIME-Version: 1.0",
   ].filter(Boolean) as string[];

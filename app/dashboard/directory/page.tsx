@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import ContactRequestForm from "@/components/ContactRequestForm";
 import Link from "next/link";
 import { formatPhoneInput } from "@/lib/lms/phone";
 import DashboardBanner from "@/components/DashboardBanner";
@@ -57,15 +58,18 @@ export default function DirectoryPage() {
       .then(async (r) => {
         const d = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(d?.error || "Couldn't load the directory.");
-        return d as { entries: Entry[]; me: string };
+        return d as { entries: Entry[]; me: string; canEditAll?: boolean };
       })
-      .then((d) => { setEntries(d.entries); setMe(d.me); })
+      .then((d) => { setEntries(d.entries); setMe(d.me); setCanEditAll(!!d.canEditAll); })
       .catch((e) => setError(e instanceof Error ? e.message : "Something went wrong."))
       .finally(() => setLoading(false));
 
   useEffect(() => { load(); }, []);
 
   const mine = useMemo(() => entries.find((e) => e.loginEmail === me), [entries, me]);
+  const [canEditAll, setCanEditAll] = useState(false); // webmaster only
+  const [editTarget, setEditTarget] = useState<Entry | null>(null);
+  const [requesting, setRequesting] = useState(false);
 
   const groupOpts = useMemo(() => Array.from(new Set(entries.map((e) => e.group))).sort(), [entries]);
   const yearOpts = useMemo(
@@ -98,10 +102,12 @@ export default function DirectoryPage() {
     });
   }, [entries, q, fGroup, fYear, fPosition, sortBy]);
 
-  function startEdit() {
-    if (!mine) return;
-    setEditEmail(mine.email);
-    setEditPhone(mine.phone);
+  // Webmaster: edit anyone (to apply requests). Members: request a change.
+  function startEdit(target: Entry | undefined = mine) {
+    if (!target) return;
+    setEditTarget(target);
+    setEditEmail(target.email);
+    setEditPhone(target.phone);
     setSaveErr(null);
     setEditing(true);
   }
@@ -113,7 +119,7 @@ export default function DirectoryPage() {
       const res = await fetch("/api/lms/directory", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactEmail: editEmail, phone: editPhone }),
+        body: JSON.stringify({ contactEmail: editEmail, phone: editPhone, loginEmail: editTarget?.loginEmail }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d?.error || "Couldn't save.");
@@ -156,9 +162,9 @@ export default function DirectoryPage() {
                 className="w-full max-w-sm rounded-full border border-pine/20 px-4 py-2.5 text-sm outline-none focus:border-pine"
               />
               {mine && (
-                <button onClick={startEdit}
+                <button onClick={() => (canEditAll ? startEdit(mine) : setRequesting(true))}
                   className="rounded-full bg-pine px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-pine-deep">
-                  Edit my contact info
+                  {canEditAll ? "Edit my contact info" : "Request a contact info change"}
                 </button>
               )}
             </div>
@@ -192,6 +198,7 @@ export default function DirectoryPage() {
                     <th className="px-4 py-3 font-semibold">Year</th>
                     <th className="px-4 py-3 font-semibold">Email</th>
                     <th className="px-4 py-3 font-semibold">Phone</th>
+                    {canEditAll && <th className="px-4 py-3 font-semibold"><span className="sr-only">Edit</span></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -211,11 +218,17 @@ export default function DirectoryPage() {
                         <td className="px-4 py-3 text-ink/70">
                           {e.phone ? <a href={`tel:${e.phone}`} className="hover:underline">{e.phone}</a> : <span className="text-ink/30">—</span>}
                         </td>
+                        {canEditAll && (
+                          <td className="px-4 py-3 text-right">
+                            <button onClick={() => startEdit(e)} data-edit-contact={e.loginEmail}
+                              className="rounded-full border border-pine/20 px-3 py-1 text-xs font-semibold text-pine-deep hover:bg-pine/5">Edit</button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-ink/45">No members match your filters.</td></tr>
+                    <tr><td colSpan={canEditAll ? 7 : 6} className="px-4 py-8 text-center text-ink/45">No members match your filters.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -225,11 +238,25 @@ export default function DirectoryPage() {
       </section>
 
       {/* Edit-my-contact modal */}
-      {editing && mine && (
+      {/* Member: request a change (emailed to the webmaster) */}
+      {requesting && mine && (
+        <div className="fixed inset-0 z-[1100] grid place-items-center bg-ink/40 p-4" onClick={() => setRequesting(false)}>
+          <div className="w-full max-w-md rounded-3xl bg-paper p-6 shadow-xl" onClick={(ev) => ev.stopPropagation()}>
+            <div className="mb-3 flex items-start justify-between">
+              <h2 className="font-display text-xl font-semibold text-pine-deep">Request a contact info change</h2>
+              <button onClick={() => setRequesting(false)} className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+            </div>
+            <ContactRequestForm current={{ email: mine.email, phone: mine.phone }} onDone={() => setRequesting(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Webmaster: edit anyone's contact info */}
+      {editing && editTarget && canEditAll && (
         <div className="fixed inset-0 z-[1100] grid place-items-center bg-ink/40 p-4" onClick={() => setEditing(false)}>
           <div className="w-full max-w-md rounded-3xl bg-paper p-6 shadow-xl" onClick={(ev) => ev.stopPropagation()}>
             <div className="flex items-start justify-between">
-              <h2 className="font-display text-xl font-semibold text-pine-deep">Your contact info</h2>
+              <h2 className="font-display text-xl font-semibold text-pine-deep">{editTarget.loginEmail === me ? "Your contact info" : `${editTarget.name}'s contact info`}</h2>
               <button onClick={() => setEditing(false)} className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
             </div>
             <p className="mt-1 text-xs text-ink/50">This only changes how you appear in this directory. It does not change the email you log in with.</p>

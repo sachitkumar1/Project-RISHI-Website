@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Node = {
+  /** Locked for this member (new members before they join a project group). */
+  locked?: boolean;
   id: string;
   driveId: string | null;
   parentId: string | null;
@@ -146,10 +148,37 @@ function groupByYear(nodes: Node[]): [string, Node[]][] {
 }
 
 /** One tile in the browser. `big` is used for the current school year. */
+export function LockIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
 function FileCard({ n, onOpen, onDelete, showPath, big }: {
   n: Node; onOpen: (n: Node) => void; onDelete: (n: Node) => void;
   showPath?: boolean; big?: boolean;
 }) {
+  if (n.locked) {
+    // New members see these folders but can't open them yet. The server
+    // enforces this too — opening, searching and linking into them all fail.
+    return (
+      <li>
+        <div aria-disabled="true" data-locked-folder title="Unlocks once you're placed in a project group"
+          className={`flex w-full cursor-not-allowed select-none items-start gap-3 rounded-2xl border border-dashed border-ink/15 bg-ink/[0.03] text-left opacity-60 grayscale ${big ? "p-6" : "p-4"}`}>
+          <span className={`mt-0.5 grid shrink-0 place-items-center rounded-xl bg-ink/10 text-ink/60 ${big ? "h-12 w-12" : "h-9 w-9"}`}>
+            <LockIcon className={big ? "h-6 w-6" : "h-4 w-4"} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className={`block truncate font-semibold leading-snug text-ink/70 ${big ? "text-xl" : ""}`}>{n.name}</span>
+            <span className="mt-0.5 block truncate text-xs text-ink/55">Unlocks when you join a project group</span>
+          </span>
+        </div>
+      </li>
+    );
+  }
   return (
     <li className="group/item relative">
       {n.canDelete && (

@@ -15,7 +15,6 @@ import {
   NOTIFY_SENDER,
   NOTIFY_FROM_NAME,
 } from "@/lib/lms/gmail";
-import { addNotification } from "@/lib/lms/notifications";
 import { peerEmails } from "@/lib/lms/permissions";
 import type { ClubEvent, Task } from "@/lib/lms/types";
 import { PROJECT_GROUP_LABELS } from "@/lib/lms/types";
@@ -52,9 +51,12 @@ const fmtDue = (iso: string) =>
   });
 
 /**
- * Email one recipient from the club account AND drop a notification in their
- * dashboard. Both are best-effort and independent — if email fails, the
- * notification still lands, and vice-versa.
+ * Email one recipient from the club account.
+ *
+ * (It used to also save an in-dashboard notification. That feed was removed —
+ * nothing is stored in lms_notifications any more, so browser pop-ups stop too.
+ * EMAIL IS UNCHANGED: every caller of notify() still sends exactly the same
+ * email, from the same account, as before.)
  */
 async function notify(
   recipientEmail: string,
@@ -63,12 +65,7 @@ async function notify(
   kind: string,
   refId: string | null,
 ): Promise<void> {
-  // In-dashboard notification (also drives the browser notification).
-  try {
-    await addNotification({ userEmail: recipientEmail, title: subject, body, kind, refId });
-  } catch (e) {
-    console.error("notify: notification write failed", (e as Error).message);
-  }
+  void kind; void refId; // kept in the signature for every existing caller
   // Email from the club notifications account.
   try {
     const conn = await getGmailConnection(NOTIFY_SENDER);

@@ -14,6 +14,8 @@ export const maxDuration = 60;
 export async function GET() {
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+  if (me.group === null)
+    return NextResponse.json({ error: "RISHI AI unlocks once you're placed in a project group.", locked: true }, { status: 403 });
   const cfg = agentConfig();
   // Archive coverage for the status readout: how many passages are searchable,
   // and what share also have meaning-search embeddings. Two count queries.
@@ -50,6 +52,8 @@ export async function POST(req: Request) {
   const started = Date.now();
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+  if (me.group === null)
+    return NextResponse.json({ error: "RISHI AI unlocks once you're placed in a project group.", locked: true }, { status: 403 });
 
   let body: { question?: unknown; history?: unknown; depth?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Bad request" }, { status: 400 }); }

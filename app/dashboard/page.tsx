@@ -9,7 +9,7 @@ import Avatar from "@/components/Avatar";
 import SettingsGear from "@/components/SettingsGear";
 import ThemeToggle from "@/components/ThemeToggle";
 import DashboardBanner from "@/components/DashboardBanner";
-import NotificationBell from "@/components/NotificationBell";
+import GatedLink from "@/components/GatedLink";
 import AnnouncementsPanel from "@/components/AnnouncementsPanel";
 import NewsletterPanel from "@/components/NewsletterPanel";
 import CreateMenu from "@/components/CreateMenu";
@@ -19,6 +19,8 @@ export default function DashboardPage() {
   const firstName = session?.user?.firstName || "Member";
   const [avatar, setAvatar] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string>("");
+  // New members without a project group yet: some tiles are locked for them.
+  const [unplaced, setUnplaced] = useState(false);
 
   useEffect(() => {
     fetch("/api/lms/profile")
@@ -27,6 +29,7 @@ export default function DashboardPage() {
         if (!d) return;
         setAvatar(d.avatar ?? null);
         setFullName(`${d.firstName} ${d.lastName}`);
+        setUnplaced(d.group === null);
       })
       .catch(() => {});
   }, []);
@@ -43,7 +46,6 @@ export default function DashboardPage() {
                 Member Dashboard
               </span>
               <div className="flex items-center gap-2">
-                <NotificationBell />
                 <ThemeToggle />
                 <SettingsGear />
               </div>
@@ -95,8 +97,10 @@ export default function DashboardPage() {
                 </span>
               </Link>
 
-              <Link
+              <GatedLink
+                locked={unplaced}
                 href="/dashboard/lineage"
+                lockedClassName="flex min-h-0 items-center gap-4 p-5"
                 className="group flex min-h-0 items-center gap-4 rounded-3xl border border-pine/15 bg-pine/[0.03] p-5 transition-colors hover:border-pine hover:bg-pine hover:text-paper"
               >
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-marigold text-pine-deep">
@@ -110,7 +114,7 @@ export default function DashboardPage() {
                 <span className="font-display text-lg font-semibold leading-tight">
                   RISHI Lineage
                 </span>
-              </Link>
+              </GatedLink>
             </div>
           </Reveal>
 
@@ -133,8 +137,10 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm opacity-70">Club documents and meeting notes</p>
             </Link>
 
-            <Link
+            <GatedLink
+              locked={unplaced}
               href="/dashboard/ask"
+              lockedClassName="flex min-h-0 items-center gap-4 p-5"
               className="group flex min-h-0 items-center gap-4 rounded-3xl border border-pine/15 bg-pine/[0.03] p-5 transition-colors hover:border-pine hover:bg-pine hover:text-paper"
             >
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-marigold text-pine-deep">
@@ -152,7 +158,7 @@ export default function DashboardPage() {
               <span className="font-display text-lg font-semibold leading-tight">
                 RISHI AI
               </span>
-            </Link>
+            </GatedLink>
             </div>
           </Reveal>
 

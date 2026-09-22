@@ -63,6 +63,8 @@ export type FileNode = {
   snippet?: string;
   /** Whether the asking member may delete this file. */
   canDelete?: boolean;
+  /** Top level only: shown, but locked for this member (see lockedFor). */
+  locked?: boolean;
   /** Folders only: the audience in force here (resolved through inheritance). */
   audience?: FileAudience;
   /** Folders only: true when the audience is set on this folder itself. */
@@ -431,6 +433,34 @@ function visibleFolder(m: Member, idx: Resolved, folder: FileNode, fallback: Fil
   return reachable(nodeKey(folder)) !== false;
 }
 
+// ------------------------------------------------ new-member (unplaced) lock
+/** Members not yet in a project group (new members) can open only these school
+ *  years. Everything else — older years, the Tasks folder — shows greyed out
+ *  with a lock until they're placed in a group. */
+export const OPEN_YEARS_FOR_UNPLACED = ["2026-2027", "2025-2026"];
+export const isUnplaced = (m: Member) => m.group === null;
+
+/** The top-level folder a node sits under (walking up through parent folders). */
+function rootOf(idx: Resolved, key: string | null): FileNode | undefined {
+  let cur = key ? idx.byKey.get(key) : undefined;
+  const seen = new Set<string>();
+  while (cur && cur.parentId && !seen.has(nodeKey(cur))) {
+    seen.add(nodeKey(cur));
+    const up = idx.byKey.get(cur.parentId);
+    if (!up) break;
+    cur = up;
+  }
+  return cur;
+}
+
+/** Is whatever lives at `key` (a folder, or a file's parent folder) locked for m? */
+export function lockedFor(m: Member, idx: Resolved, key: string | null): boolean {
+  if (!isUnplaced(m)) return false;
+  const root = rootOf(idx, key);
+  if (!root) return true; // no known top-level folder: stay closed
+  return !OPEN_YEARS_FOR_UNPLACED.some((y) => root.year === y || root.name.startsWith(y));
+}
+
 export type FolderView = {
   folder: FileNode | null; // null = the top level (the year folders)
   breadcrumbs: { key: string; name: string }[];
@@ -462,12 +492,16 @@ export async function listFolder(m: Member, folderKey: string | null): Promise<F
         if (ay !== by) return ay ? -1 : 1;
         return ay ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
       });
-    return { folder: null, breadcrumbs: [], children: roots.map(decorate), canUpload: false };
+    return {
+      folder: null, breadcrumbs: [], canUpload: false,
+      children: roots.map((n) => (lockedFor(m, idx, nodeKey(n)) ? { ...decorate(n), locked: true } : decorate(n))),
+    };
   }
 
   const folder = idx.byKey.get(folderKey);
   if (!folder || folder.kind !== "folder") return null;
   if (!canSee(m, idx, folderKey, fallback)) return null; // indistinguishable from "not there"
+  if (lockedFor(m, idx, folderKey)) return null; // new-member lock: same "not there"
 
   const crumbs: { key: string; name: string }[] = [];
   let cur: FileNode | undefined = folder;
@@ -531,7 +565,7 @@ export async function searchFiles(
 
   const idx = await loadIndex();
   const fallback = await getDefaultAudience();
-  const visible = (n: FileNode) => canSee(m, idx, n.parentId, fallback);
+  const visible = (n: FileNode) => canSee(m, idx, n.parentId, fallback) && !lockedFor(m, idx, n.parentId);
 
   // Whole-word and case-sensitivity are applied here rather than in SQL: the
   // database narrows the candidates with a cheap substring match, and this
@@ -641,6 +675,7 @@ export async function createUpload(m: Member, input: UploadInput): Promise<FileN
   const folder = idx.byKey.get(input.folderKey);
   if (!folder || folder.kind !== "folder") throw new Error("That folder doesn't exist.");
   if (!canSee(m, idx, input.folderKey, fallback)) throw new Error("You can't add files to that folder.");
+  if (lockedFor(m, idx, input.folderKey)) throw new Error("That folder unlocks once you're placed in a project group.");
 
   const safe = input.name.replace(/[^\w.\- ]+/g, "_").slice(0, 120) || "file";
   const storagePath = `${input.folderKey}/${crypto.randomUUID()}-${safe}`;
@@ -685,6 +720,7 @@ export async function signedUrlFor(m: Member, fileId: string): Promise<string | 
   const { data, error } = await sb()
     .from("lms_files").select("*").eq("id", fileId).eq("deleted", false).maybeSingle();
   if (error || !data) return null;
+  if (isUnplaced(m) && lockedFor(m, await loadFolderIndex(), data.parent_id ?? null)) return null; // new-member lock
   if (data.source === "drive") return data.web_view_link ?? null;
   if (!data.storage_path) return null;
 
