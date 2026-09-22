@@ -173,7 +173,7 @@ function FileCard({ n, onOpen, onDelete, showPath, big }: {
           </span>
           <span className="min-w-0 flex-1">
             <span className={`block truncate font-semibold leading-snug text-ink/70 ${big ? "text-xl" : ""}`}>{n.name}</span>
-            <span className="mt-0.5 block truncate text-xs text-ink/55">Unlocks when you join a project group</span>
+            
           </span>
         </div>
       </li>
