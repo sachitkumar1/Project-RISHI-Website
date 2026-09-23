@@ -111,7 +111,8 @@ export default function AgentSettingsPanel() {
             {Object.entries(s.lastErrors).map(([m, e]) => (
               <p key={m}>
                 <code>{m}</code>, {new Date(e.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}:{" "}
-                {e.kind === "overloaded" ? "Google said it was busy or it didn't answer in time"
+                {e.kind === "overloaded" ? `${m.startsWith("claude") ? "Anthropic" : "Google"} said it was busy`
+                  : e.kind === "timeout" ? "it didn't answer within the time this question had left"
                   : e.kind === "quota_day" ? "used up its free daily quota"
                   : e.kind === "quota_minute" ? "hit its per-minute limit"
                   : e.kind === "no_credit" ? "the Anthropic balance ran out"

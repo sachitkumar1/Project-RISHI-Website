@@ -171,6 +171,8 @@ async function noteFailure(model: string, err: ModelError) {
       updated_at: new Date().toISOString(),
     }, { onConflict: "key" });
   } catch { /* diagnostics only */ }
+  // "timeout" is deliberately absent: that was our deadline, not the provider
+  // refusing, so the model stays available for the next question.
   if (err.kind === "quota_day") await markExhausted(model, nextPacificMidnight());
   else if (err.kind === "overloaded") await markExhausted(model, new Date(Date.now() + BUSY_BACKOFF_MS).toISOString());
   else if (err.kind === "no_credit") await markExhausted(model, new Date(Date.now() + 3_600_000).toISOString());
@@ -192,7 +194,7 @@ async function tryGemini(model: string, system: string, user: string, email: str
       const wait = err.kind === "overloaded" ? 2_000 : Math.max(1_000, err.retryAfterMs ?? 2_000);
       const retryable =
         (err.kind === "quota_minute" && wait <= 8_000) ||
-        (err.kind === "overloaded" && !/no answer within/.test(err.message));
+        err.kind === "overloaded"; // a timeout already used its time, so it isn't retried
       if (retryable && attempt === 0 && stopAt - Date.now() > wait + 5_000) {
         await new Promise((r) => setTimeout(r, wait));
         continue;
@@ -233,8 +235,8 @@ async function tryHaiku(system: string, user: string, email: string, question: s
     // A failed call isn't billed, EXCEPT one we gave up waiting on: Anthropic may
     // still finish and bill it, so a timeout keeps its worst-case reservation.
     await sb().from("lms_ai_usage")
-      .update(err.kind === "overloaded" && /no answer within/.test(err.message)
-        ? { status: "failed" }
+      .update(err.kind === "timeout"
+        ? { status: "failed" }                      // may still be billed: keep the reservation
         : { status: "failed", cost_usd: 0 })
       .eq("id", reservation);
     await noteFailure(cfg.haikuModel, err);
@@ -308,12 +310,30 @@ export async function ask(
     if (lite) chain.push({ provider: "gemini", model: cfg.fallbackModel });
   }
 
+  // A model needs a fair window. Below MIN_ATTEMPT_MS an answer can't realistically
+  // arrive, and trying anyway used to record a "failure" for a perfectly healthy
+  // model (and, before the timeout/overloaded split, park it for two minutes).
+  // The first attempts are capped so a later model still has room to run.
+  const MIN_ATTEMPT_MS = 12_000;
+  // How long one model may take before we move on. Longer answers legitimately
+  // take longer, so Detailed and Deep Research get bigger windows — capping them
+  // at the short figure would cut off answers that were on their way.
+  const ATTEMPT_CAP_MS = { quick: 24_000, standard: 34_000, detailed: 42_000, deep: 50_000 }[depth];
   for (let i = 0; i < chain.length; i++) {
     const step = chain[i];
-    // Leave room for the steps after this one; the last step gets whatever is left.
-    const reserve = i < chain.length - 1 ? 12_000 : 0;
-    const timeoutMs = Math.min(30_000, deadline - Date.now() - reserve);
-    if (timeoutMs < 4_000) continue;
+    const isLast = i === chain.length - 1;
+    const msLeft = deadline - Date.now();   // NB: `remaining` above is the credits helper
+    // Hold time back for the next model ONLY when two attempts still fit;
+    // otherwise this model gets everything that's left rather than being skipped.
+    // Hold time back for a fallback only when this model can still use its FULL
+    // window; otherwise give it everything left rather than cutting it short
+    // (a Deep Research answer matters more than keeping a fallback in reserve).
+    const keepsRoomForNext = !isLast && msLeft - MIN_ATTEMPT_MS >= ATTEMPT_CAP_MS;
+    const budget = keepsRoomForNext ? ATTEMPT_CAP_MS : msLeft;
+    const timeoutMs = Math.min(Math.max(ATTEMPT_CAP_MS, isLast ? 30_000 : 0), budget);
+    // Too little time left for anyone: stop rather than burn through the rest of
+    // the chain with windows they can't meet.
+    if (timeoutMs < MIN_ATTEMPT_MS) break;
     const g = step.provider === "gemini"
       ? await tryGemini(step.model, system, user, m.email, q, timeoutMs, depth)
       : await tryHaiku(system, user, m.email, q, timeoutMs, depth);

@@ -47,7 +47,7 @@ export const HAIKU_PRICE = { input: 1 / 1_000_000, output: 5 / 1_000_000 };
 
 export const EMBED_DIMS = 768;
 /** A question must finish inside Vercel's 60s. */
-export const ANSWER_DEADLINE_MS = 50_000;
+export const ANSWER_DEADLINE_MS = 54_000; // the route is cut off at 60s (maxDuration), so ~6s of margin
 /** An overloaded / timed-out model is skipped for this long. Was 10 minutes,
  *  which let one "high demand" reply from Google push every question for the
  *  next 10 minutes onto paid Haiku. */

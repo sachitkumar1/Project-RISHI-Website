@@ -14,7 +14,8 @@ export type ModelErrorKind =
   | "no_credit"     // Anthropic prepaid balance is empty
   | "not_found"     // model id doesn't exist / isn't available to this key
   | "auth"          // bad or missing key
-  | "overloaded"    // 503 / "high demand" / timed out — skip it for a while
+  | "overloaded"    // the provider said it's busy (503 / "high demand")
+  | "timeout"       // WE stopped waiting (our own deadline) — the provider never refused
   | "blocked"       // safety filter or empty answer
   | "other";
 
@@ -42,7 +43,9 @@ async function post(url: string, headers: Record<string, string>, body: unknown,
       signal: ctl.signal,
     });
   } catch (e) {
-    if ((e as Error).name === "AbortError") throw new ModelError("overloaded", `no answer within ${Math.round(timeoutMs / 1000)}s`);
+    // OUR deadline cut this off — the model never said it was busy. Kept apart
+    // from "overloaded" so it doesn't park a perfectly healthy model.
+    if ((e as Error).name === "AbortError") throw new ModelError("timeout", `no answer within ${Math.round(timeoutMs / 1000)}s`);
     throw new ModelError("other", `network: ${(e as Error).message}`);
   } finally {
     clearTimeout(t);
