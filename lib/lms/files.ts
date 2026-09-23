@@ -117,6 +117,7 @@ export async function setDefaultAudience(a: FileAudience): Promise<void> {
     { onConflict: "key" },
   );
   if (error) throw new Error(error.message);
+  invalidateFileIndexes(); // the fallback audience changes what's visible
 }
 
 const AUDIENCES: FileAudience[] = ["all", "leads", "exec", "vpp", "groups", "group_leads", "nmt"];
@@ -151,6 +152,7 @@ export async function setVisibility(
     { onConflict: "folder_id" },
   );
   if (error) throw new Error(error.message);
+  invalidateFileIndexes(); // a folder's audience changed
 }
 
 /** Drop a folder's own rule so it inherits from its parent again. */
@@ -158,6 +160,7 @@ export async function clearVisibility(folderId: string): Promise<void> {
   if (!usingSupabase) return;
   const { error } = await sb().from("lms_file_visibility").delete().eq("folder_id", folderId);
   if (error) throw new Error(error.message);
+  invalidateFileIndexes(); // a folder's audience was cleared
 }
 
 /** Does this member satisfy an audience? */
@@ -256,12 +259,14 @@ type Resolved = {
 
 /** Load the whole index and resolve every folder's effective audience. */
 export async function loadIndex(): Promise<Resolved> {
+  const cached = readCache("all");
+  if (cached) return cached;
   const [nodes, rules, fallback] = await Promise.all([
     allRows(),
     listVisibilityRules(),
     getDefaultAudience(),
   ]);
-  return resolveIndex(nodes, rules, fallback);
+  return writeCache("all", resolveIndex(nodes, rules, fallback));
 }
 
 /**
@@ -277,6 +282,8 @@ export async function loadIndex(): Promise<Resolved> {
  * only by the folder browser's "hide a folder if nothing inside is visible".
  */
 export async function loadFolderIndex(opts: { withFiles?: boolean } = {}): Promise<Resolved> {
+  const cached = readCache(opts.withFiles ? "folders+files" : "folders");
+  if (cached) return cached;
   const [nodes, rules, fallback, withFiles] = await Promise.all([
     folderRows(),
     listVisibilityRules(),
@@ -285,7 +292,33 @@ export async function loadFolderIndex(opts: { withFiles?: boolean } = {}): Promi
   ]);
   const idx = resolveIndex(nodes, rules, fallback);
   if (withFiles) idx.withFiles = withFiles;
+  return writeCache(opts.withFiles ? "folders+files" : "folders", idx);
+}
+
+// ------------------------------------------------------- short-lived caching
+/**
+ * The folder index (~180 KB) was re-downloaded on EVERY folder open, search,
+ * upload, deletion and AI question, though folders only change when the hourly
+ * Drive sync runs or someone edits visibility. It is cached for CACHE_MS per
+ * server instance, and every write that could change it clears the cache at
+ * once (invalidateFileIndexes), so nothing can be served stale after a change.
+ */
+const CACHE_MS = 60_000;
+type CacheKey = "folders" | "folders+files" | "all";
+const indexCache = new Map<CacheKey, { at: number; idx: Resolved }>();
+
+function readCache(key: CacheKey): Resolved | null {
+  const hit = indexCache.get(key);
+  if (!hit || Date.now() - hit.at > CACHE_MS) return null;
+  return hit.idx;
+}
+function writeCache(key: CacheKey, idx: Resolved): Resolved {
+  indexCache.set(key, { at: Date.now(), idx });
   return idx;
+}
+/** Called after anything that changes files, folders or visibility rules. */
+export function invalidateFileIndexes(): void {
+  indexCache.clear();
 }
 
 const NODE_COLUMNS = "id,source,drive_id,parent_id,name,mime_type,kind,size_bytes,web_view_link,year,path,modified_at,uploaded_by";
@@ -561,43 +594,52 @@ export async function searchFiles(
 ): Promise<FileNode[]> {
   const raw = q.trim();
   if (raw.length < 2) return [];
-  const needle = raw.toLowerCase();
 
-  const idx = await loadIndex();
+  // The matching and the snippet are done in Postgres (lms_search_files, see
+  // migration-search.sql). Searching used to pull every file row AND the full
+  // text of every candidate document into Node — megabytes per search — to do
+  // exactly this. Now only the matching rows and a ~160-character window come
+  // back. Visibility is still applied here, with the folders-only index.
+  const idx = await loadFolderIndex();
   const fallback = await getDefaultAudience();
   const visible = (n: FileNode) => canSee(m, idx, n.parentId, fallback) && !lockedFor(m, idx, n.parentId);
 
-  // Whole-word and case-sensitivity are applied here rather than in SQL: the
-  // database narrows the candidates with a cheap substring match, and this
-  // refines them precisely. Doing it the other way would need a regex query
-  // across every stored document.
-  const matcher = buildMatcher(raw, opts);
-
-  const byName = idx.nodes.filter((n) => matcher(n.name)).filter(visible);
-  if (mode === "names" || !usingSupabase) return byName.slice(0, limit);
-
-  // Content hits, excluding anything already matched by name.
-  const seen = new Set(byName.map((n) => n.id));
-  const escaped = needle.replace(/[%_\\]/g, (c) => `\\${c}`);
-  const { data, error } = await sb()
-    .from("lms_files")
-    .select("id,source,drive_id,parent_id,name,mime_type,kind,size_bytes,web_view_link,year,path,modified_at,uploaded_by,content_text")
-    .eq("deleted", false)
-    .ilike("content_text", `%${escaped}%`)
-    .limit(limit * 2);
-  if (error) return byName.slice(0, limit);
-
-  const contentHits: FileNode[] = [];
-  for (const row of data ?? []) {
-    if (seen.has(row.id)) continue;
-    const text = row.content_text ?? "";
-    if (!matcher(text)) continue; // the SQL match was loose; this is the real test
-    const node = toNode(row);
-    if (!visible(node)) continue;
-    contentHits.push({ ...node, snippet: snippetAround(text, raw, opts) });
+  if (!usingSupabase) {
+    // In-memory mode (tests / no database): same rules, over the seed data.
+    const matcher = buildMatcher(raw, opts);
+    const names = SEED.filter((n) => matcher(n.name)).filter(visible);
+    return names.slice(0, limit);
   }
 
+  const { data, error } = await sb().rpc("lms_search_files", {
+    q: raw,
+    whole_word: !!opts.wholeWord,
+    case_sensitive: !!opts.caseSensitive,
+    search_text: mode === "contents",
+    lim: Math.max(limit * 3, 600),
+  });
+  if (error) throw new Error(error.message);
+
+  const byName: FileNode[] = [];
+  const contentHits: FileNode[] = [];
+  type Hit = { hit_kind: string; snippet_raw: string | null; cut_before: boolean; cut_after: boolean } & Record<string, unknown>;
+  for (const row of (data ?? []) as Hit[]) {
+    const node = toNode(row);
+    if (!visible(node)) continue;
+    if (row.hit_kind === "name") byName.push(node);
+    else contentHits.push({ ...node, snippet: formatSnippet(row.snippet_raw ?? "", row.cut_before, row.cut_after) });
+  }
   return [...byName, ...contentHits].slice(0, limit);
+}
+
+/** Tidy the window Postgres returned, exactly as the old in-Node snippet did:
+ *  collapse whitespace, then trim the partial word at each cut edge. */
+function formatSnippet(window: string, cutBefore: boolean, cutAfter: boolean): string {
+  let out = window.replace(/\s+/g, " ").trim();
+  if (!out) return "";
+  if (cutBefore) out = `…${out.replace(/^\S*\s/, "")}`;
+  if (cutAfter) out = `${out.replace(/\s\S*$/, "")}…`;
+  return out;
 }
 
 /** Escape a string so it can sit inside a regular expression literally. */
@@ -711,6 +753,7 @@ export async function createUpload(m: Member, input: UploadInput): Promise<FileN
     await sb().storage.from(UPLOAD_BUCKET).remove([storagePath]).catch(() => {});
     throw new Error(error.message);
   }
+  invalidateFileIndexes(); // a new file exists
   return toNode(data);
 }
 
@@ -748,6 +791,7 @@ export async function deleteUpload(m: Member, fileId: string): Promise<void> {
   if (data.storage_path) await sb().storage.from(UPLOAD_BUCKET).remove([data.storage_path]).catch(() => {});
   const { error } = await sb().from("lms_files").delete().eq("id", fileId);
   if (error) throw new Error(error.message);
+  invalidateFileIndexes(); // a file was removed
 }
 
 /** Total bytes held in Supabase Storage, for the Settings panel. */
@@ -839,6 +883,7 @@ async function ensureTaskFolder(
     .from("lms_files")
     .upsert(rows, { onConflict: "drive_id", ignoreDuplicates: true });
   if (error) throw new Error(error.message);
+  invalidateFileIndexes(); // task folders were created
   return folderKey;
 }
 
@@ -905,6 +950,7 @@ export async function createTaskUpload(input: TaskUploadInput): Promise<FileNode
     await sb().storage.from(UPLOAD_BUCKET).remove([storagePath]).catch(() => {});
     throw new Error(error.message);
   }
+  invalidateFileIndexes(); // a task file was added
   return toNode(data);
 }
 
@@ -947,6 +993,7 @@ export async function deleteTaskUpload(
   if (data.storage_path) await sb().storage.from(UPLOAD_BUCKET).remove([data.storage_path]).catch(() => {});
   const { error } = await sb().from("lms_files").delete().eq("id", fileId);
   if (error) throw new Error(error.message);
+  invalidateFileIndexes(); // a task file was removed
 }
 
 /**
@@ -974,6 +1021,7 @@ export async function purgeTaskUploads(
   // If that emptied the task's folder, the folder goes too — an empty folder
   // named after a task that no longer exists is just clutter in Files.
   if (!assigneeEmail) await removeTaskFolderIfEmpty(taskGroupId);
+  invalidateFileIndexes(); // task files were removed
   return data.length;
 }
 
@@ -985,6 +1033,7 @@ export async function removeTaskFolderIfEmpty(taskGroupId: string): Promise<bool
     .from("lms_files").select("*", { count: "exact", head: true }).eq("parent_id", key);
   if ((count ?? 0) > 0) return false;
   const { error } = await sb().from("lms_files").delete().eq("drive_id", key).eq("source", "task");
+  invalidateFileIndexes(); // a task folder was removed
   return !error;
 }
 
@@ -1037,4 +1086,5 @@ export async function deleteFileAsLead(m: Member, fileId: string): Promise<void>
   if (data.storage_path) await sb().storage.from(UPLOAD_BUCKET).remove([data.storage_path]).catch(() => {});
   const { error } = await sb().from("lms_files").delete().eq("id", fileId);
   if (error) throw new Error(error.message);
+  invalidateFileIndexes(); // a file was removed
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/lms/currentUser";
 import { canSeeMember, findMember, MEMBERS } from "@/lib/members";
 import { canAssignTasks, canAssignTaskTo, canManageTask } from "@/lib/lms/permissions";
-import { createTasks, listTasksInGroups, listTasksForMember } from "@/lib/lms/store";
+import { createTasks, listTasksInGroups, listTasksForMember, countPastTaskGroups } from "@/lib/lms/store";
 import { syncTasksIfRealtime } from "@/lib/lms/sheets";
 import { notifyTaskAssigned } from "@/lib/lms/notify";
 import type { NewTaskInput, Task } from "@/lib/lms/types";
@@ -21,10 +21,16 @@ function autoCc(t: Task): string[] {
   return [assigner.email];
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
-  const tasks = await listTasksForMember(me);
+  // ?scope=active → outstanding work only (what the dashboard shows). The
+  // History popup asks for everything. Default stays "all" for any other caller.
+  const scope = new URL(req.url).searchParams.get("scope") === "active" ? "active" : "all";
+  const [tasks, pastGroupCount] = await Promise.all([
+    listTasksForMember(me, scope),
+    scope === "active" ? countPastTaskGroups(me) : Promise.resolve(undefined),
+  ]);
 
   // Who else is on the same task. A task shared by several people is stored as
   // one row each, so an assignee would otherwise have no idea anyone else was
@@ -51,7 +57,7 @@ export async function GET() {
       (x) => x.email.toLowerCase() !== t.assigneeEmail.toLowerCase(),
     ),
   }));
-  return NextResponse.json({ tasks: withFlags });
+  return NextResponse.json({ tasks: withFlags, pastGroupCount });
 }
 
 export async function POST(req: Request) {

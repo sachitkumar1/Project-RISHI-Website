@@ -20,10 +20,13 @@ function laneFor(email: string): Lane {
   return "OTHER";
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const me = await getCurrentMember();
   if (!me) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
-  const [tasks, events] = await Promise.all([listAllTasks(), listAllEvents()]);
+  // ?scope=active → outstanding work only (the dashboard's overview). The
+  // overview inside History asks for everything.
+  const scope = new URL(req.url).searchParams.get("scope") === "active" ? "active" : "all";
+  const [tasks, events] = await Promise.all([listAllTasks(scope), listAllEvents()]);
 
   const tasksOut = tasks.map((t) => ({
     ...t,

@@ -185,23 +185,66 @@ const mem = { tasks: [...seedTasks], events: [...seedEvents] };
 // ============================================================================
 
 /** Tasks where I'm the assignee, OR assigned by me / my co-leads / co-NMT. */
-export async function listTasksForMember(member: Member): Promise<Task[]> {
+/**
+ * Tasks a member can see.
+ *
+ * scope "active" returns only outstanding work (not complete, not archived) —
+ * what the dashboard itself shows. The dashboard asks for that and fetches the
+ * full set only when the History popup is opened, because finished and archived
+ * tasks are the large majority (224 of 309 here) and were being downloaded on
+ * every single dashboard load.
+ */
+export async function listTasksForMember(member: Member, scope: "active" | "all" = "all"): Promise<Task[]> {
   const me = lc(member.email);
   const peers = visibleAssignerEmails(member);
+  const active = (t: { archived: boolean; status: string }) => !t.archived && t.status !== "complete";
   if (usingSupabase) {
     const inList = peers.map((e) => `"${e}"`).join(",");
-    const { data, error } = await sb()
+    let q = sb()
       .from("lms_tasks")
       .select("*")
-      .or(`assignee_email.eq.${me},assigner_email.in.(${inList})`)
-      .order("due_at", { ascending: true });
+      .or(`assignee_email.eq.${me},assigner_email.in.(${inList})`);
+    if (scope === "active") q = q.eq("archived", false).neq("status", "complete");
+    const { data, error } = await q.order("due_at", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []).map(taskFromRow);
   }
   const peerSet = new Set(peers);
   return mem.tasks
     .filter((t) => eq(t.assigneeEmail, me) || peerSet.has(lc(t.assignerEmail)))
+    .filter((t) => (scope === "active" ? active(t) : true))
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+}
+
+/** How many finished/archived task groups a member has, for the History badge —
+ *  ids only, so the badge costs a few KB instead of the whole history. */
+export async function countPastTaskGroups(member: Member): Promise<number> {
+  const me = lc(member.email);
+  const peers = visibleAssignerEmails(member);
+  if (usingSupabase) {
+    const inList = peers.map((e) => `"${e}"`).join(",");
+    const { data, error } = await sb()
+      .from("lms_tasks")
+      .select("group_id,id,archived,status")
+      .or(`assignee_email.eq.${me},assigner_email.in.(${inList})`);
+    if (error) throw new Error(error.message);
+    const byGroup = new Map<string, boolean>(); // group → every row finished?
+    for (const r of data ?? []) {
+      const key = (r.group_id as string) || (r.id as string);
+      const done = !!r.archived || r.status === "complete";
+      byGroup.set(key, (byGroup.get(key) ?? true) && done);
+    }
+    return Array.from(byGroup.values()).filter(Boolean).length;
+  }
+  const peerSet = new Set(peers);
+  const byGroup = new Map<string, boolean>();
+  for (const t of mem.tasks) {
+    if (!(eq(t.assigneeEmail, me) || peerSet.has(lc(t.assignerEmail)))) continue;
+    const key = t.groupId || t.id;
+    const done = t.archived || t.status === "complete";
+    byGroup.set(key, (byGroup.get(key) ?? true) && done);
+  }
+  return Array.from(byGroup.values()).filter(Boolean).length;
 }
 
 export async function createTasks(input: NewTaskInput, assignerEmail: string, meetingId?: string): Promise<Task[]> {
@@ -370,13 +413,19 @@ export async function listTasksForMeeting(meetingId: string): Promise<Task[]> {
   return mem.tasks.filter((t) => (t as Task & { meetingId?: string }).meetingId === meetingId);
 }
 
-export async function listAllTasks(): Promise<Task[]> {
+/** Every task in the club (VP/President's Full Club Overview).
+ *  scope "active" leaves out finished and archived work, which is what the
+ *  dashboard's overview shows anyway — the History view asks for "all". */
+export async function listAllTasks(scope: "active" | "all" = "all"): Promise<Task[]> {
   if (usingSupabase) {
-    const { data, error } = await sb().from("lms_tasks").select("*").order("due_at", { ascending: true });
+    let q = sb().from("lms_tasks").select("*");
+    if (scope === "active") q = q.eq("archived", false).neq("status", "complete");
+    const { data, error } = await q.order("due_at", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []).map(taskFromRow);
   }
-  return [...mem.tasks].sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+  const all = [...mem.tasks].sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+  return scope === "active" ? all.filter((t) => !t.archived && t.status !== "complete") : all;
 }
 
 export async function listAllEvents(): Promise<ClubEvent[]> {

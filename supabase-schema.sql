@@ -787,3 +787,121 @@ alter table lms_profiles add column if not exists banner text;
 alter table lms_roster alter column group_code drop not null;
 alter table lms_roster alter column group_code drop default;
 
+-- The in-dashboard notification feed was removed; nothing new is written to
+-- this table. This clears the old feed history and frees the space.
+-- Email notifications are NOT affected (they never used this table).
+-- Safe to re-run. The empty table is kept in case the feed ever returns.
+
+select count(*) as rows_to_delete,
+       pg_size_pretty(pg_total_relation_size('lms_notifications')) as current_size
+from lms_notifications;
+
+-- 2) Clear it and free the space:
+truncate table lms_notifications;
+
+-- ============================================================================
+--  Files search, done inside Postgres.  Safe to re-run.
+--
+--  WHY: searching used to download every file row (~4,600) AND the full text of
+--  every candidate document (a "agenda" content search moved ~2 MB) just to
+--  match in Node and cut a 160-character snippet. This does the matching in the
+--  database and returns only the matching rows plus their snippet window.
+--
+--  The matching mirrors the app exactly:
+--    • plain search      → substring, case-insensitive (ILIKE) or sensitive (LIKE)
+--    • whole word        → regex with non-word characters (or string edges) on
+--                          both sides, where "word character" is [A-Za-z0-9_],
+--                          the same class JavaScript's \w uses
+--    • snippet           → window around the FIRST plain occurrence (the app's
+--                          snippet ignores whole-word, so this does too), 60
+--                          characters before and 100 after, with flags telling
+--                          the app whether text was cut off either side so it
+--                          can add the ellipses exactly as before.
+-- ============================================================================
+
+-- Dropped first: Postgres won't change an existing function's return type.
+drop function if exists lms_search_files(text, boolean, boolean, boolean, integer);
+
+create or replace function lms_search_files(
+  q               text,
+  whole_word      boolean default false,
+  case_sensitive  boolean default false,
+  search_text     boolean default false,
+  lim             integer default 600
+)
+returns table (
+  id uuid, source text, drive_id text, parent_id text, name text, mime_type text,
+  kind text, size_bytes bigint, web_view_link text, year text, path text,
+  modified_at timestamptz, uploaded_by text,
+  hit_kind text,        -- 'name' | 'content'
+  snippet_raw text,     -- the window around the first occurrence ('' for name hits)
+  cut_before boolean,   -- text exists before the window
+  cut_after boolean     -- text exists after the window
+)
+language plpgsql
+stable
+as $$
+declare
+  word_pat text;
+  at_pos   int;
+begin
+  -- Whole-word pattern: the term with a non-word character (or the string edge)
+  -- on each side. Equivalent, for "does it occur?", to JS lookarounds.
+  word_pat := '(^|[^A-Za-z0-9_])' || regexp_replace(q, '([\.\^\$\*\+\?\(\)\[\]\{\}\|\\])', '\\\1', 'g') || '([^A-Za-z0-9_]|$)';
+
+  return query
+  with name_hits as (
+    select f.*, 'name'::text as hk
+    from lms_files f
+    where f.deleted = false
+      and case
+            when whole_word and case_sensitive     then f.name ~ word_pat
+            when whole_word and not case_sensitive then f.name ~* word_pat
+            when case_sensitive                    then f.name like '%' || replace(replace(q, '\', '\\'), '%', '\%') || '%'
+            else f.name ilike '%' || replace(replace(q, '\', '\\'), '%', '\%') || '%'
+          end
+    order by f.name
+    limit lim
+  ),
+  text_hits as (
+    select f.*, 'content'::text as hk
+    from lms_files f
+    where search_text
+      and f.deleted = false
+      and f.content_text is not null
+      and f.id not in (select nh.id from name_hits nh)
+      and case
+            when whole_word and case_sensitive     then f.content_text ~ word_pat
+            when whole_word and not case_sensitive then f.content_text ~* word_pat
+            when case_sensitive                    then f.content_text like '%' || replace(replace(q, '\', '\\'), '%', '\%') || '%'
+            else f.content_text ilike '%' || replace(replace(q, '\', '\\'), '%', '\%') || '%'
+          end
+    order by f.name
+    limit lim
+  ),
+  hits as (select * from name_hits union all select * from text_hits)
+  select
+    h.id, h.source, h.drive_id, h.parent_id, h.name, h.mime_type, h.kind,
+    h.size_bytes, h.web_view_link, h.year, h.path, h.modified_at, h.uploaded_by,
+    h.hk,
+    case when h.hk = 'content' then
+      substring(h.content_text from greatest(1, w.at - 60)
+                                 for (case when w.at > 60 then 60 else greatest(w.at - 1, 0) end) + length(q) + 100)
+    else '' end,
+    case when h.hk = 'content' then w.at > 61 else false end,
+    case when h.hk = 'content' then (w.at - 1) + length(q) + 100 < length(h.content_text) else false end
+  from hits h
+  cross join lateral (
+    select case
+             when h.hk <> 'content' then 0
+             when case_sensitive then position(q in h.content_text)
+             else position(lower(q) in lower(h.content_text))
+           end as at
+  ) w;
+end;
+$$;
+
+-- No extra index on purpose: a trigram index over the documents would cost
+-- ~10-20 MB of database space, and with ~750 indexed documents the scan is
+-- already fast (measured well under a second).
+

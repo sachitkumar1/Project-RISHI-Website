@@ -24,6 +24,7 @@
 // ============================================================================
 
 import crypto from "crypto";
+import { invalidateFileIndexes } from "@/lib/lms/files";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -376,6 +377,9 @@ export async function syncDrive(): Promise<DriveSyncResult> {
   // lms_files_reindex trigger (see migration-files.sql), which clears
   // content_text whenever modified_at changes. It's done in the database
   // because PostgREST filters compare against literals, not other columns.
+
+  // The mirror changed, so cached folder indexes must not be reused.
+  invalidateFileIndexes();
 
   return {
     ok: true,

@@ -196,6 +196,12 @@ export default function LmsBoard() {
   const [editingEvent, setEditingEvent] = useState<ClubEvent | null>(null);
   // "History" replaces the old Past tasks / Past events buttons.
   const [historyOpen, setHistoryOpen] = useState(false);
+  // The dashboard loads ACTIVE tasks only; the finished/archived ones (the large
+  // majority) are fetched the first time History is opened. historyLoaded says
+  // which of the two the `tasks` array currently holds.
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [pastGroupCount, setPastGroupCount] = useState(0); // for the History badge
+  const historyLoadedRef = useRef(false);
   const [historyOverview, setHistoryOverview] = useState(false);
   // One switch for both History views — personal and club.
   const [historyCalendar, setHistoryCalendar] = useState(true);
@@ -240,10 +246,11 @@ export default function LmsBoard() {
       setLoading(true);
       const [m, t, e] = await Promise.all([
         api("/api/lms/meta"),
-        api("/api/lms/tasks"),
+        api(`/api/lms/tasks${historyLoadedRef.current ? "" : "?scope=active"}`),
         api("/api/lms/events"),
       ]);
       setMeta(m); setTasks(t.tasks); setEvents(e.events); setError(null);
+      if (typeof t.pastGroupCount === "number") setPastGroupCount(t.pastGroupCount);
       if (calConnectedRef.current) runSync(false);
     } catch (err) {
       setError((err as Error).message);
@@ -255,11 +262,15 @@ export default function LmsBoard() {
   useEffect(() => { load(); }, [load]);
 
   // Full Club Overview (P/VP only): (re)fetch whenever it's on and data changes.
-  const loadOverview = useCallback(async () => {
-    try { setOverview(await api("/api/lms/overview")); }
+  const loadOverview = useCallback(async (scope: "active" | "all") => {
+    try { setOverview(await api(`/api/lms/overview${scope === "active" ? "?scope=active" : ""}`)); }
     catch { setOverview(null); }
   }, []);
-  useEffect(() => { if (overviewOn || historyOverview) loadOverview(); }, [overviewOn, historyOverview, tasks, events, loadOverview]);
+  // The dashboard's overview needs active work only; the one inside History
+  // shows everything, so it asks for the full set.
+  useEffect(() => {
+    if (overviewOn || historyOverview) loadOverview(historyOverview ? "all" : "active");
+  }, [overviewOn, historyOverview, tasks, events, loadOverview]);
 
   useEffect(() => {
     (async () => {
@@ -509,6 +520,19 @@ export default function LmsBoard() {
       unlock();
     }
   }
+  /** Opening History needs the finished/archived tasks too — fetched once, then
+   *  kept (every later refresh asks for the full set). */
+  async function openHistory() {
+    setHistoryOpen(true);
+    if (historyLoadedRef.current) return;
+    try {
+      const t = await api("/api/lms/tasks");
+      historyLoadedRef.current = true;
+      setHistoryLoaded(true);
+      setTasks(t.tasks);
+    } catch { /* keep the active list; History just shows what's loaded */ }
+  }
+
   async function archiveGroup(rows: Task[], archived: boolean) {
     try {
       await Promise.all(rows.map((r) =>
@@ -564,9 +588,9 @@ export default function LmsBoard() {
             className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${overviewOn ? "bg-pine text-paper" : "border border-pine/25 text-pine-deep hover:bg-pine/5"}`}>
             {overviewOn ? "✓ Full Club Overview" : "Full Club Overview"}
           </button>
-          <button data-tour="history" onClick={() => setHistoryOpen(true)}
+          <button data-tour="history" onClick={() => void openHistory()}
             className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
-            History ({pastTaskGroups.length + pastEvents.length})
+            History ({(historyLoaded ? pastTaskGroups.length : pastGroupCount) + pastEvents.length})
           </button>
         </div>
         <div className="flex gap-2">
