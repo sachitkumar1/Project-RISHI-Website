@@ -905,3 +905,50 @@ $$;
 -- ~10-20 MB of database space, and with ~750 indexed documents the scan is
 -- already fast (measured well under a second).
 
+
+-- ============================================================================
+--  ONE-TIME: give back the space left behind by the old hourly sync.
+--
+--  The Drive sync used to rewrite all ~4,600 file rows every hour (each row
+--  carried a fresh synced_at). Postgres keeps the old copy of every rewritten
+--  row until it's vacuumed, and the table and its indexes never shrink back on
+--  their own — that dead space is most of your database size. The code now
+--  writes only rows that actually changed, so this won't build up again.
+--
+--  VACUUM FULL is the usual way to reclaim it, but Supabase's SQL editor runs
+--  statements inside a transaction and VACUUM can't. Changing a column to its
+--  own type with USING forces the same full rewrite and works here.
+--
+--  Each statement takes a brief exclusive lock on the table (seconds at this
+--  size) during which the dashboard may error, so run it at a quiet moment.
+--  Run the statements ONE AT A TIME and check the sizes before and after.
+-- ============================================================================
+
+-- 1) Sizes now (run on its own first):
+select relname as table_name,
+       pg_size_pretty(pg_total_relation_size(relid)) as total,
+       pg_size_pretty(pg_relation_size(relid))       as table_only,
+       pg_size_pretty(pg_indexes_size(relid))        as indexes,
+       n_dead_tup                                    as dead_rows
+from pg_catalog.pg_stat_user_tables
+order by pg_total_relation_size(relid) desc
+limit 10;
+
+-- 2) Rewrite the file index (the bloated one). Rebuilds its indexes too.
+alter table lms_files alter column owner_email type text using owner_email::text;
+
+-- 3) Rewrite the AI passages (bloated by embeddings being filled in row by row).
+alter table lms_file_chunks alter column embed_model type text using embed_model::text;
+
+-- 4) Smaller tables that have seen a lot of updates:
+alter table lms_tasks    alter column title type text using title::text;
+alter table lms_settings alter column value type text using value::text;
+
+-- 5) Sizes again — compare with step 1:
+select relname as table_name,
+       pg_size_pretty(pg_total_relation_size(relid)) as total,
+       n_dead_tup as dead_rows
+from pg_catalog.pg_stat_user_tables
+order by pg_total_relation_size(relid) desc
+limit 10;
+
