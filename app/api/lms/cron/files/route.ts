@@ -29,22 +29,25 @@ async function job(): Promise<CronOutcome> {
   // Then extract text for whatever's left of the 60s budget, leaving headroom.
   // A bigger Drive makes the walk longer, so the text budget shrinks rather than
   // the whole run overshooting. Anything left over goes to the next run.
+  // This job runs DAILY, so it gets a bigger slice of the budget than when it
+  // ran hourly — a day's worth of new files has to fit in one run.
   const left = () => 52_000 - (Date.now() - started);
-  const budget = Math.min(20_000, left());
+  const budget = Math.min(30_000, left());
   const index = budget > 3_000 ? await indexContent(budget) : { ok: true, skipped: "no time left this run" };
   const remaining = "remaining" in index ? index.remaining : undefined;
 
-  // Then keep the Ask agent's passages in step with whatever time is left.
-  // Search keeps working on the previous passages until this catches up.
-  const agent = left() > 5_000 ? await buildIndexStepLocked(left()) : null;
+  // Then turn any new text into passages, with whatever time is left.
+  // Embedding is NOT done here: it runs as a short batch on the reminders cron
+  // every 15 minutes, so no function sits waiting on Google's rate limit.
+  // Keyword search works on new passages immediately, before they're embedded.
+  const agent = left() > 3_000 ? await buildIndexStepLocked(left(), { embed: false }) : null;
 
   return {
     ok: index.ok,
-    summary: `synced ${sync.indexed ?? 0} items in ${sync.folders ?? 0} folders, ${sync.removed ?? 0} flagged removed; ` +
+    summary: `synced: ${sync.indexed ?? 0} changed of ${sync.folders ?? 0} folders walked, ${sync.removed ?? 0} flagged removed; ` +
       `text: ${"indexed" in index ? index.indexed ?? 0 : 0} extracted, ${remaining ?? "?"} remaining; ` +
       (agent
-        ? `ask: ${agent.chunk.chunks ?? 0} passages, ${agent.embed.embedded ?? 0} embedded` +
-          `${agent.embed.stoppedBy ? ` (embedding paused: ${agent.embed.stoppedBy.slice(0, 60)})` : ""}`
+        ? `ask: ${agent.chunk.chunks ?? 0} new passages (embedding runs on the 15-minute job)`
         : "ask: no time left this run"),
     detail: { sync, index, agent },
   };

@@ -85,7 +85,12 @@ export async function embedPending(budgetMs = 20_000, embed: Embedder = defaultE
     try { sent = (JSON.parse((await getSetting(WINDOW_KEY)) ?? "[]") as { at: number; n: number }[]).filter((x) => x.at > Date.now() - 60_000); }
     catch { sent = []; }
   }
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  // NOTHING here sleeps any more. Waiting inside a serverless function keeps it
+  // alive (and billed) doing nothing; the pacing now comes from how often this
+  // runs — a short batch on the reminders cron every 15 minutes — so whenever a
+  // wait would be needed we stop and let the next run carry on. The rolling
+  // 60-second window is stored in lms_settings, so the next run knows where we
+  // got to.
 
   while (Date.now() < deadline) {
     if (today.n + embedded >= cap) {
@@ -111,10 +116,9 @@ export async function embedPending(budgetMs = 20_000, embed: Embedder = defaultE
       let next = sent[sent.length - 1].at + SPACING;
       if (inWindow.reduce((a, x) => a + x.n, 0) + data.length > PER_MINUTE && inWindow.length)
         next = Math.max(next, inWindow[0].at + 60_000);
-      const wait = next - Date.now() + 250;
-      if (wait > 0) {
-        if (Date.now() + wait + 3_000 > deadline) { stoppedBy = "pacing to Google's free limit of 100 a minute — continues next run"; break; }
-        await sleep(wait);
+      if (next - Date.now() + 250 > 0) {
+        stoppedBy = "pacing to Google's free limit of 100 a minute — continues next run";
+        break;
       }
     }
 
@@ -131,11 +135,8 @@ export async function embedPending(budgetMs = 20_000, embed: Embedder = defaultE
           stoppedBy = "Google's free daily embedding limit was reached — resumes after midnight Pacific";
           break;
         }
-        const wait = Math.min(20_000, err.retryAfterMs ?? 15_000) + 500;
-        if (err.kind === "quota_minute" && attempt === 0 && Date.now() + wait + 5_000 < deadline) {
-          await sleep(wait); // Google said "retry in Ns": do exactly that, once
-          continue;
-        }
+        // Google asked us to wait: stop rather than idle here — the next run
+        // (15 minutes away) is well past any per-minute window.
         stoppedBy = err.kind === "quota_minute"
           ? "pacing to Google's free limit of 100 a minute — continues next run"
           : `${err.kind}: ${err.message}`;

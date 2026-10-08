@@ -3,6 +3,7 @@ import { ensureUpcomingMeetings } from "@/lib/lms/meetingSchedule";
 import { hasRealDueDate, isPlaceholderEmail } from "@/lib/lms/importedTasks";
 import { listRemindableTasks, markRemindersSent } from "@/lib/lms/store";
 import { notifyTaskReminder } from "@/lib/lms/notify";
+import { buildIndexStepLocked } from "@/lib/lms/agent/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -97,7 +98,16 @@ async function run(req: Request) {
   let meetings: unknown = null;
   try { meetings = await ensureUpcomingMeetings(); } catch (e) { meetings = { error: (e as Error).message }; }
 
-  return NextResponse.json({ ok: true, scanned: tasks.length, sent, meetings });
+  // One short embedding batch, riding on this frequent, cheap job. Embedding
+  // used to run inside the hourly files job, where it kept a function alive
+  // sleeping 30s between batches. Here it does a single batch (a second or two)
+  // and returns; the pacing is simply how often this cron runs. Chunking stays
+  // with the files job, which is where new text appears.
+  let ask: unknown = null;
+  try { ask = await buildIndexStepLocked(8_000, { chunk: false }); }
+  catch (e) { ask = { error: (e as Error).message }; }
+
+  return NextResponse.json({ ok: true, scanned: tasks.length, sent, meetings, ask });
 }
 
 export async function GET(req: Request) {

@@ -354,24 +354,68 @@ export async function syncDrive(): Promise<DriveSyncResult> {
         "Drive returned nothing for either folder. That almost always means GOOGLE_SA_EMAIL hasn't been shared on them yet.",
     };
 
+  // ---------------------------------------------------------------- writing
+  // Only write rows that actually CHANGED.
+  //
+  // This used to upsert all ~4,600 rows every run. Because each row carried a
+  // fresh synced_at, Postgres rewrote every one of them — ~4,600 dead rows per
+  // sync — and the table and its indexes kept the space. That bloat, not the
+  // data, was most of the database size. Drive barely changes between runs, so
+  // now we read what's stored, compare, and write only the difference.
+  const stored = new Map<string, Record<string, unknown>>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb()
+      .from("lms_files")
+      // No content_text here: it's megabytes and plays no part in the comparison.
+      .select("drive_id, parent_id, name, mime_type, kind, size_bytes, web_view_link, year, path, modified_at, owner_email, deleted")
+      .eq("source", "drive")
+      .order("drive_id")
+      .range(from, from + 999);
+    if (error) return { ok: false, error: error.message };
+    for (const r of data ?? []) stored.set(String(r.drive_id), r as Record<string, unknown>);
+    if (!data || data.length < 1000) break;
+  }
+
+  /** Same file, same metadata? synced_at is deliberately ignored — it only
+   *  records when we last looked, and stamping it is what caused the churn. */
+  const unchanged = (row: IndexRow) => {
+    const old = stored.get(String(row.drive_id));
+    if (!old) return false;
+    const fields = ["parent_id", "name", "mime_type", "kind", "size_bytes", "web_view_link", "year", "path", "modified_at", "owner_email", "deleted"] as const;
+    return fields.every((f) => {
+      const a = (row as unknown as Record<string, unknown>)[f] ?? null;
+      const b = old[f] ?? null;
+      // Timestamps can come back in a different string form than Drive sent.
+      if (f === "modified_at") return a === b || (!!a && !!b && Date.parse(String(a)) === Date.parse(String(b)));
+      return a === b;
+    });
+  };
+
+  const changed = rows.filter((r) => !unchanged(r));
   // Upsert in chunks — one big payload can exceed the request limit.
-  for (let i = 0; i < rows.length; i += 200) {
+  for (let i = 0; i < changed.length; i += 200) {
     const { error } = await sb()
       .from("lms_files")
-      .upsert(rows.slice(i, i + 200), { onConflict: "drive_id" });
+      .upsert(changed.slice(i, i + 200), { onConflict: "drive_id" });
     if (error) return { ok: false, error: error.message };
   }
 
   // Anything Drive-sourced we didn't see this run is gone from Drive. Flag it,
-  // never delete it.
-  const { data: removedRows, error: delErr } = await sb()
-    .from("lms_files")
-    .update({ deleted: true })
-    .eq("source", "drive")
-    .eq("deleted", false)
-    .lt("synced_at", at)
-    .select("id");
-  if (delErr) return { ok: false, error: delErr.message };
+  // never delete it. Worked out from the ids we just read rather than from
+  // synced_at, which no longer moves on untouched rows.
+  const missing = Array.from(stored.entries())
+    .filter(([driveId, old]) => !seen.has(driveId) && old.deleted !== true)
+    .map(([driveId]) => driveId);
+  let removedRows: { id: string }[] = [];
+  for (let i = 0; i < missing.length; i += 200) {
+    const { data, error: delErr } = await sb()
+      .from("lms_files")
+      .update({ deleted: true, synced_at: at })
+      .in("drive_id", missing.slice(i, i + 200))
+      .select("id");
+    if (delErr) return { ok: false, error: delErr.message };
+    removedRows = removedRows.concat((data ?? []) as { id: string }[]);
+  }
 
   // Files edited in Drive are queued for re-indexing by the
   // lms_files_reindex trigger (see migration-files.sql), which clears
@@ -383,7 +427,7 @@ export async function syncDrive(): Promise<DriveSyncResult> {
 
   return {
     ok: true,
-    indexed: rows.length,
+    indexed: changed.length,
     folders: rows.filter((r) => r.kind === "folder").length,
     removed: removedRows?.length ?? 0,
   };

@@ -303,7 +303,11 @@ export async function loadFolderIndex(opts: { withFiles?: boolean } = {}): Promi
  * server instance, and every write that could change it clears the cache at
  * once (invalidateFileIndexes), so nothing can be served stale after a change.
  */
-const CACHE_MS = 60_000;
+// 5 minutes rather than 1: every write that could change folders or visibility
+// clears this cache immediately (invalidateFileIndexes), so a longer life can't
+// serve stale data — it just saves re-reading ~370 folder rows per folder open,
+// search and AI question.
+const CACHE_MS = 300_000;
 type CacheKey = "folders" | "folders+files" | "all";
 const indexCache = new Map<CacheKey, { at: number; idx: Resolved }>();
 

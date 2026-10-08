@@ -78,25 +78,36 @@ const BUILD_LOCK = "ai:build-lock";
  * the cron and the Settings button can all trigger this). The lock expires on
  * its own, so a step killed midway can't block building forever.
  */
-export async function buildIndexStepLocked(budgetMs: number) {
-  if (!usingSupabase || budgetMs < 5_000) return null;
+export async function buildIndexStepLocked(budgetMs: number, parts: BuildParts = {}) {
+  if (!usingSupabase || budgetMs < 3_000) return null;
   const { data } = await sb().from("lms_settings").select("value").eq("key", BUILD_LOCK).maybeSingle();
   if (data?.value && Date.now() - Date.parse(data.value) < 75_000) return null;
   const now = new Date().toISOString();
   await sb().from("lms_settings").upsert({ key: BUILD_LOCK, value: now, updated_at: now }, { onConflict: "key" });
   try {
-    return await buildIndexStep(budgetMs);
+    return await buildIndexStep(budgetMs, parts);
   } finally {
     await sb().from("lms_settings").delete().eq("key", BUILD_LOCK);
   }
 }
 
+/** Which half of the build to run. They are scheduled separately now: chunking
+ *  follows the (daily) files sync, embedding runs as a short batch on the
+ *  frequent reminders cron, so neither job holds a function open waiting. */
+export type BuildParts = { chunk?: boolean; embed?: boolean };
+
 /** Chunk, then embed, within one request's budget. Call until nothing remains. */
-export async function buildIndexStep(budgetMs = 50_000) {
+export async function buildIndexStep(budgetMs = 50_000, parts: BuildParts = {}) {
+  const doChunk = parts.chunk ?? true;
+  const doEmbed = parts.embed ?? true;
   const t0 = Date.now();
-  const chunk = await buildChunks(Math.min(25_000, budgetMs * 0.5));
+  const chunk = doChunk
+    ? await buildChunks(Math.min(25_000, doEmbed ? budgetMs * 0.5 : budgetMs))
+    : { ok: true, chunks: 0, skipped: "not this run" };
   const left = budgetMs - (Date.now() - t0);
-  const embed = left > 3_000 ? await embedPending(left) : { ok: true, embedded: 0, stoppedBy: "no time left this run" };
+  const embed = doEmbed && left > 3_000
+    ? await embedPending(left)
+    : { ok: true, embedded: 0, stoppedBy: doEmbed ? "no time left this run" : "runs on the frequent cron" };
   return { ok: chunk.ok && embed.ok, chunk, embed };
 }
 
