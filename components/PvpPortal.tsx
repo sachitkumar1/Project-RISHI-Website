@@ -20,7 +20,8 @@ type Kind = "meeting" | "message" | "question" | "task";
 type Item = {
   id: string; kind: Kind; title: string; body: string; status: string;
   counterpart: string; scheduledAt: string | null; channel: string;
-  approvals: Approval[]; notes: Note[]; ownerEmail: string; dueAt: string | null;
+  approvals: Approval[]; notes: Note[]; ownerEmails: string[]; durationMinutes: number;
+  calendarPushed: string[]; dueAt: string | null;
   createdBy: string; createdAt: string; updatedAt: string; archived: boolean;
 };
 type Person = { email: string; name: string };
@@ -38,6 +39,16 @@ const btn = "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors"
 
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+const fmtTime = (d: Date) => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+/** "Oct 20, 3:00 PM – 3:30 PM" — one date, both ends. */
+const fmtSpan = (iso: string | null, minutes: number) => {
+  if (!iso) return "";
+  const s = new Date(iso);
+  const e = new Date(s.getTime() + (minutes || 30) * 60_000);
+  return `${fmtDate(iso)} – ${fmtTime(e)}`;
+};
+const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
+const fmtMins = (m: number) => (m % 60 === 0 ? `${m / 60} hr${m === 60 ? "" : "s"}` : `${m} min`);
 const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 const toLocalInput = (iso: string | null) => {
   if (!iso) return "";
@@ -49,6 +60,9 @@ const toLocalInput = (iso: string | null) => {
 export default function PvpPortal() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [approvers, setApprovers] = useState<Person[]>([]);
+  // Everyone a meeting is pushed to, including the webmaster, so the calendar
+  // line can show a name instead of a raw address.
+  const [recipients, setRecipients] = useState<Person[]>([]);
   const [me, setMe] = useState("");
   const [tab, setTab] = useState<Kind>("meeting");
   const [err, setErr] = useState<string | null>(null);
@@ -61,14 +75,18 @@ export default function PvpPortal() {
       if (!r.ok) throw new Error(d?.error || "Couldn't load the portal.");
       setItems(d.items ?? []);
       setApprovers(d.approvers ?? []);
+      setRecipients(d.recipients ?? []);
       setMe(d.me ?? "");
     } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't load the portal."); }
   }, []);
   useEffect(() => { void load(); }, [load]);
 
   const nameOf = useCallback(
-    (email: string) => approvers.find((p) => p.email === email.toLowerCase())?.name ?? email,
-    [approvers],
+    (email: string) => {
+      const e = email.toLowerCase();
+      return (approvers.find((p) => p.email === e) ?? recipients.find((p) => p.email === e))?.name ?? email;
+    },
+    [approvers, recipients],
   );
   const canApprove = approvers.some((p) => p.email === me);
 
@@ -150,6 +168,33 @@ export default function PvpPortal() {
         <p className="mt-6 text-sm text-ink/45">Loading…</p>
       ) : mine.length === 0 ? (
         <p className="mt-6 rounded-2xl border border-pine/15 bg-pine/[0.03] px-4 py-6 text-center text-sm text-ink/55">{board.empty}</p>
+      ) : tab === "meeting" ? (
+        // Meetings split in two: the ones with a time on them, soonest first,
+        // then the ones still to arrange. Sorting the booked ones by date is
+        // the whole use of that heading.
+        <div className="mt-3 space-y-6">
+          {([
+            ["Set up", mine.filter((i) => i.scheduledAt).sort((a, b) => Date.parse(a.scheduledAt as string) - Date.parse(b.scheduledAt as string))],
+            ["Not set up yet", mine.filter((i) => !i.scheduledAt)],
+          ] as [string, Item[]][]).map(([heading, group]) => (
+            <div key={heading}>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink/40">
+                {heading}<span className="ml-1.5 text-ink/30">{group.length}</span>
+              </h2>
+              {group.length === 0 ? (
+                <p className="mt-2 text-sm text-ink/40">
+                  {heading === "Set up" ? "Nothing booked yet." : "Everything on the list has a time."}
+                </p>
+              ) : (
+                <div className="mt-2 space-y-3">
+                  {group.map((it) => (
+                    <Card key={it.id} item={it} me={me} canApprove={canApprove} approvers={approvers} nameOf={nameOf} act={act} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="mt-3 space-y-3">
           {mine.map((it) => (
@@ -172,10 +217,11 @@ function NewItem({ kind, approvers, onCreate }: {
   const [counterpart, setCounterpart] = useState("");
   const [channel, setChannel] = useState("email");
   const [when, setWhen] = useState("");
-  const [owner, setOwner] = useState("");
+  const [owners, setOwners] = useState<string[]>([]);
+  const [mins, setMins] = useState(30);
   const [busy, setBusy] = useState(false);
 
-  const reset = () => { setTitle(""); setBody(""); setCounterpart(""); setWhen(""); setOwner(""); setChannel("email"); };
+  const reset = () => { setTitle(""); setBody(""); setCounterpart(""); setWhen(""); setOwners([]); setMins(30); setChannel("email"); };
   const ADD: Record<Kind, string> = {
     meeting: "Add someone to meet", message: "Add a draft", question: "Add a question", task: "Add a to-do",
   };
@@ -202,7 +248,12 @@ function NewItem({ kind, approvers, onCreate }: {
             <input className={inputCls} value={counterpart} onChange={(e) => setCounterpart(e.target.value)} placeholder="Name, org, or a few people" /></div>
           <div className="mt-3"><label className={labelCls}>When, if it&apos;s already booked</label>
             <input type="datetime-local" className={inputCls} value={when} onChange={(e) => setWhen(e.target.value)} />
-            <p className="mt-1 text-xs text-ink/45">Leave blank and it sits under &ldquo;to set up&rdquo;.</p></div>
+            <p className="mt-1 text-xs text-ink/45">Leave blank and it stays under &ldquo;Not set up yet&rdquo;.</p></div>
+          <div className="mt-3"><label className={labelCls}>How long</label>
+            <select className={inputCls} value={mins} onChange={(e) => setMins(Number(e.target.value))}>
+              {DURATIONS.map((m) => <option key={m} value={m}>{fmtMins(m)}</option>)}
+            </select>
+            {when && <p className="mt-1 text-xs text-ink/45">{fmtSpan(new Date(when).toISOString(), mins)}</p>}</div>
         </>
       )}
 
@@ -217,10 +268,20 @@ function NewItem({ kind, approvers, onCreate }: {
       {kind === "task" && (
         <>
           <div className="mt-3"><label className={labelCls}>Whose job (optional)</label>
-            <select className={inputCls} value={owner} onChange={(e) => setOwner(e.target.value)}>
-              <option value="">Nobody yet</option>
-              {approvers.map((p) => <option key={p.email} value={p.email}>{p.name}</option>)}
-            </select></div>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {approvers.map((p) => (
+                <label key={p.email}
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${
+                    owners.includes(p.email) ? "border-pine/40 bg-pine/10 text-pine-deep" : "border-pine/15 text-ink/70"}`}>
+                  <input type="checkbox" checked={owners.includes(p.email)}
+                    onChange={() => setOwners((x) => x.includes(p.email) ? x.filter((y) => y !== p.email) : [...x, p.email])} />
+                  {p.name}
+                </label>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-ink/45">
+              {owners.length === 0 ? "Nobody — it just sits on the list." : "Pick as many as you like."}
+            </p></div>
           <div className="mt-3"><label className={labelCls}>By when (optional)</label>
             <input type="datetime-local" className={inputCls} value={when} onChange={(e) => setWhen(e.target.value)} /></div>
         </>
@@ -239,7 +300,8 @@ function NewItem({ kind, approvers, onCreate }: {
             const iso = when ? new Date(when).toISOString() : null;
             const r = await onCreate({
               title, body, counterpart, channel: kind === "message" ? channel : "",
-              scheduledAt: kind === "meeting" ? iso : null, dueAt: kind === "task" ? iso : null, ownerEmail: owner,
+              scheduledAt: kind === "meeting" ? iso : null, dueAt: kind === "task" ? iso : null,
+              ownerEmails: owners, durationMinutes: mins,
             });
             setBusy(false);
             if (r) { reset(); setOpen(false); }
@@ -261,6 +323,7 @@ function Card({ item, me, canApprove, approvers, nameOf, act }: {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [when, setWhen] = useState(toLocalInput(item.scheduledAt));
+  const [mins, setMins] = useState(item.durationMinutes || 30);
   const approvedBy = new Set(item.approvals.map((a) => a.email.toLowerCase()));
   const allApproved = approvers.length > 0 && approvers.every((p) => approvedBy.has(p.email));
   const done = item.status === "done" || item.status === "sent" || item.status === "resolved";
@@ -275,12 +338,12 @@ function Card({ item, me, canApprove, approvers, nameOf, act }: {
           <p className="mt-0.5 text-xs text-ink/50">
             {item.kind === "meeting" && (
               <>{item.counterpart || "No one named yet"}
-                {item.scheduledAt ? ` · ${fmtDate(item.scheduledAt)}` : " · not set up yet"}</>
+                {item.scheduledAt ? ` · ${fmtSpan(item.scheduledAt, item.durationMinutes)}` : " · not set up yet"}</>
             )}
             {item.kind === "message" && <>{item.channel || "email"} · {item.approvals.length} of {approvers.length} approved</>}
             {item.kind === "question" && <>asked by {nameOf(item.createdBy)} · {fmtDay(item.createdAt)}</>}
             {item.kind === "task" && (
-              <>{item.ownerEmail ? nameOf(item.ownerEmail) : "unassigned"}
+              <>{item.ownerEmails.length ? item.ownerEmails.map(nameOf).join(", ") : "nobody yet"}
                 {item.dueAt ? ` · due ${fmtDate(item.dueAt)}` : ""}</>
             )}
           </p>
@@ -336,13 +399,31 @@ function Card({ item, me, canApprove, approvers, nameOf, act }: {
           )}
 
           {item.kind === "meeting" && !done && (
-            <div className="mt-3 flex flex-wrap items-end gap-2">
-              <div className="grow"><label className={labelCls}>When is it?</label>
-                <input type="datetime-local" className={inputCls} value={when} onChange={(e) => setWhen(e.target.value)} /></div>
-              <button
-                onClick={() => act({ action: "update", id: item.id, scheduledAt: when ? new Date(when).toISOString() : null, status: when ? "scheduled" : "to_set_up" })}
-                className={`${btn} bg-pine text-paper hover:bg-pine-deep`}>Save</button>
-            </div>
+            <>
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <div className="grow"><label className={labelCls}>When is it?</label>
+                  <input type="datetime-local" className={inputCls} value={when} onChange={(e) => setWhen(e.target.value)} /></div>
+                <div className="w-32"><label className={labelCls}>How long</label>
+                  <select className={inputCls} value={mins} onChange={(e) => setMins(Number(e.target.value))}>
+                    {DURATIONS.map((m) => <option key={m} value={m}>{fmtMins(m)}</option>)}
+                  </select></div>
+                <button
+                  onClick={() => act({ action: "update", id: item.id, durationMinutes: mins,
+                    scheduledAt: when ? new Date(when).toISOString() : null, status: when ? "scheduled" : "to_set_up" })}
+                  className={`${btn} bg-pine text-paper hover:bg-pine-deep`}>Save</button>
+              </div>
+              {when && <p className="mt-1.5 text-xs text-ink/50">{fmtSpan(new Date(when).toISOString(), mins)}</p>}
+            </>
+          )}
+
+          {/* Whose calendar actually has it. Worth stating plainly: anyone who
+              hasn't connected Google Calendar silently gets nothing. */}
+          {item.kind === "meeting" && item.scheduledAt && (
+            <p className="mt-3 text-xs text-ink/50">
+              {item.calendarPushed.length
+                ? `On the calendar of ${item.calendarPushed.map(nameOf).join(", ")}.`
+                : "Not on anyone's Google Calendar yet — nobody in PVP has connected one."}
+            </p>
           )}
 
           <div className="mt-4">

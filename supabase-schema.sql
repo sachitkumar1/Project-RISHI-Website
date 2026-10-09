@@ -952,3 +952,94 @@ from pg_catalog.pg_stat_user_tables
 order by pg_total_relation_size(relid) desc
 limit 10;
 
+
+-- ============================================================================
+--  PVP portal — one table for all four boards. Safe to re-run.
+--
+--  WHY ONE TABLE: the four boards (meetings to set up, message drafts awaiting
+--  approval, open questions, PVP to-dos) have the same shape — a title, some
+--  body text, a status, a discussion thread and who made it. Four tables would
+--  mean four primary-key indexes and four round trips to paint one page, for
+--  what will realistically be tens of rows. `kind` separates them instead.
+--
+--  WHY NO INDEXES: only the primary key. This table holds the three VPs' own
+--  working notes — low hundreds of rows at the very most. Postgres scans that
+--  in well under a millisecond, and an index on a table this small costs more
+--  space than the rows it points at. Add one if it ever grows past ~5,000.
+--
+--  WHY JSONB FOR APPROVALS AND NOTES: there are exactly three approvers, and a
+--  handful of notes per item. A join table for either would add another index
+--  and another query per page load to save nothing.
+-- ============================================================================
+
+create table if not exists lms_pvp_items (
+  id           uuid primary key default gen_random_uuid(),
+  kind         text not null check (kind in ('meeting', 'message', 'question', 'task')),
+  title        text not null,
+  body         text not null default '',
+  -- Per kind: meeting = to_set_up | scheduled | done
+  --           message = draft | sent
+  --           question = open | resolved
+  --           task    = open | done
+  status       text not null default 'open',
+  counterpart  text not null default '',          -- meetings: who we're meeting
+  scheduled_at timestamptz,                       -- meetings: null until it's booked
+  channel      text not null default '',          -- messages: email | instagram | text | other
+  approvals    jsonb not null default '[]'::jsonb, -- messages: [{ email, at }]
+  notes        jsonb not null default '[]'::jsonb, -- any kind: [{ id, author, body, at }]
+  owner_email  text not null default '',          -- tasks: which of the three
+  due_at       timestamptz,                       -- tasks: optional
+  created_by   text not null,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  archived     boolean not null default false
+);
+
+alter table lms_pvp_items enable row level security;
+grant all privileges on table lms_pvp_items to service_role;
+
+-- Check it landed:
+select count(*) as rows, pg_size_pretty(pg_total_relation_size('lms_pvp_items')) as size
+from lms_pvp_items;
+-- ============================================================================
+--  PVP portal, second pass. Safe to re-run. Additive only — nothing is
+--  dropped and no existing row is rewritten destructively.
+--
+--  Three changes:
+--    1. A PVP to-do can now belong to any combination of the three, or to
+--       nobody, so one owner_email becomes a list.
+--    2. Meetings carry a length, so the portal and the calendar can both show
+--       a start and an end rather than a single moment.
+--    3. Meetings remember which calendars they were pushed to, so unscheduling
+--       or deleting one can take it off exactly those calendars again.
+--
+--  owner_email is left in place rather than dropped. It is superseded by
+--  owner_emails and nothing reads it any more, but dropping a column throws
+--  data away and this one costs a few bytes a row.
+-- ============================================================================
+
+alter table lms_pvp_items add column if not exists owner_emails    jsonb not null default '[]'::jsonb;
+alter table lms_pvp_items add column if not exists duration_minutes integer not null default 30;
+alter table lms_pvp_items add column if not exists calendar_pushed  jsonb not null default '[]'::jsonb;
+
+-- Carry any single owner already set into the new list. Runs once in practice:
+-- the filter makes a second run a no-op.
+update lms_pvp_items
+   set owner_emails = jsonb_build_array(owner_email)
+ where coalesce(owner_email, '') <> ''
+   and owner_emails = '[]'::jsonb;
+
+-- A meeting must have a sensible length even if it predates this change.
+update lms_pvp_items set duration_minutes = 30
+ where kind = 'meeting' and (duration_minutes is null or duration_minutes <= 0);
+
+-- Check it landed:
+select kind,
+       count(*)                                           as rows,
+       count(*) filter (where owner_emails <> '[]'::jsonb) as with_owners,
+       min(duration_minutes)                              as min_duration
+from lms_pvp_items
+group by kind
+order by kind;
+
+

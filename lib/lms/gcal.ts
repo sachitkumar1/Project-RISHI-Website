@@ -59,6 +59,32 @@ export async function getConnection(email: string): Promise<GCalConnection | nul
   return mem.get(lc(email)) ?? null;
 }
 
+/** Every connection in one query.
+ *
+ *  A PVP meeting touches four calendars, and calling getConnection() per person
+ *  meant four separate PostgREST round trips for one save. The portal is the
+ *  only caller that needs several at once, so it asks for them together. */
+export async function getConnections(emails: string[]): Promise<Map<string, GCalConnection>> {
+  const wanted = Array.from(new Set(emails.map(lc)));
+  const out = new Map<string, GCalConnection>();
+  if (wanted.length === 0) return out;
+  if (usingSupabase) {
+    const { data, error } = await sb().from("lms_gcal").select("*").in("user_email", wanted);
+    if (error) throw new Error(error.message);
+    for (const d of data ?? []) {
+      out.set(lc(d.user_email), {
+        email: d.user_email,
+        refreshToken: d.refresh_token,
+        syncEnabled: d.sync_enabled,
+        syncedKeys: d.synced_keys ?? [],
+      });
+    }
+    return out;
+  }
+  for (const e of wanted) { const c = mem.get(e); if (c) out.set(e, c); }
+  return out;
+}
+
 export async function saveConnection(email: string, refreshToken: string): Promise<void> {
   if (usingSupabase) {
     const { error } = await sb().from("lms_gcal").upsert(
@@ -154,7 +180,12 @@ async function accessTokenFromRefresh(refreshToken: string): Promise<string> {
 }
 
 // ---- Calendar API ----------------------------------------------------------
-export function gcalId(kind: "task" | "event", id: string, email: string): string {
+/** "pvp" joined task/event when PVP meetings started landing on calendars.
+ *  Its own kind so a PVP meeting can never share an id with a club event, and
+ *  so the keys stay readable in synced_keys. */
+export type GCalKind = "task" | "event" | "pvp";
+
+export function gcalId(kind: GCalKind, id: string, email: string): string {
   return crypto.createHash("sha1").update(`rishi:${kind}:${id}:${lc(email)}`).digest("hex");
 }
 
@@ -204,8 +235,8 @@ async function deleteEvent(token: string, id: string): Promise<void> {
 
 export type GCalTime = { dateTime: string } | { date: string };
 export type SyncItem = {
-  key: string; // "task:ID" | "event:ID"
-  kind: "task" | "event";
+  key: string; // "task:ID" | "event:ID" | "pvp:ID"
+  kind: GCalKind;
   id: string;
   summary: string;
   description: string;
@@ -240,7 +271,7 @@ export async function syncToCalendar(
   for (const key of previousKeys) {
     if (!currentKeys.has(key)) {
       const [kind, id] = key.split(":");
-      await deleteEvent(token, gcalId(kind as "task" | "event", id, email));
+      await deleteEvent(token, gcalId(kind as GCalKind, id, email));
       deleted++;
     }
   }
@@ -252,6 +283,37 @@ export async function removeAllSynced(email: string, refreshToken: string, keys:
   const token = await accessTokenFromRefresh(refreshToken);
   for (const key of keys) {
     const [kind, id] = key.split(":");
-    await deleteEvent(token, gcalId(kind as "task" | "event", id, email));
+    await deleteEvent(token, gcalId(kind as GCalKind, id, email));
   }
+}
+
+// ---- Single-item push, used by the PVP portal -------------------------------
+//  syncToCalendar() is a FULL reconcile: it deletes any previously-synced key
+//  not in the list it's given. Calling it with only PVP meetings would wipe
+//  that member's tasks and events off their calendar. These two push or remove
+//  exactly one item and touch nothing else.
+
+export async function pushCalendarEvent(
+  email: string,
+  refreshToken: string,
+  item: { kind: GCalKind; id: string; summary: string; description: string; start: GCalTime; end: GCalTime },
+): Promise<"created" | "updated"> {
+  const token = await accessTokenFromRefresh(refreshToken);
+  return upsertEvent(token, {
+    id: gcalId(item.kind, item.id, email),
+    summary: item.summary,
+    description: item.description,
+    start: item.start,
+    end: item.end,
+  });
+}
+
+export async function removeCalendarEvent(
+  email: string,
+  refreshToken: string,
+  kind: GCalKind,
+  id: string,
+): Promise<void> {
+  const token = await accessTokenFromRefresh(refreshToken);
+  await deleteEvent(token, gcalId(kind, id, email));
 }
