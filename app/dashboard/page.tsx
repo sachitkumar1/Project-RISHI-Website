@@ -21,6 +21,9 @@ export default function DashboardPage() {
   const [fullName, setFullName] = useState<string>("");
   // New members without a project group yet: some tiles are locked for them.
   const [unplaced, setUnplaced] = useState(false);
+  // President / VPs get one extra entry point. Read off the profile call that
+  // already runs below — no second request for it.
+  const [isPvp, setIsPvp] = useState(false);
 
   useEffect(() => {
     fetch("/api/lms/profile")
@@ -30,6 +33,7 @@ export default function DashboardPage() {
         setAvatar(d.avatar ?? null);
         setFullName(`${d.firstName} ${d.lastName}`);
         setUnplaced(d.group === null);
+        setIsPvp(!!d.roles?.vpp);
       })
       .catch(() => {});
   }, []);
@@ -74,6 +78,35 @@ export default function DashboardPage() {
           <h2 className="font-display text-2xl font-semibold text-pine-deep">Your dashboard</h2>
           <CreateMenu />
         </div>
+
+        {/* President / VPs only. Sits above the shared tiles rather than among
+            them, so it reads as a separate space and doesn't reshuffle the
+            grid for everyone else. */}
+        {isPvp && (
+          <Reveal>
+            <Link
+              href="/dashboard/pvp"
+              className="group mb-6 flex items-center gap-4 rounded-3xl border border-pine/25 bg-pine/[0.06] p-5 transition-colors hover:border-pine hover:bg-pine hover:text-paper"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-marigold text-pine-deep">
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <rect x="4" y="10" width="16" height="10" rx="2" />
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
+              </span>
+              <span className="min-w-0">
+                <span className="inline-flex items-center gap-2 font-display text-xl font-semibold">
+                  PVP
+                  <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </span>
+                <span className="mt-0.5 block text-sm opacity-70">
+                  Meetings, message approvals, open questions and to-dos — just for the three of you
+                </span>
+              </span>
+            </Link>
+          </Reveal>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Member Directory (2/3 height) + RISHI Lineage (1/3 height) */}
           <Reveal>
