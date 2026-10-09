@@ -26,10 +26,10 @@ type Item = {
 type Person = { email: string; name: string };
 
 const BOARDS: { kind: Kind; tab: string; blurb: string; empty: string }[] = [
-  { kind: "meeting", tab: "Meetings", blurb: "People you need to sit down with — and whether it's booked yet.", empty: "Nobody on the list. Add the first person you need to meet." },
-  { kind: "message", tab: "Messages", blurb: "Drafts that need all three of you to sign off before they go out.", empty: "No drafts waiting. Paste one in when you want the other two to look." },
-  { kind: "question", tab: "Questions", blurb: "Open questions and things you haven't decided yet.", empty: "Nothing open. Add a question when something needs thinking about." },
-  { kind: "task", tab: "Tasks", blurb: "PVP to-dos — emails to send, things to sign up for.", empty: "Nothing to do. Enjoy it while it lasts." },
+  { kind: "meeting", tab: "Meetings", blurb: "", empty: "Nobody on the list" },
+  { kind: "message", tab: "Messages", blurb: "", empty: "No drafts waiting" },
+  { kind: "question", tab: "Questions", blurb: "", empty: "Nothing open" },
+  { kind: "task", tab: "Tasks", blurb: "", empty: "Nothing to do" },
 ];
 
 const inputCls = "mt-1 w-full rounded-xl border border-pine/15 bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-pine/40";
@@ -111,8 +111,6 @@ export default function PvpPortal() {
           </Link>
           <h1 className="mt-4 font-display text-4xl font-semibold sm:text-5xl">PVP</h1>
           <p className="mt-2 max-w-xl text-sm text-paper/70">
-            Just for the President and VPs. Nothing here is visible to the rest of the club, and
-            nothing here sends email or lands on anyone&apos;s dashboard.
           </p>
         </div>
       </DashboardBanner>
@@ -195,7 +193,7 @@ function NewItem({ kind, approvers, onCreate }: {
       <div>
         <label className={labelCls}>{kind === "meeting" ? "What's it about?" : kind === "message" ? "What's the message for?" : "Title"}</label>
         <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus
-          placeholder={kind === "meeting" ? "Partnership chat" : kind === "message" ? "Sponsorship ask to Acme" : kind === "question" ? "Do we run a spring retreat?" : "Send the semester recap"} />
+          placeholder={kind === "meeting" ? "Partnership chat" : kind === "message" ? "Partnership request with Ruchi" : kind === "question" ? "Do we use big give funds?" : "Reply to Sachit"} />
       </div>
 
       {kind === "meeting" && (
@@ -231,7 +229,7 @@ function NewItem({ kind, approvers, onCreate }: {
       <div className="mt-3">
         <label className={labelCls}>{kind === "message" ? "The draft" : "Details"}</label>
         <textarea className={inputCls} rows={kind === "message" ? 6 : 3} value={body} onChange={(e) => setBody(e.target.value)}
-          placeholder={kind === "message" ? "Paste the message exactly as you'd send it." : "Anything the other two should know."} />
+          placeholder={kind === "message" ? "Paste the message" : "Anything the other two should know."} />
       </div>
 
       <div className="mt-4 flex gap-2">
