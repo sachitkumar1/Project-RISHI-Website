@@ -20,7 +20,24 @@ type Roles = {
   nmtLeader: boolean; newbie: boolean; lead: boolean;
   internal: boolean; vpp: boolean; exec: boolean;
 };
-type Lite = { email: string; name: string; group: Group; avatar?: string | null; lead?: boolean; nmt?: boolean };
+type Lite = { email: string; name: string; group: Group; avatar?: string | null; lead?: boolean; nmt?: boolean; exec?: boolean; vpp?: boolean };
+
+/** The two role cohorts offered in "Assign to" / "Who is it for?".
+ *
+ *  These are a FILTER over people the picker already offered one by one — they
+ *  never widen who you may assign to, and nothing about them is stored. The
+ *  chosen names are sent as ordinary individual assignees (tasks) or as an
+ *  ordinary "Specific members" audience (events), so row-per-assignee and
+ *  event visibility are untouched.
+ *
+ *  Exec counts NMT leaders, who carry nmtLeader without the exec flag, and
+ *  counts vpp defensively in case a VP is ever added without exec set. */
+const COHORT = {
+  leads: { label: "Leads", match: (m: Lite) => !!m.lead },
+  exec: { label: "Exec", match: (m: Lite) => !!m.exec || !!m.vpp || !!m.nmt },
+} as const;
+type CohortKey = keyof typeof COHORT;
+const cohortMembers = (members: Lite[], key: CohortKey) => members.filter(COHORT[key].match);
 export type Meta = {
   me: { email: string; name: string; group: Group; roles: Roles };
   can: { assignTasks: boolean; createEvents: boolean };
@@ -53,11 +70,13 @@ type ClubEvent = {
   scopeEmails: string[]; scopeGroups: Group[]; archived: boolean; createdAt: string; canManage?: boolean;
 };
 
-const SCOPE_LABEL: Record<Meta["eventScopes"][number], string> = {
+const SCOPE_LABEL: Record<Meta["eventScopes"][number] | CohortKey, string> = {
   members: "Specific members",
   group: "A project group",
   club: "The whole club",
   all_newbies: "All newbies",
+  leads: "Leads",
+  exec: "Exec",
 };
 
 const HISTORY_LABEL: Record<HistoryAction, string> = {
@@ -1923,14 +1942,25 @@ const inputCls =
   "mt-1 w-full rounded-xl border border-pine/15 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-pine";
 const labelCls = "block text-sm font-medium text-ink/80";
 
-function MemberPicker({ members, selected, onToggle, single }: {
+function MemberPicker({ members, selected, onToggle, single, onSetAll }: {
   members: Lite[]; selected: string[]; onToggle: (email: string) => void; single?: boolean;
+  /** When given, shows Select all / Clear above the list. Used by the Leads and
+   *  Exec options, which start with everyone ticked. */
+  onSetAll?: (emails: string[]) => void;
 }) {
   const [q, setQ] = useState("");
   const needle = q.trim().toLowerCase();
   const filtered = needle ? members.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(needle)) : members;
   return (
     <div>
+      {onSetAll && members.length > 0 && (
+        <div className="mb-1 flex items-center gap-3 text-xs">
+          <button type="button" onClick={() => onSetAll(members.map((m) => m.email))}
+            className="font-semibold text-pine-deep hover:underline">Select all</button>
+          <button type="button" onClick={() => onSetAll([])}
+            className="font-semibold text-ink/45 hover:underline">Clear</button>
+        </div>
+      )}
       <input className={inputCls} style={{ marginTop: 0 }} placeholder="Search members by name…" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="mt-2 max-h-44 space-y-1 overflow-y-auto rounded-xl border border-pine/15 p-2">
         {filtered.length === 0 && <p className="px-2 py-1 text-xs text-ink/40">No matches.</p>}
@@ -1942,6 +1972,30 @@ function MemberPicker({ members, selected, onToggle, single }: {
         ))}
       </div>
       {selected.length > 0 && <p className="mt-1 text-xs text-ink/45">{selected.length} selected</p>}
+    </div>
+  );
+}
+
+/** The member list for "Leads" or "Exec": the same checkboxes as Specific
+ *  members, narrowed to that cohort and ticked by default. Nothing here is
+ *  stored as a cohort — the result is just the people who stay ticked. */
+function CohortPicker({ cohort, members, selected, onToggle, onSetAll }: {
+  cohort: CohortKey; members: Lite[]; selected: string[];
+  onToggle: (email: string) => void; onSetAll: (emails: string[]) => void;
+}) {
+  const list = cohortMembers(members, cohort);
+  if (list.length === 0) {
+    return <p className="rounded-xl border border-pine/15 bg-pine/[0.03] px-3 py-2 text-sm text-ink/70">
+      Nobody is marked as {COHORT[cohort].label} right now.
+    </p>;
+  }
+  return (
+    <div>
+      <p className="mb-1.5 text-xs text-ink/55">
+        All {list.length} {cohort === "leads" ? "leads" : "exec members"} start ticked — untick anyone
+        who shouldn&apos;t get this.
+      </p>
+      <MemberPicker members={list} selected={selected} onToggle={onToggle} onSetAll={onSetAll} />
     </div>
   );
 }
@@ -1959,8 +2013,23 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
   const [assignees, setAssignees] = useState<string[]>(
     editing ? (editGroupAssignees && editGroupAssignees.length ? editGroupAssignees : [editing.assigneeEmail]) : []
   );
-  const scopes = meta.assignScopes.length ? meta.assignScopes : (["members"] as const);
-  const [scope, setScope] = useState<"members" | "group" | "club">(isEdit ? "members" : scopes[0]);
+  // "Leads" and "Exec" are offered to whoever may already assign club-wide
+  // (PVP), and only while that cohort actually has someone in it. They are a
+  // shortcut through the same list, never a wider permission: every name picked
+  // is re-checked server-side against canAssignTaskTo.
+  const cohortKeys = (meta.assignScopes.includes("club")
+    ? (Object.keys(COHORT) as CohortKey[]).filter((k) => cohortMembers(meta.assignableMembers, k).length > 0)
+    : []);
+  const scopes: Array<Meta["assignScopes"][number] | CohortKey> =
+    [...(meta.assignScopes.length ? meta.assignScopes : (["members"] as const)), ...cohortKeys];
+  const [scope, setScope] = useState<Meta["assignScopes"][number] | CohortKey>(isEdit ? "members" : scopes[0]);
+
+  // Picking Leads or Exec ticks everyone in it — the whole point is not having
+  // to select eight people by hand. Any of them can then be unticked.
+  const chooseScope = (next: typeof scope) => {
+    setScope(next);
+    if (next === "leads" || next === "exec") setAssignees(cohortMembers(meta.assignableMembers, next).map((m) => m.email));
+  };
   const [groups, setGroups] = useState<Group[]>(!isEdit && meta.assignableGroups.length === 1 ? meta.assignableGroups : []);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1979,6 +2048,8 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
     if (isEdit) return assignees;
     if (scope === "club") return meta.allMembers.map((m) => m.email);
     if (scope === "group") return meta.allMembers.filter((m) => groups.includes(m.group)).map((m) => m.email);
+    // "members", "leads" and "exec" all end up here: whoever is ticked, as
+    // individual people. One row per assignee, exactly as before.
     return assignees;
   };
   const addTag = () => { const t = tagInput.trim().replace(/^#/, ""); if (t && !tags.includes(t)) setTags([...tags, t]); setTagInput(""); };
@@ -2043,11 +2114,15 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
           ) : (
             <div className="mt-1 space-y-3">
               {scopes.length > 1 && (
-                <select className={inputCls} style={{ marginTop: 0 }} value={scope} onChange={(e) => setScope(e.target.value as "members" | "group" | "club")}>
+                <select className={inputCls} style={{ marginTop: 0 }} value={scope} onChange={(e) => chooseScope(e.target.value as typeof scope)}>
                   {scopes.map((s) => <option key={s} value={s}>{SCOPE_LABEL[s]}</option>)}
                 </select>
               )}
               {scope === "members" && <MemberPicker members={meta.assignableMembers} selected={assignees} onToggle={toggleAssignee} />}
+              {(scope === "leads" || scope === "exec") && (
+                <CohortPicker cohort={scope} members={meta.assignableMembers} selected={assignees}
+                  onToggle={toggleAssignee} onSetAll={setAssignees} />
+              )}
               {scope === "group" && (
                 <div className="flex flex-wrap gap-2">
                   {meta.assignableGroups.map((g) => (
@@ -2118,8 +2193,19 @@ function EventForm({ meta, editing, onClose, onCreated }: { meta: Meta; editing?
   const [hasEnd, setHasEnd] = useState(!!editing?.endAt);
   const [endAt, setEndAt] = useState(editing?.endAt ? toLocalInput(editing.endAt) : "");
   const [endDate, setEndDate] = useState(editing?.endAt ? toDateInput(editing.endAt) : "");
-  const [scopeKind, setScopeKind] = useState<Meta["eventScopes"][number]>(editing?.scopeKind ?? meta.eventScopes[0]);
+  // Leads / Exec are UI-only here. An event created through them is saved as an
+  // ordinary "Specific members" event, so lms_events.scope_kind keeps its four
+  // existing values and event visibility is untouched.
+  const eventCohorts = (meta.eventScopes.includes("club")
+    ? (Object.keys(COHORT) as CohortKey[]).filter((k) => cohortMembers(meta.eventMemberTargets, k).length > 0)
+    : []);
+  const eventScopeOptions: Array<Meta["eventScopes"][number] | CohortKey> = [...meta.eventScopes, ...eventCohorts];
+  const [scopeKind, setScopeKind] = useState<Meta["eventScopes"][number] | CohortKey>(editing?.scopeKind ?? meta.eventScopes[0]);
   const [scopeEmails, setScopeEmails] = useState<string[]>(editing?.scopeEmails ?? []);
+  const chooseEventScope = (next: typeof scopeKind) => {
+    setScopeKind(next);
+    if (next === "leads" || next === "exec") setScopeEmails(cohortMembers(meta.eventMemberTargets, next).map((m) => m.email));
+  };
   const [scopeGroups, setScopeGroups] = useState<Group[]>(editing?.scopeGroups ?? (meta.targetableGroups.length === 1 ? meta.targetableGroups : []));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -2138,7 +2224,13 @@ function EventForm({ meta, editing, onClose, onCreated }: { meta: Meta; editing?
         startIso = new Date(startAt).toISOString();
         endIso = hasEnd && endAt ? new Date(endAt).toISOString() : null;
       }
-      const payload = { title, description, startAt: startIso, endAt: endIso, allDay, scopeKind, scopeEmails, scopeGroups };
+      // A cohort pick is saved as the plain "members" audience it really is.
+      const isCohort = scopeKind === "leads" || scopeKind === "exec";
+      if (isCohort && scopeEmails.length === 0) throw new Error("Pick at least one person.");
+      const payload = {
+        title, description, startAt: startIso, endAt: endIso, allDay,
+        scopeKind: isCohort ? "members" : scopeKind, scopeEmails, scopeGroups,
+      };
       if (isEdit && editing) {
         await api(`/api/lms/events/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) });
       } else {
@@ -2186,10 +2278,21 @@ function EventForm({ meta, editing, onClose, onCreated }: { meta: Meta; editing?
 
         <div>
           <label className={labelCls}>Who is it for?</label>
-          <select className={inputCls} value={scopeKind} onChange={(e) => setScopeKind(e.target.value as Meta["eventScopes"][number])}>
-            {meta.eventScopes.map((s) => <option key={s} value={s}>{SCOPE_LABEL[s]}</option>)}
+          <select className={inputCls} value={scopeKind} onChange={(e) => chooseEventScope(e.target.value as typeof scopeKind)}>
+            {eventScopeOptions.map((s) => <option key={s} value={s}>{SCOPE_LABEL[s]}</option>)}
           </select>
         </div>
+
+        {(scopeKind === "leads" || scopeKind === "exec") && (
+          <div>
+            <label className={labelCls}>Which {SCOPE_LABEL[scopeKind].toLowerCase()}?</label>
+            <div className="mt-1">
+              <CohortPicker cohort={scopeKind} members={meta.eventMemberTargets} selected={scopeEmails}
+                onToggle={(email) => setScopeEmails((x) => x.includes(email) ? x.filter((y) => y !== email) : [...x, email])}
+                onSetAll={setScopeEmails} />
+            </div>
+          </div>
+        )}
 
         {scopeKind === "group" && (
           <div>

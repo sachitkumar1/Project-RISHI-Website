@@ -32,6 +32,11 @@ export async function GET() {
     // Used by History to say who a task came from — a co-lead or NMT.
     lead: m.roles.lead,
     nmt: m.roles.nmtLeader,
+    // Used by the "Leads" / "Exec" options in the Assign to picker. vpp is sent
+    // separately from exec so a VP who somehow lacks the exec flag is still
+    // counted as Exec rather than silently dropped off an exec-wide task.
+    exec: m.roles.exec,
+    vpp: m.roles.vpp,
   });
   const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
 
