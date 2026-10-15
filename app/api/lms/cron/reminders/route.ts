@@ -19,6 +19,28 @@ const BEFORE = [
 
 const utcDate = (d: Date) => d.toISOString().slice(0, 10); // YYYY-MM-DD
 
+// This job runs once an hour. A reminder is sent on the run NEAREST its moment
+// rather than the first run after it: looking ahead half an interval means a
+// "1 hour" reminder lands between 30 and 90 minutes before the deadline,
+// instead of anywhere from 60 minutes down to 1 minute before it.
+const RUN_EVERY_MS = 60 * 60_000;
+const LOOKAHEAD_MS = RUN_EVERY_MS / 2;
+
+/** What the email says, from the time actually left — not the window's label.
+ *  With hourly runs a "1 hour" reminder can go out 45 or 80 minutes early, and
+ *  the email shouldn't claim exactly an hour when it isn't. */
+function timeLeftPhrase(ms: number): string {
+  const min = Math.max(1, Math.round(ms / 60_000));
+  if (min < 90) {
+    const m = Math.max(5, Math.round(min / 5) * 5);
+    return m === 60 ? "in 1 hour" : `in ${m} minutes`;
+  }
+  const hours = Math.round(min / 60);
+  if (hours < 36) return `in about ${hours} hours`;
+  const days = Math.round(hours / 24);
+  return `in about ${days} day${days === 1 ? "" : "s"}`;
+}
+
 function overduePhrase(ms: number): string {
   const hours = Math.floor(ms / 3_600_000);
   if (hours >= 24) {
@@ -65,15 +87,15 @@ async function run(req: Request) {
       // Find the current (closest) window we've entered that hasn't been sent
       // and whose moment is after the task was created.
       const entered = BEFORE.filter(
-        (w) => now >= due - w.ms && due - w.ms >= created && !already.has(w.key),
+        (w) => now + LOOKAHEAD_MS >= due - w.ms && due - w.ms >= created && !already.has(w.key),
       );
       if (entered.length) {
         // smallest ms = closest to due = the one to actually send now
         const current = entered.reduce((a, b) => (a.ms <= b.ms ? a : b));
-        sends.push({ state: "due", phrase: current.phrase });
+        sends.push({ state: "due", phrase: timeLeftPhrase(due - now) });
         toMark.add(current.key);
         // Suppress any larger windows whose moment has already passed.
-        for (const w of BEFORE) if (w.ms >= current.ms && now >= due - w.ms) toMark.add(w.key);
+        for (const w of BEFORE) if (w.ms >= current.ms && now + LOOKAHEAD_MS >= due - w.ms) toMark.add(w.key);
       }
     } else {
       // Past due — one reminder per calendar day.
@@ -98,7 +120,10 @@ async function run(req: Request) {
   let meetings: unknown = null;
   try { meetings = await ensureUpcomingMeetings(); } catch (e) { meetings = { error: (e as Error).message }; }
 
-  // One short embedding batch, riding on this frequent, cheap job. Embedding
+  // One short embedding batch per run. At one run an hour that's 24 batches of
+  // 40 = 960 passages a day, still above the 800-a-day building cap in
+  // embed.ts, so going hourly doesn't slow the backlog down.
+  // (Original note:) One short embedding batch, riding on this frequent, cheap job. Embedding
   // used to run inside the hourly files job, where it kept a function alive
   // sleeping 30s between batches. Here it does a single batch (a second or two)
   // and returns; the pacing is simply how often this cron runs. Chunking stays

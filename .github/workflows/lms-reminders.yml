@@ -6,7 +6,8 @@ name: LMS Reminders
       - main
   workflow_dispatch:
   schedule:
-    - cron: "2-59/5 * * * *"
+    - cron: "2 * * * *"   # hourly at :02 (was every 5 min). Reminders use a
+                            # half-hour lookahead — see app/api/lms/cron/reminders
 
 permissions:
   contents: read
