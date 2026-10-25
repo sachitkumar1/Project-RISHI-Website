@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { TaskDetail, TaskForm, type Meta } from "@/components/LmsBoard";
+import { undoable } from "@/components/Toast";
 
 /**
  * The dashboard's task panel, usable outside the dashboard.
@@ -75,21 +76,28 @@ export default function TaskDetailModal({
     }
   }
 
-  async function remove() {
-    if (!window.confirm("Delete this task? This can't be undone.")) return;
-    try {
-      const r = await fetch(`/api/lms/tasks/${taskId}`, { method: "DELETE" });
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "Couldn't delete it.");
-      onChanged?.();
-      onClose();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't delete it.");
-    }
+  // Delete with Undo instead of a confirm box: the panel closes and the
+  // caller's list refreshes without it at once (it skips pending deletes);
+  // the DELETE itself goes out when the 8s Undo toast runs out.
+  function remove() {
+    const title: string | undefined = task?.title;
+    undoable({
+      key: `task:${taskId}`,
+      message: title ? `Deleted “${title}”` : "Task deleted",
+      undo: () => onChanged?.(),
+      commit: async () => {
+        const r = await fetch(`/api/lms/tasks/${taskId}`, { method: "DELETE", keepalive: true });
+        if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "");
+        onChanged?.();
+      },
+    });
+    onChanged?.();
+    onClose();
   }
 
   if (err)
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4" onClick={onClose}>
+      <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 safe-overlay" onClick={onClose}>
         <div className="rounded-2xl bg-paper p-6 text-sm text-ink/70" onClick={(e) => e.stopPropagation()}>
           {err}
         </div>

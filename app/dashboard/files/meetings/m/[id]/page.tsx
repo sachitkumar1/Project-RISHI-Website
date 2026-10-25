@@ -13,6 +13,7 @@ import { TaskForm, PendingApprovalCard, type Meta } from "@/components/LmsBoard"
 import AttentionPulse from "@/components/AttentionPulse";
 import { useSeenMarks } from "@/components/useSeenMarks";
 import DashboardBanner from "@/components/DashboardBanner";
+import { isPendingDelete } from "@/components/Toast";
 
 const GROUP_LABEL: Record<string, string> = {
   E: "Education", R: "Water & Sanitation", W: "Women's Empowerment", H: "Health",
@@ -130,7 +131,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
   const load = useCallback(() => {
     return fetch(`/api/lms/meetings/${id}`)
       .then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d?.error || "Couldn't load."); return d; })
-      .then((d) => { setM(d.meeting); setTasks((d.tasks as Task[]).slice().sort((a, b) => (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0) || a.dueAt.localeCompare(b.dueAt))); setCanEdit(d.canEdit); setCanManage(d.canManage); })
+      .then((d) => { setM(d.meeting); setTasks((d.tasks as Task[]).filter((t) => !isPendingDelete(`task:${t.id}`)).sort((a, b) => (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0) || a.dueAt.localeCompare(b.dueAt))); setCanEdit(d.canEdit); setCanManage(d.canManage); })
       .catch((e) => setError(e instanceof Error ? e.message : "Something went wrong."))
       .finally(() => setLoading(false));
   }, [id]);
@@ -151,7 +152,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
       const d = await r.json();
       if (dirtyRef.current || Date.now() - lastEditRef.current < 1500) return; // re-check after await
       setM(d.meeting);
-      setTasks((d.tasks as Task[]).slice().sort((a, b) => (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0) || a.dueAt.localeCompare(b.dueAt)));
+      setTasks((d.tasks as Task[]).filter((t) => !isPendingDelete(`task:${t.id}`)).sort((a, b) => (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0) || a.dueAt.localeCompare(b.dueAt)));
       setCanEdit(d.canEdit); setCanManage(d.canManage);
       setLiveNote(true); setTimeout(() => setLiveNote(false), 1200);
     } catch { /* ignore */ }
@@ -290,7 +291,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
                 {pendingOrdered.length} {pendingOrdered.length === 1 ? "task" : "tasks"}
               </span>
             </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {pendingOrdered.map((g) => {
                 const keys = g.people.map(pendingKey);
                 const nameByEmail = new Map(tasks.map((t) => [t.assigneeEmail.toLowerCase(), t.assigneeName]));

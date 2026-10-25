@@ -73,7 +73,7 @@ export default function AgendaDocPanel({
 
       {expanded && (
         <div
-          className="fixed inset-0 z-50 flex flex-col bg-ink/70"
+          className="safe-edges fixed inset-0 z-50 flex flex-col bg-ink/70"
           onClick={() => setExpanded(false)}
           role="dialog"
           aria-modal="true"

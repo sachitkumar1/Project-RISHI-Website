@@ -147,7 +147,7 @@ export default function AnnouncementsPanel({ compact = false }: { compact?: bool
 
       {/* Read popup */}
       {openItem && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4" onClick={closeModal}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 safe-overlay" onClick={closeModal}>
           <div
             className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-paper p-6 text-ink shadow-xl"
             onClick={(e) => e.stopPropagation()}

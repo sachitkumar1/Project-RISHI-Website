@@ -95,7 +95,7 @@ export default function ProfilePhotoModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 safe-overlay" onClick={onClose}>
       <div
         className="w-full max-w-md rounded-3xl bg-paper p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}

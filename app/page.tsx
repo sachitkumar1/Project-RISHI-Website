@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { placeholderFor } from "@/lib/imagePlaceholders";
 import { motion, useReducedMotion } from "framer-motion";
 import Media from "@/components/Media";
 import Reveal from "@/components/Reveal";
@@ -30,6 +31,8 @@ export default function Home() {
             fill
             priority
             sizes="100vw"
+            placeholder={placeholderFor(HOME.heroImage) ? "blur" : "empty"}
+            blurDataURL={placeholderFor(HOME.heroImage)?.blur}
             className="scale-110 object-cover blur-[3px]"
           />
         )}

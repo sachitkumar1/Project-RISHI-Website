@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Contours from "@/components/Contours";
+import { blurBehind } from "@/lib/imagePlaceholders";
 import {
   BANNER_PHOTOS, BANNER_PRESETS, type BannerChoice,
 } from "@/lib/lms/bannerPresets";
@@ -91,7 +92,7 @@ function Background({ d }: { d: Draft }) {
   return (
     <>
       <div className="absolute inset-0 bg-pine-deep" />
-      {src && <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: `50% ${c.pos}%` }} />}
+      {src && <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: `50% ${c.pos}%`, ...blurBehind(src, `50% ${c.pos}%`) }} />}
       <div className="absolute inset-0" style={{ background: PHOTO_OVERLAY }} />
     </>
   );
@@ -174,7 +175,7 @@ function Picker({ saved: savedRaw, fallback, draft, setDraft, onClose, onSaved }
     `group relative block overflow-hidden rounded-xl text-left ring-offset-2 ring-offset-paper transition ${active ? "ring-2 ring-marigold" : "ring-1 ring-ink/10 hover:ring-pine/40"}`;
 
   return createPortal(
-    <div className="fixed inset-x-0 bottom-0 z-[70] p-3 sm:bottom-4 sm:left-auto sm:right-4 sm:w-[440px] sm:p-0" role="dialog" aria-modal="false" aria-labelledby="banner-picker-title">
+    <div className="fixed inset-x-0 bottom-0 z-[70] p-3 pb-[calc(0.75rem+var(--safe-bottom))] sm:bottom-4 sm:left-auto sm:right-4 sm:w-[440px] sm:p-0" role="dialog" aria-modal="false" aria-labelledby="banner-picker-title">
       <div className="max-h-[70vh] overflow-y-auto rounded-3xl border border-pine/15 bg-paper p-5 text-ink shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -200,7 +201,7 @@ function Picker({ saved: savedRaw, fallback, draft, setDraft, onClose, onSaved }
           {BANNER_PHOTOS.map((p) => (
             <button key={p.id} onClick={() => setDraft({ ...draft, choice: { kind: "photo", id: p.id, pos: p.pos }, pendingImage: undefined })}
               className={tile(c.kind === "photo" && c.id === p.id)} title={p.name} aria-label={p.name} aria-pressed={c.kind === "photo" && c.id === p.id}>
-              <img src={p.src} alt="" className="block aspect-[5/3] w-full object-cover" style={{ objectPosition: `50% ${p.pos}%` }} />
+              <img src={p.src} alt="" className="block aspect-[5/3] w-full object-cover" style={{ objectPosition: `50% ${p.pos}%`, ...blurBehind(p.src, `50% ${p.pos}%`) }} />
               <span className="block truncate px-1.5 py-1 text-[10.5px] font-medium text-ink/70">{p.name}</span>
             </button>
           ))}

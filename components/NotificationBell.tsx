@@ -170,7 +170,7 @@ export default function NotificationBell() {
   );
 
   const detail = selected && (
-    <div className="fixed inset-0 grid place-items-center bg-ink/40 p-4" style={{ zIndex: 1100 }} onClick={() => setSelected(null)}>
+    <div className="fixed inset-0 grid place-items-center bg-ink/40 safe-overlay" style={{ zIndex: 1100 }} onClick={() => setSelected(null)}>
       <div className="w-full max-w-md overflow-y-auto rounded-3xl p-6 shadow-xl" style={{ backgroundColor: PANEL_BG, maxHeight: "85vh" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-lg font-semibold text-pine-deep">{selected.title}</h3>
@@ -195,7 +195,7 @@ export default function NotificationBell() {
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-marigold px-1 text-[11px] font-bold text-pine-deep">
+          <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-marigold px-1 text-[11px] font-bold tabular-nums text-pine-deep">
             {unread > 9 ? "9+" : unread}
           </span>
         )}

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { NAV } from "@/lib/content";
 
 function Wordmark() {
@@ -34,6 +34,11 @@ function Wordmark() {
 }
 
 export default function Navbar() {
+  // Menus open and close on springs: a spring reverses from wherever it is
+  // (position and speed) if you hover off or tap again mid-way, instead of
+  // restarting a fixed-length tween. Reduced motion: they just appear.
+  const reduce = useReducedMotion();
+  const menuSpring = reduce ? { duration: 0 } : { type: "spring" as const, stiffness: 600, damping: 42, mass: 0.7 };
   const pathname = usePathname();
   const { status } = useSession();
   const isMember = status === "authenticated";
@@ -51,7 +56,8 @@ export default function Navbar() {
   return (
     <header
       className="fixed inset-x-0 top-0 z-50 border-b border-pine/10 bg-paper/90 backdrop-blur-md"
-      style={{ height: "var(--header-h)" }}
+      // Height includes the top inset; padding keeps the nav itself below the notch.
+      style={{ height: "var(--header-h)", paddingTop: "var(--safe-top)" }}
     >
       <nav className="container-rishi flex h-full items-center justify-between">
         <Wordmark />
@@ -91,7 +97,7 @@ export default function Navbar() {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 8 }}
-                      transition={{ duration: 0.18 }}
+                      transition={menuSpring}
                       className="absolute left-0 top-full w-60 pt-2"
                     >
                       <div className="overflow-hidden rounded-2xl border border-pine/10 bg-paper p-2 shadow-xl shadow-pine/10">
@@ -178,7 +184,7 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.28, ease: "easeInOut" }}
+            transition={menuSpring}
             className="overflow-hidden border-t border-pine/10 bg-paper lg:hidden"
           >
             <div className="container-rishi flex flex-col gap-1 py-4">

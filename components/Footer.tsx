@@ -19,7 +19,7 @@ function Social({ href, label, children }: { href: string; label: string; childr
 
 export default function Footer() {
   return (
-    <footer className="relative overflow-hidden bg-pine-deep text-paper">
+    <footer className="relative overflow-hidden bg-pine-deep pb-[var(--safe-bottom)] text-paper">
       <Contours className="absolute inset-x-0 bottom-0 h-64 w-full text-marigold" opacity={0.12} />
 
       <div className="container-rishi relative z-10 py-16">
@@ -58,20 +58,20 @@ export default function Footer() {
           {/* Explore */}
           <div>
             <p className="eyebrow text-marigold-soft">Explore</p>
-            <ul className="mt-4 space-y-2.5 text-sm">
+            <ul className="mt-4 space-y-2.5 text-sm [@media(pointer:coarse)]:space-y-0">
               {NAV.flatMap((item) =>
                 item.children
                   ? item.children
                   : [{ label: item.label, href: item.href }]
               ).map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="text-paper/70 transition-colors hover:text-paper">
+                  <Link href={l.href} className="no-hit-slop inline-flex items-center text-paper/70 transition-colors hover:text-paper [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11">
                     {l.label}
                   </Link>
                 </li>
               ))}
               <li>
-                <Link href="/apply" className="text-paper/70 transition-colors hover:text-paper">
+                <Link href="/apply" className="no-hit-slop inline-flex items-center text-paper/70 transition-colors hover:text-paper [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11">
                   Apply
                 </Link>
               </li>
@@ -80,7 +80,7 @@ export default function Footer() {
                   href={LINKS.nationalSite}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-paper/70 transition-colors hover:text-paper"
+                  className="no-hit-slop inline-flex items-center text-paper/70 transition-colors hover:text-paper [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11"
                 >
                   National Project RISHI
                 </a>

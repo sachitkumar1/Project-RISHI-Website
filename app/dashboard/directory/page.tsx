@@ -5,6 +5,7 @@ import ContactRequestForm from "@/components/ContactRequestForm";
 import Link from "next/link";
 import { formatPhoneInput } from "@/lib/lms/phone";
 import DashboardBanner from "@/components/DashboardBanner";
+import { Block, Line, SkeletonRegion, useShowAfter } from "@/components/Skeleton";
 
 type Entry = {
   loginEmail: string; name: string; role: string; group: string; email: string; phone: string;
@@ -39,6 +40,7 @@ export default function DirectoryPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [me, setMe] = useState("");
   const [loading, setLoading] = useState(true);
+  const showSkeleton = useShowAfter(loading);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("name");
@@ -149,7 +151,46 @@ export default function DirectoryPage() {
       </DashboardBanner>
 
       <section className="container-rishi py-10">
-        {loading && <p className="text-ink/60">Loading…</p>}
+        {loading && showSkeleton && (
+          // The loaded page's search row, filter row and table, with grey lines
+          // in place of names, so nothing moves when the members arrive.
+          <SkeletonRegion label="Loading the directory…">
+            <div className="pointer-events-none" aria-hidden>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <input readOnly tabIndex={-1} placeholder="Search members…"
+                  className="w-full max-w-sm rounded-full border border-pine/20 px-4 py-2.5 text-sm outline-none" />
+                <Block className="rounded-full px-5 py-2.5 text-sm font-semibold">Request a contact info change</Block>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2 opacity-60">
+                <Select label="Sort by" value="name" onChange={() => {}} options={[["name", "Name (A\u2013Z)"]]} />
+                <Select label="Project Group" value="" onChange={() => {}} options={[["", "All"]]} />
+                <Select label="Year" value="" onChange={() => {}} options={[["", "All"]]} />
+                <Select label="Position" value="" onChange={() => {}} options={[["", "All"]]} />
+              </div>
+            </div>
+            <Line className="mt-3 text-xs" w="7rem" />
+            <div className="mt-4 overflow-x-auto rounded-2xl border border-pine/12">
+              <table className="w-full min-w-[860px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-pine/12 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/50">
+                    {["Name", "Role", "Project Group", "Year", "Email", "Phone"].map((h) => (
+                      <th key={h} className="px-4 py-3 font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 8 }, (_, r) => (
+                    <tr key={r} className="border-b border-pine/8">
+                      {["65%", "50%", "60%", "30%", "80%", "60%"].map((w, c) => (
+                        <td key={c} className="px-4 py-3"><Line w={w} /></td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SkeletonRegion>
+        )}
         {error && <p className="text-red-600">{error}</p>}
 
         {!loading && !error && (
@@ -240,7 +281,7 @@ export default function DirectoryPage() {
       {/* Edit-my-contact modal */}
       {/* Member: request a change (emailed to the webmaster) */}
       {requesting && mine && (
-        <div className="fixed inset-0 z-[1100] grid place-items-center bg-ink/40 p-4" onClick={() => setRequesting(false)}>
+        <div className="fixed inset-0 z-[1100] grid place-items-center bg-ink/40 safe-overlay" onClick={() => setRequesting(false)}>
           <div className="w-full max-w-md rounded-3xl bg-paper p-6 shadow-xl" onClick={(ev) => ev.stopPropagation()}>
             <div className="mb-3 flex items-start justify-between">
               <h2 className="font-display text-xl font-semibold text-pine-deep">Request a contact info change</h2>
@@ -253,7 +294,7 @@ export default function DirectoryPage() {
 
       {/* Webmaster: edit anyone's contact info */}
       {editing && editTarget && canEditAll && (
-        <div className="fixed inset-0 z-[1100] grid place-items-center bg-ink/40 p-4" onClick={() => setEditing(false)}>
+        <div className="fixed inset-0 z-[1100] grid place-items-center bg-ink/40 safe-overlay" onClick={() => setEditing(false)}>
           <div className="w-full max-w-md rounded-3xl bg-paper p-6 shadow-xl" onClick={(ev) => ev.stopPropagation()}>
             <div className="flex items-start justify-between">
               <h2 className="font-display text-xl font-semibold text-pine-deep">{editTarget.loginEmail === me ? "Your contact info" : `${editTarget.name}'s contact info`}</h2>

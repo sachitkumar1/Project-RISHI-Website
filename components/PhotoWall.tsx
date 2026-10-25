@@ -1,16 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { blurBehind, placeholderFor } from "@/lib/imagePlaceholders";
 
 /**
  * Justified gallery: every row is scaled to fill the full container width, so
  * the whole collage forms a clean rectangle (flush left/right/top/bottom) while
  * each photo keeps its natural shape — nothing gets cropped out.
+ *
+ * Site photos have their size and a tiny blurred preview precomputed
+ * (lib/imagePlaceholders.ts), so the wall lays out immediately with each blur
+ * at its photo's exact size and the photos fade in over them. Only a photo
+ * missing from that file is measured by downloading it first.
  */
 export default function PhotoWall({ images }: { images: string[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
-  const [aspects, setAspects] = useState<number[]>([]);
+  const known = () => images.map((src) => { const p = placeholderFor(src); return p ? p.w / p.h : 0; });
+  const [aspects, setAspects] = useState<number[]>(() => (known().every((a) => a > 0) ? known() : []));
 
   // Track container width (responsive).
   useEffect(() => {
@@ -25,11 +32,13 @@ export default function PhotoWall({ images }: { images: string[] }) {
 
   // Measure each image's natural aspect ratio (width / height).
   useEffect(() => {
+    const pre = known();
+    if (pre.every((a) => a > 0)) { setAspects(pre); return; }
     let cancelled = false;
     Promise.all(
       images.map(
-        (src) =>
-          new Promise<number>((resolve) => {
+        (src, i) =>
+          pre[i] > 0 ? pre[i] : new Promise<number>((resolve) => {
             const img = new window.Image();
             img.onload = () =>
               resolve(img.naturalWidth / img.naturalHeight || 1.4);
@@ -43,6 +52,7 @@ export default function PhotoWall({ images }: { images: string[] }) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images]);
 
   const gap = 10;
@@ -109,6 +119,7 @@ export default function PhotoWall({ images }: { images: string[] }) {
                     height: rowHeight,
                     width: aspects[idx] * rowHeight,
                     objectFit: "cover",
+                    ...blurBehind(images[idx]),
                   }}
                   className="rounded-xl border border-pine/10 transition-transform duration-300 hover:scale-[1.02]"
                 />

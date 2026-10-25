@@ -234,7 +234,7 @@ export default function MessageComposer({
 
   if (!opts) {
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4" onClick={onClose}>
+      <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 safe-overlay" onClick={onClose}>
         <div className="rounded-2xl bg-paper px-6 py-4 text-sm text-ink/60">Loading…</div>
       </div>
     );
@@ -246,7 +246,7 @@ export default function MessageComposer({
   const sendLabel = mode === "email" ? "Send email" : mode === "newsletter" ? "Send newsletter" : "Post & send";
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 safe-overlay" onClick={onClose}>
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-paper p-6 text-ink shadow-xl" onClick={(e) => e.stopPropagation()}>
         {/* Mode switch */}
         {opts.modes.length > 1 ? (

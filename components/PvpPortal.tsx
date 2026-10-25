@@ -11,8 +11,11 @@
 // ============================================================================
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DashboardBanner from "@/components/DashboardBanner";
+import ActivePill from "@/components/ActivePill";
+import { Line, SkeletonRegion, useShowAfter } from "@/components/Skeleton";
+import { isPendingDelete, toast, undoable } from "@/components/Toast";
 
 type Approval = { email: string; at: string };
 type Note = { id: string; author: string; body: string; at: string };
@@ -57,29 +60,64 @@ const toLocalInput = (iso: string | null) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
+// Stale-while-revalidate, the same way as the dashboard board (LmsBoard): the
+// last board is kept in memory for this visit only, shown at once when you come
+// back, and refreshed quietly on return, on focus (at most every 2 minutes) and
+// when the network comes back. A full page load starts empty.
+type PvpSnapshot = { items: Item[]; approvers: Person[]; recipients: Person[]; me: string };
+let pvpCache: PvpSnapshot | null = null;
+const REVALIDATE_ON_FOCUS_MS = 2 * 60_000;
+
 export default function PvpPortal() {
-  const [items, setItems] = useState<Item[] | null>(null);
-  const [approvers, setApprovers] = useState<Person[]>([]);
+  const [items, setItems] = useState<Item[] | null>(() => pvpCache?.items ?? null);
+  const showSkeleton = useShowAfter(items === null);
+  const [approvers, setApprovers] = useState<Person[]>(() => pvpCache?.approvers ?? []);
   // Everyone a meeting is pushed to, including the webmaster, so the calendar
   // line can show a name instead of a raw address.
-  const [recipients, setRecipients] = useState<Person[]>([]);
-  const [me, setMe] = useState("");
+  const [recipients, setRecipients] = useState<Person[]>(() => pvpCache?.recipients ?? []);
+  const [me, setMe] = useState(() => pvpCache?.me ?? "");
+  const lastFetchRef = useRef(0);
   const [tab, setTab] = useState<Kind>("meeting");
   const [err, setErr] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (background = false) => {
+    lastFetchRef.current = Date.now();
     try {
       const r = await fetch("/api/lms/pvp");
       const d = await r.json().catch(() => null);
       if (!r.ok) throw new Error(d?.error || "Couldn't load the portal.");
-      setItems(d.items ?? []);
-      setApprovers(d.approvers ?? []);
-      setRecipients(d.recipients ?? []);
+      // Keep the old arrays when nothing changed, so nothing re-renders.
+      const keep = <T,>(prev: T, next: T) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
+      // Anything deleted a moment ago stays hidden while its Undo is open.
+      setItems((p) => keep(p, ((d.items ?? []) as Item[]).filter((i) => !isPendingDelete(`pvp:${i.id}`))));
+      setApprovers((p) => keep(p, d.approvers ?? []));
+      setRecipients((p) => keep(p, d.recipients ?? []));
       setMe(d.me ?? "");
-    } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't load the portal."); }
+    } catch (e) {
+      // A failed background refresh keeps what's on screen.
+      if (!background) setErr(e instanceof Error ? e.message : "Couldn't load the portal.");
+    }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(!!pvpCache); }, [load]);
+  useEffect(() => {
+    const onFocus = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastFetchRef.current < REVALIDATE_ON_FOCUS_MS) return;
+      void load(true);
+    };
+    const onOnline = () => void load(true);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("online", onOnline);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [load]);
+  // Keep the cache in step with every change on screen, including writes.
+  useEffect(() => { if (items) pvpCache = { items, approvers, recipients, me }; }, [items, approvers, recipients, me]);
 
   const nameOf = useCallback(
     (email: string) => {
@@ -91,20 +129,66 @@ export default function PvpPortal() {
   const canApprove = approvers.some((p) => p.email === me);
 
   /** Every write returns the changed row; swap it in rather than re-fetching
-   *  the whole board. One request per action, never two. */
-  const act = async (payload: Record<string, unknown>) => {
+   *  the whole board. One request per action, never two.
+   *
+   *  `optimistic`: for small, predictable changes (status, approve) the card
+   *  changes the moment it's clicked. If the server says no — or the request
+   *  never arrives — that one card goes back to how it was and a toast says
+   *  why. The server's reply replaces the guess either way. */
+  const act = async (payload: Record<string, unknown>, optimistic?: (i: Item) => Item) => {
     setErr(null);
-    const r = await fetch("/api/lms/pvp", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
-    });
-    const d = await r.json().catch(() => null);
-    if (!r.ok) { setErr(d?.error || "That didn't work."); return null; }
+    const id = typeof payload.id === "string" ? payload.id : null;
+    const before = optimistic && id ? (items ?? []).find((i) => i.id === id) : undefined;
+    if (before && optimistic) setItems((x) => (x ?? []).map((i) => (i.id === before.id ? optimistic(i) : i)));
+    const rollback = (msg: string) => {
+      if (before) {
+        setItems((x) => (x ?? []).map((i) => (i.id === before.id ? before : i)));
+        toast({ tone: "error", message: `Couldn't save that, so it's back as it was. ${msg}` });
+      } else setErr(msg);
+    };
+    let r: Response; let d: { error?: string; item?: Item } | null;
+    try {
+      r = await fetch("/api/lms/pvp", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      });
+      d = await r.json().catch(() => null);
+    } catch { rollback("Check your connection."); return null; }
+    if (!r.ok) { rollback(d?.error || "That didn't work."); return null; }
     if (payload.action === "delete") setItems((x) => (x ?? []).filter((i) => i.id !== payload.id));
-    else if (d?.item) setItems((x) => {
-      const list = x ?? [];
-      return list.some((i) => i.id === d.item.id) ? list.map((i) => (i.id === d.item.id ? d.item : i)) : [d.item, ...list];
-    });
+    else if (d?.item) {
+      const fresh = d.item;
+      setItems((x) => {
+        const list = x ?? [];
+        return list.some((i) => i.id === fresh.id) ? list.map((i) => (i.id === fresh.id ? fresh : i)) : [fresh, ...list];
+      });
+    }
     return d;
+  };
+
+  /** Delete with Undo: the card goes at once, and the delete is only sent
+   *  when the 8s Undo toast runs out (components/Toast.tsx → undoable). */
+  const removeItem = (id: string) => {
+    const list = items ?? [];
+    const at = list.findIndex((i) => i.id === id);
+    if (at < 0) return;
+    const gone = list[at];
+    setItems((x) => (x ?? []).filter((i) => i.id !== id));
+    undoable({
+      key: `pvp:${id}`,
+      message: `Deleted “${gone.title}”`,
+      undo: () => setItems((x) => {
+        const l = x ?? [];
+        if (l.some((i) => i.id === id)) return l;
+        const copy = l.slice(); copy.splice(Math.min(at, copy.length), 0, gone); return copy;
+      }),
+      commit: async () => {
+        const r = await fetch("/api/lms/pvp", {
+          method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "delete", id }),
+        });
+        if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || "");
+      },
+    });
   };
 
   const board = BOARDS.find((b) => b.kind === tab)!;
@@ -141,18 +225,20 @@ export default function PvpPortal() {
           const n = openCount(b.kind);
           return (
             <button key={b.kind} onClick={() => setTab(b.kind)}
-              className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-                on ? "border-pine bg-pine text-paper" : "border-pine/20 text-pine-deep hover:bg-pine/5"}`}>
-              {b.tab}{n > 0 && <span className={`ml-1.5 text-xs ${on ? "text-paper/70" : "text-ink/40"}`}>{n}</span>}
+              className={`relative rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                on ? "border-pine text-paper" : "border-pine/20 text-pine-deep hover:bg-pine/5"}`}>
+              {on && <ActivePill id="pvp-tab" />}
+              <span className="relative">{b.tab}{n > 0 && <span className={`ml-1.5 text-xs tabular-nums ${on ? "text-paper/70" : "text-ink/40"}`}>{n}</span>}</span>
             </button>
           );
         })}
       </div>
 
       <p className="mt-4 text-sm text-ink/55">{board.blurb}</p>
-      {err && <p className="mt-3 rounded-xl border border-clay/30 bg-clay/10 px-3 py-2 text-sm text-clay">{err}</p>}
+      {err && <p className="mt-3 rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700">{err}</p>}
 
-      <NewItem kind={tab} approvers={approvers} onCreate={(p) => act({ action: "create", kind: tab, ...p })} />
+      {/* key={tab}: a fresh, closed editor on every tab switch */}
+      <NewItem key={tab} kind={tab} approvers={approvers} onCreate={(p) => act({ action: "create", kind: tab, ...p })} />
 
       <div className="mt-5 flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wide text-ink/40">
@@ -165,7 +251,17 @@ export default function PvpPortal() {
       </div>
 
       {items === null ? (
-        <p className="mt-6 text-sm text-ink/45">Loading…</p>
+        showSkeleton ? (
+          // Card's own shell and text sizes, so the list doesn't shift on arrival.
+          <SkeletonRegion label="Loading the board…" className="mt-3 space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="rounded-2xl border border-pine/15 bg-paper p-4">
+                <Line className="text-sm font-semibold" w={["55%", "70%", "45%"][i]} />
+                <Line className="mt-0.5 text-xs" w="35%" />
+              </div>
+            ))}
+          </SkeletonRegion>
+        ) : null
       ) : mine.length === 0 ? (
         <p className="mt-6 rounded-2xl border border-pine/15 bg-pine/[0.03] px-4 py-6 text-center text-sm text-ink/55">{board.empty}</p>
       ) : tab === "meeting" ? (
@@ -179,7 +275,7 @@ export default function PvpPortal() {
           ] as [string, Item[]][]).map(([heading, group]) => (
             <div key={heading}>
               <h2 className="text-xs font-semibold uppercase tracking-wide text-ink/40">
-                {heading}<span className="ml-1.5 text-ink/30">{group.length}</span>
+                {heading}<span className="ml-1.5 tabular-nums text-ink/30">{group.length}</span>
               </h2>
               {group.length === 0 ? (
                 <p className="mt-2 text-sm text-ink/40">
@@ -188,7 +284,7 @@ export default function PvpPortal() {
               ) : (
                 <div className="mt-2 space-y-3">
                   {group.map((it) => (
-                    <Card key={it.id} item={it} me={me} canApprove={canApprove} approvers={approvers} nameOf={nameOf} act={act} />
+                    <Card key={it.id} item={it} me={me} canApprove={canApprove} approvers={approvers} nameOf={nameOf} act={act} onDelete={removeItem} />
                   ))}
                 </div>
               )}
@@ -198,7 +294,7 @@ export default function PvpPortal() {
       ) : (
         <div className="mt-3 space-y-3">
           {mine.map((it) => (
-            <Card key={it.id} item={it} me={me} canApprove={canApprove} approvers={approvers} nameOf={nameOf} act={act} />
+            <Card key={it.id} item={it} me={me} canApprove={canApprove} approvers={approvers} nameOf={nameOf} act={act} onDelete={removeItem} />
           ))}
         </div>
       )}
@@ -316,9 +412,10 @@ function NewItem({ kind, approvers, onCreate }: {
 }
 
 // ----------------------------------------------------------------------- card
-function Card({ item, me, canApprove, approvers, nameOf, act }: {
+function Card({ item, me, canApprove, approvers, nameOf, act, onDelete }: {
   item: Item; me: string; canApprove: boolean; approvers: Person[];
-  nameOf: (e: string) => string; act: (p: Record<string, unknown>) => Promise<unknown>;
+  nameOf: (e: string) => string; act: (p: Record<string, unknown>, optimistic?: (i: Item) => Item) => Promise<unknown>;
+  onDelete: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
@@ -328,7 +425,21 @@ function Card({ item, me, canApprove, approvers, nameOf, act }: {
   const allApproved = approvers.length > 0 && approvers.every((p) => approvedBy.has(p.email));
   const done = item.status === "done" || item.status === "sent" || item.status === "resolved";
 
-  const setStatus = (status: string) => act({ action: "update", id: item.id, status });
+  // One request at a time per card: the change already shows, and a second
+  // click racing the first could land them in the wrong order.
+  const [busy, setBusy] = useState(false);
+  const run = async (payload: Record<string, unknown>, optimistic?: (i: Item) => Item) => {
+    if (busy) return;
+    setBusy(true);
+    try { await act(payload, optimistic); } finally { setBusy(false); }
+  };
+  const setStatus = (status: string) => run({ action: "update", id: item.id, status }, (i) => ({ ...i, status }));
+  const toggleApproval = () => run({ action: "approve", id: item.id }, (i) => ({
+    ...i,
+    approvals: i.approvals.some((a) => a.email.toLowerCase() === me)
+      ? i.approvals.filter((a) => a.email.toLowerCase() !== me)
+      : [...i.approvals, { email: me, at: new Date().toISOString() }],
+  }));
 
   return (
     <div className={`rounded-2xl border p-4 ${done ? "border-pine/10 bg-pine/[0.02] opacity-70" : "border-pine/15 bg-paper"}`}>
@@ -381,7 +492,7 @@ function Card({ item, me, canApprove, approvers, nameOf, act }: {
             );
           })}
           {canApprove && !done && (
-            <button onClick={() => act({ action: "approve", id: item.id })}
+            <button onClick={() => void toggleApproval()} disabled={busy}
               className={`${btn} ${approvedBy.has(me) ? "border border-pine/20 text-ink/50" : "bg-marigold text-pine-deep hover:brightness-95"}`}>
               {approvedBy.has(me) ? "Take back my approval" : "Approve"}
             </button>
@@ -450,8 +561,8 @@ function Card({ item, me, canApprove, approvers, nameOf, act }: {
           </div>
 
           <button
-            onClick={() => { if (confirm("Delete this for everyone? It can't be undone.")) void act({ action: "delete", id: item.id }); }}
-            className="mt-4 text-xs font-semibold text-clay/80 hover:underline">Delete</button>
+            onClick={() => onDelete(item.id)}
+            className="mt-4 text-xs font-semibold text-red-700/80 hover:underline">Delete</button>
         </div>
       )}
     </div>

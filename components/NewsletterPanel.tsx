@@ -178,7 +178,7 @@ export default function NewsletterPanel({ compact = false }: { compact?: boolean
       )}
 
       {openItem && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4" onClick={closeModal}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 safe-overlay" onClick={closeModal}>
           <div className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-paper p-6 text-ink shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -221,7 +221,7 @@ export default function NewsletterPanel({ compact = false }: { compact?: boolean
       )}
 
       {showSubs && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4" onClick={() => setShowSubs(false)}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 safe-overlay" onClick={() => setShowSubs(false)}>
           <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-3xl bg-paper p-6 text-ink shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between gap-3">
               <h3 className="font-display text-xl font-semibold text-pine-deep">Newsletter subscribers</h3>

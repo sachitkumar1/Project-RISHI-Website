@@ -490,7 +490,7 @@ export default function FilesBrowser() {
       {/* Listing */}
       <div data-tour="file-list" className="mt-5">
         {loading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="h-20 animate-pulse rounded-2xl bg-pine/[0.06]" />
             ))}
@@ -507,9 +507,9 @@ export default function FilesBrowser() {
               <section key={year}>
                 <h3 className="text-lg font-semibold text-pine-deep">
                   {year === UNDATED ? "Other results" : `${year} Results`}
-                  <span className="ml-2 text-xs font-normal text-ink/40">{hits.length}</span>
+                  <span className="ml-2 text-xs font-normal tabular-nums text-ink/40">{hits.length}</span>
                 </h3>
-                <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {hits.map((n) => (
                     <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} showPath />
                   ))}
@@ -522,7 +522,7 @@ export default function FilesBrowser() {
              the space. Everything older is still one click away, just quieter. */
           <div className="space-y-8">
             {currentRoots.length > 0 && (
-              <ul className="grid gap-3 sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {currentRoots.map((n) => (
                   <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} big />
                 ))}
@@ -540,7 +540,7 @@ export default function FilesBrowser() {
             )}
           </div>
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((n) => (
               <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} />
             ))}
@@ -551,7 +551,7 @@ export default function FilesBrowser() {
       {/* Preview — opens as a panel, expands to fill the whole tab. */}
       {preview && (
         <div
-          className={`fixed inset-0 z-50 flex flex-col bg-ink/70 ${expanded ? "p-0" : "p-4 sm:p-8"}`}
+          className={`fixed inset-0 z-50 flex flex-col bg-ink/70 ${expanded ? "safe-edges" : "p-4 sm:p-8"}`}
           onClick={() => { setExpanded(false); setPreview(null); }}
           role="dialog"
           aria-modal="true"

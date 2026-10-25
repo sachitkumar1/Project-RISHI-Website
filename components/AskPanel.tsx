@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import BottomSheet from "@/components/BottomSheet";
 
 /* RISHI AI — the archive agent's workspace.
  *
@@ -323,7 +324,7 @@ function UsagePanel({ status, remaining }: { status: Status | null; remaining: n
     <div>
       <div className="flex items-baseline justify-between">
         <p className="font-mono text-[10.5px] text-paper/35">Usage today</p>
-        <p className="font-mono text-[11px] text-paper/70">{unlimited ? "unlimited" : `${left} / ${daily} credits`}</p>
+        <p className="font-mono text-[11px] tabular-nums text-paper/70">{unlimited ? "unlimited" : `${left} / ${daily} credits`}</p>
       </div>
       {!unlimited && (
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-paper/10" role="meter" aria-valuemin={0} aria-valuemax={daily} aria-valuenow={left} aria-label="Credits left today">
@@ -359,7 +360,7 @@ function DeepResearchNotice({ credits, onConfirm, onCancel }: { credits: { left:
   }, [onCancel]);
   const n = Math.floor(credits.left / credits.weight);
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-5" role="dialog" aria-modal="true" aria-labelledby="deep-title" onClick={onCancel}>
+    <div className="safe-overlay fixed inset-0 z-[70] grid place-items-center bg-black/60" role="dialog" aria-modal="true" aria-labelledby="deep-title" onClick={onCancel}>
       <div className="w-full max-w-md rounded-2xl border border-paper/15 bg-[#0F2A1F] p-6 text-paper shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <p className="font-mono text-[10.5px] text-marigold-soft">Deep Research</p>
         <h2 id="deep-title" className="mt-1 font-display text-2xl font-semibold">A longer, slower answer</h2>
@@ -394,6 +395,7 @@ export default function AskPanel() {
   }, []);
   const [deepNotice, setDeepNotice] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false); // phone-width usage sheet
+  const closeUsage = useCallback(() => setUsageOpen(false), []);
   const applyDepth = (d: DepthKey) => { setDepth(d); try { window.localStorage.setItem(DEPTH_STORE, d); } catch { /* ignore */ } };
   const chooseDepth = (d: DepthKey) => { if (d === "deep" && depth !== "deep") setDeepNotice(true); else applyDepth(d); };
   const [selected, setSelected] = useState<number | null>(null); // exchange id shown in the inspector
@@ -529,14 +531,12 @@ export default function AskPanel() {
               <SaveChatButton thread={thread} compact />
             </div>
           </header>
-          {usageOpen && (
-            <div className="fixed inset-0 z-[70] flex items-end bg-black/60 xl:hidden" onClick={() => setUsageOpen(false)} role="dialog" aria-modal="true" aria-label="Usage">
-              <div className="w-full rounded-t-2xl border-t border-paper/15 bg-[#0F2A1F] p-5 pb-8" onClick={(e) => e.stopPropagation()}>
-                <UsagePanel status={status} remaining={remaining} />
-                <button onClick={() => setUsageOpen(false)} className="mt-4 w-full rounded-lg bg-paper/10 py-2 text-sm text-paper">Close</button>
-              </div>
-            </div>
-          )}
+          {/* Swipe down (or tap Close / the backdrop / Escape) to dismiss. */}
+          <BottomSheet open={usageOpen} onClose={closeUsage} label="Usage" className="xl:hidden"
+            panelClassName="border-t border-paper/15 bg-[#0F2A1F] p-5 pb-[calc(2rem+var(--safe-bottom))] text-paper">
+            <UsagePanel status={status} remaining={remaining} />
+            <button onClick={closeUsage} className="mt-4 w-full rounded-lg bg-paper/10 py-2 text-sm text-paper">Close</button>
+          </BottomSheet>
 
           <div className="mx-auto w-full max-w-[760px] flex-1 pb-6 pt-6">
             {status && !status.enabled && (
@@ -633,7 +633,7 @@ export default function AskPanel() {
           </div>
 
           {/* composer */}
-          <div className="sticky bottom-0 -mx-5 bg-gradient-to-t from-pine-deep via-pine-deep/95 to-transparent px-5 pb-5 pt-6 sm:-mx-8 sm:px-8">
+          <div className="sticky bottom-0 -mx-5 bg-gradient-to-t from-pine-deep via-pine-deep/95 to-transparent px-5 pb-[calc(1.25rem+var(--safe-bottom))] pt-6 sm:-mx-8 sm:px-8">
             <form onSubmit={(e) => { e.preventDefault(); void submit(); }}
               className="mx-auto max-w-[760px] rounded-2xl border border-paper/15 bg-[#0F2A1F] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.35)] transition-colors focus-within:border-marigold/70">
               <div className="flex items-end gap-2">

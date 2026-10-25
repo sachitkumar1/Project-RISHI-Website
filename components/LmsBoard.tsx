@@ -7,6 +7,9 @@ import RichTextEditor from "@/components/editor/RichTextEditor";
 import MessageComposer from "@/components/MessageComposer";
 import AttentionPulse from "@/components/AttentionPulse";
 import { useSeenMarks } from "@/components/useSeenMarks";
+import ActivePill from "@/components/ActivePill";
+import { Block, Line, SkeletonRegion, useShowAfter } from "@/components/Skeleton";
+import { isPendingDelete, toast, undoable } from "@/components/Toast";
 
 // ----- types mirrored from the API JSON -----
 type Group = "E" | "R" | "W" | "H";
@@ -192,7 +195,7 @@ const seenKey = {
   pending: (t: Task) => `p:${t.id}:${t.submittedAt ?? ""}`,
 };
 // Dashboard card grid: 1 → 2 → 3 across.
-const CARD_GRID = "mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3";
+const CARD_GRID = "mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3";
 const CAL_HIDDEN_KEY = "rishi:dash:calendar-hidden";
 
 async function api(url: string, opts?: RequestInit) {
@@ -202,11 +205,31 @@ async function api(url: string, opts?: RequestInit) {
   return data;
 }
 
+// ---------------------------------------------------------------------------
+// Stale-while-revalidate. The last board the browser fetched is kept in memory
+// (never in storage, and only in the browser), so coming back to the dashboard
+// during a visit shows it at once while a fresh copy loads quietly behind it.
+// It also refetches when the tab regains focus (at most every 2 minutes, which
+// keeps serverless CPU in check) and whenever the network comes back.
+// Background refetches never run the Google Calendar sync, and only swap in
+// data that actually changed, so nothing re-renders or refetches for nothing.
+// A full page load (including signing out) starts with an empty cache.
+type BoardSnapshot = { meta: Meta; tasks: Task[]; events: ClubEvent[]; pastGroupCount: number };
+let boardCache: BoardSnapshot | null = null;
+const REVALIDATE_ON_FOCUS_MS = 2 * 60_000;
+/** Keep the old value when the new one is identical, so effects keyed on it don't re-run. */
+function same<T>(prev: T, next: T): T {
+  return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
+}
+
 export default function LmsBoard() {
-  const [meta, setMeta] = useState<Meta | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [events, setEvents] = useState<ClubEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState<Meta | null>(() => boardCache?.meta ?? null);
+  const [tasks, setTasks] = useState<Task[]>(() => boardCache?.tasks ?? []);
+  const [events, setEvents] = useState<ClubEvent[]>(() => boardCache?.events ?? []);
+  const [loading, setLoading] = useState(() => !boardCache);
+  const hasDataRef = useRef(!!boardCache);
+  const lastFetchRef = useRef(0);
+  const showSkeleton = useShowAfter(loading);
   const [error, setError] = useState<string | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [composeTask, setComposeTask] = useState<Task | null>(null);
@@ -219,7 +242,7 @@ export default function LmsBoard() {
   // majority) are fetched the first time History is opened. historyLoaded says
   // which of the two the `tasks` array currently holds.
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [pastGroupCount, setPastGroupCount] = useState(0); // for the History badge
+  const [pastGroupCount, setPastGroupCount] = useState(() => boardCache?.pastGroupCount ?? 0); // for the History badge
   const historyLoadedRef = useRef(false);
   const [historyOverview, setHistoryOverview] = useState(false);
   // One switch for both History views — personal and club.
@@ -260,29 +283,62 @@ export default function LmsBoard() {
     }
   }, []);
 
-  const load = useCallback(async () => {
+  // `background`: a quiet revalidation (on mount with cached data, on focus,
+  // back online). Every load keeps showing the current board while it runs —
+  // the loading state is only for the very first fetch, when there is nothing
+  // to show yet.
+  const load = useCallback(async (background = false) => {
+    lastFetchRef.current = Date.now();
     try {
-      setLoading(true);
+      if (!hasDataRef.current) setLoading(true);
+      const scopeActive = !historyLoadedRef.current;
       const [m, t, e] = await Promise.all([
         api("/api/lms/meta"),
-        api(`/api/lms/tasks${historyLoadedRef.current ? "" : "?scope=active"}`),
+        api(`/api/lms/tasks${scopeActive ? "?scope=active" : ""}`),
         api("/api/lms/events"),
       ]);
-      setMeta(m); setTasks(t.tasks); setEvents(e.events); setError(null);
+      // Leave out anything deleted a moment ago whose Undo window is still open.
+      const freshTasks = (t.tasks as Task[]).filter((x) => !isPendingDelete(`task:${x.id}`));
+      const freshEvents = (e.events as ClubEvent[]).filter((x) => !isPendingDelete(`event:${x.id}`));
+      setMeta((p) => same(p, m)); setTasks((p) => same(p, freshTasks)); setEvents((p) => same(p, freshEvents)); setError(null);
       if (typeof t.pastGroupCount === "number") setPastGroupCount(t.pastGroupCount);
-      if (calConnectedRef.current) runSync(false);
+      hasDataRef.current = true;
+      // Cache only the dashboard's own (active-only) view, never the History set.
+      if (scopeActive) boardCache = { meta: m, tasks: freshTasks, events: freshEvents, pastGroupCount: typeof t.pastGroupCount === "number" ? t.pastGroupCount : 0 };
+      if (!background && calConnectedRef.current) runSync(false);
     } catch (err) {
-      setError((err as Error).message);
+      // A failed background refresh keeps the board as it was.
+      if (!background || !hasDataRef.current) setError((err as Error).message);
     } finally {
       setLoading(false);
     }
   }, [runSync]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(hasDataRef.current); }, [load]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastFetchRef.current < REVALIDATE_ON_FOCUS_MS) return;
+      void load(true);
+    };
+    const onOnline = () => void load(true);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("online", onOnline);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [load]);
 
   // Full Club Overview (P/VP only): (re)fetch whenever it's on and data changes.
   const loadOverview = useCallback(async (scope: "active" | "all") => {
-    try { setOverview(await api(`/api/lms/overview${scope === "active" ? "?scope=active" : ""}`)); }
+    try {
+      const o: Overview = await api(`/api/lms/overview${scope === "active" ? "?scope=active" : ""}`);
+      setOverview({ ...o, tasks: o.tasks.filter((x) => !isPendingDelete(`task:${x.id}`)), events: o.events.filter((x) => !isPendingDelete(`event:${x.id}`)) });
+    }
     catch { setOverview(null); }
   }, []);
   // The dashboard's overview needs active work only; the one inside History
@@ -521,7 +577,6 @@ export default function LmsBoard() {
     try { await callTask(taskId, { action, ...(extra ?? {}) }); }
     catch (err) { alert((err as Error).message); }
   }
-  const [nudgeToast, setNudgeToast] = useState<string | null>(null);
   const [nudgeLockedIds, setNudgeLockedIds] = useState<string[]>([]);
   async function nudge(taskId: string, personName: string) {
     if (nudgeLockedIds.includes(taskId)) return; // already nudged in the last few seconds
@@ -530,8 +585,7 @@ export default function LmsBoard() {
     try {
       await api(`/api/lms/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify({ action: "nudge" }) });
       const msg = `${personName} has been nudged!`;
-      setNudgeToast(msg);
-      setTimeout(() => setNudgeToast((t) => (t === msg ? null : t)), 1200); // popup auto-hides after ~1s
+      toast({ message: msg, durationMs: 2000 });
       load(); // refresh so the new activity-log entry shows
       setTimeout(unlock, 5000); // keep the button disabled ~5s to prevent spam
     } catch (err) {
@@ -566,15 +620,48 @@ export default function LmsBoard() {
       await load();
     } catch (err) { alert((err as Error).message); }
   }
-  async function removeTask(taskId: string) {
-    if (!confirm("Delete this task? This can't be undone.")) return;
-    try { await api(`/api/lms/tasks/${taskId}`, { method: "DELETE" }); await load(); setDetailTaskId(null); }
-    catch (err) { alert((err as Error).message); }
+  // Deletes: gone from the screen at once, with an Undo toast instead of an
+  // "Are you sure?" box. The DELETE is only sent when the 8s Undo window ends
+  // (see undoable in components/Toast.tsx), so Undo never needs the server.
+  function removeTask(taskId: string) {
+    const row = tasks.find((t) => t.id === taskId) ?? overview?.tasks.find((t) => t.id === taskId);
+    const drop = <T extends { id: string }>(list: T[]) => list.filter((t) => t.id !== taskId);
+    setTasks(drop);
+    setOverview((o) => (o ? { ...o, tasks: drop(o.tasks) } : o));
+    setDetailTaskId(null);
+    undoable({
+      key: `task:${taskId}`,
+      message: row ? `Deleted “${row.title}”${row.assigneeEmail ? ` for ${nameOf(row.assigneeEmail)}` : ""}` : "Task deleted",
+      undo: () => {
+        if (!row) { void load(true); return; }
+        setTasks((ts) => (ts.some((t) => t.id === taskId) ? ts : [...ts, row]));
+        setOverview((o) => (o && !o.tasks.some((t) => t.id === taskId) ? { ...o, tasks: [...o.tasks, row as OTask] } : o));
+      },
+      commit: async () => {
+        await api(`/api/lms/tasks/${taskId}`, { method: "DELETE", keepalive: true });
+        void load(true);
+      },
+    });
   }
-  async function removeEvent(eventId: string) {
-    if (!confirm("Delete this event? This can't be undone.")) return;
-    try { await api(`/api/lms/events/${eventId}`, { method: "DELETE" }); await load(); setDetailEventId(null); }
-    catch (err) { alert((err as Error).message); }
+  function removeEvent(eventId: string) {
+    const ev = events.find((e) => e.id === eventId) ?? overview?.events.find((e) => e.id === eventId);
+    const drop = <T extends { id: string }>(list: T[]) => list.filter((e) => e.id !== eventId);
+    setEvents(drop);
+    setOverview((o) => (o ? { ...o, events: drop(o.events) } : o));
+    setDetailEventId(null);
+    undoable({
+      key: `event:${eventId}`,
+      message: ev ? `Deleted “${ev.title}”` : "Event deleted",
+      undo: () => {
+        if (!ev) { void load(true); return; }
+        setEvents((es) => (es.some((e) => e.id === eventId) ? es : [...es, ev]));
+        setOverview((o) => (o && !o.events.some((e) => e.id === eventId) ? { ...o, events: [...o.events, ev as OEvent] } : o));
+      },
+      commit: async () => {
+        await api(`/api/lms/events/${eventId}`, { method: "DELETE", keepalive: true });
+        void load(true);
+      },
+    });
   }
 
   async function syncGoogleCalendar() { await runSync(true); }
@@ -590,7 +677,39 @@ export default function LmsBoard() {
     finally { setSyncing(false); }
   }
 
-  if (loading) return <p className="text-sm text-ink/50">Loading your dashboard…</p>;
+  if (loading) return showSkeleton ? (
+    // Same shell, buttons, calendar and card grid as the loaded dashboard, so
+    // nothing moves when the data arrives. The calendar is the real component
+    // with nothing on it yet. Hidden for the first 300ms (useShowAfter).
+    <SkeletonRegion label="Loading your dashboard…">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Block className="rounded-full border px-4 py-2 text-sm font-semibold">Full Club Overview</Block>
+          <Block className="rounded-full border px-4 py-2 text-sm font-semibold">History (00)</Block>
+        </div>
+      </div>
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <SegToggle label="Period" value={myWindow} onChange={() => {}}
+          options={[["day", "Day"], ["week", "Week"], ["month", "Month"], ["all", "All time"]]} />
+        <Block className="rounded-full border px-4 py-2 text-sm font-semibold">{calHidden ? "Show calendar" : "Hide calendar"}</Block>
+      </div>
+      {!calHidden && <div className="mt-8 pointer-events-none">
+        <CalendarMonth tasks={[]} events={[]} myEmail="" archive={myArchive} period={myWindow}
+          onOpenTask={() => {}} onOpenEvent={() => {}} />
+      </div>}
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <Block className="btn-accent text-sm">Connect Google Calendar</Block>
+      </div>
+      <div className="mt-10 space-y-10">
+        {["Events", "My tasks"].map((h) => (
+          <section key={h}>
+            <h3 className="font-display text-xl font-semibold text-pine-deep">{h}</h3>
+            <div className={CARD_GRID}>{[0, 1, 2].map((i) => <div key={i} className={i ? "hidden sm:block" : ""}><CardSkeleton /></div>)}</div>
+          </section>
+        ))}
+      </div>
+    </SkeletonRegion>
+  ) : null;
   if (error)
     return (
       <div className="rounded-2xl border border-marigold-deep/30 bg-marigold-soft/20 p-5 text-sm text-ink/80">
@@ -608,7 +727,7 @@ export default function LmsBoard() {
             {overviewOn ? "✓ Full Club Overview" : "Full Club Overview"}
           </button>
           <button data-tour="history" onClick={() => void openHistory()}
-            className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold text-pine-deep transition-colors hover:bg-pine/5">
+            className="rounded-full border border-pine/25 px-4 py-2 text-sm font-semibold tabular-nums text-pine-deep transition-colors hover:bg-pine/5">
             History ({(historyLoaded ? pastTaskGroups.length : pastGroupCount) + pastEvents.length})
           </button>
         </div>
@@ -816,11 +935,6 @@ export default function LmsBoard() {
           nudgeLocked={nudgeLockedIds.includes(detailTask.id)} />
       )}
 
-      {nudgeToast && (
-        <div className="fixed bottom-24 left-1/2 z-[1200] -translate-x-1/2 animate-in rounded-full bg-pine px-5 py-2.5 text-sm font-semibold text-paper shadow-xl">
-          {nudgeToast}
-        </div>
-      )}
 
       {detailEvent && (
         <EventDetail event={detailEvent} nameOf={nameOf}
@@ -1066,7 +1180,7 @@ function TaskRow({
           <p className="text-[15px] font-semibold leading-snug text-ink">{task.title}</p>
           <div className="flex shrink-0 items-center gap-1.5">{statusChipFor(task.status, wasLate(task))}</div>
         </div>
-        {task.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70">{task.description}</p>}
+        {task.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70 [overflow-wrap:anywhere]">{task.description}</p>}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {task.tags.filter((tag) => !isImportMarker(tag)).map((tag) => (
             <span key={tag} className="rounded-full bg-sage/15 px-2 py-0.5 text-[11px] font-medium text-pine-deep">#{tag}</span>
@@ -1129,7 +1243,7 @@ export function PendingApprovalCard({
           className="text-left text-[15px] font-semibold leading-snug text-ink hover:underline">{t.title}</button>
         <span className="shrink-0">{statusChipFor("pending")}</span>
       </div>
-      {t.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70">{t.description}</p>}
+      {t.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70 [overflow-wrap:anywhere]">{t.description}</p>}
       <p className="mt-2 text-xs text-ink/50">
         {t.dueAt && hasRealDueDate(t.tags) ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}
         {groupSize > 1 ? ` · ${rows.length} of ${groupSize} people waiting` : ""}
@@ -1168,6 +1282,21 @@ export function PendingApprovalCard({
   );
 }
 
+/** A loading stand-in with EventRow/GroupCard's shell and text sizes. */
+function CardSkeleton() {
+  return (
+    <div className="flex h-full flex-col rounded-2xl border border-pine/12 bg-paper p-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <Line className="flex-1 text-[15px] font-semibold leading-snug" w="70%" />
+        <Block className="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium">Due Oct 00, 0:00 PM</Block>
+      </div>
+      <Line className="mt-1 text-[13px]" w="90%" />
+      <Line className="text-[13px]" w="55%" />
+      <Line className="mt-2 text-xs" w="35%" />
+    </div>
+  );
+}
+
 function EventRow({ event, onOpen }: { event: ClubEvent; onOpen: () => void }) {
   return (
     <button onClick={onOpen} className="block h-full w-full rounded-2xl border border-pine/12 bg-paper p-3.5 text-left transition-colors hover:border-pine/30">
@@ -1177,7 +1306,7 @@ function EventRow({ event, onOpen }: { event: ClubEvent; onOpen: () => void }) {
           {event.allDay ? `${fmtDateOnly(event.startAt)} · all day` : fmtDateTime(event.startAt)}
         </span>
       </div>
-      {event.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70">{event.description}</p>}
+      {event.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70 [overflow-wrap:anywhere]">{event.description}</p>}
       <p className="mt-2 text-xs text-ink/45">
         {event.scopeKind === "club" && "Whole club"}
         {event.scopeKind === "all_newbies" && "All newbies"}
@@ -1197,13 +1326,13 @@ function GroupCard({ group, byline, onOpen, onArchive }: { group: TaskGroup; byl
       <div className="flex items-start justify-between gap-3">
         <p className="text-[15px] font-semibold leading-snug text-ink">{t.title}</p>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span className="rounded-full bg-sage/15 px-2.5 py-1 text-xs font-semibold text-pine-deep">{done}/{total} complete</span>
+          <span className="rounded-full bg-sage/15 px-2.5 py-1 text-xs font-semibold tabular-nums text-pine-deep">{done}/{total} complete</span>
           {group.rows.some((r) => r.canManage) && (
             <button onClick={onArchive} title="Archive for everyone" className="grid h-6 w-6 place-items-center rounded-full text-ink/40 hover:bg-pine/5 hover:text-pine-deep">🗄</button>
           )}
         </div>
       </div>
-      {t.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70">{t.description}</p>}
+      {t.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70 [overflow-wrap:anywhere]">{t.description}</p>}
       <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs">
         <span className="text-ink/50">{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"} · {total} people{byline ? ` · ${byline}` : ""}</span>
         <button onClick={onOpen} className="rounded-full border border-pine/20 px-3 py-1 font-medium text-pine-deep hover:bg-pine/5">View / manage</button>
@@ -1649,7 +1778,7 @@ function CalendarView({ title, items, period, legend }: {
             {heading}{title ? ` - ${title}` : ""}
           </h3>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 [@media(pointer:coarse)]:gap-4">
           <button onClick={() => setCursor(new Date())} className="mr-1 rounded-full border border-pine/15 px-3 py-1 text-xs font-semibold text-pine-deep hover:bg-pine/5">Today</button>
           <button onClick={() => step(-1)} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label={`Previous ${navLabel}`}>&lsaquo;</button>
           <button onClick={() => step(1)} className="grid h-8 w-8 place-items-center rounded-full border border-pine/15 text-pine-deep hover:bg-pine/5" aria-label={`Next ${navLabel}`}>&rsaquo;</button>
@@ -1669,7 +1798,7 @@ function CalendarView({ title, items, period, legend }: {
               <div key={d.toISOString()} onClick={() => setOpenDay(d)} role="button" tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter") setOpenDay(d); }} title="Open this day"
                 className={`min-h-[8rem] cursor-pointer rounded-xl border p-2 transition-colors hover:border-pine/40 ${isToday ? "border-marigold bg-marigold-soft/15" : "border-pine/10 bg-pine/[0.015]"}`}>
-                <div className={`mb-1 text-[11px] font-semibold uppercase tracking-wide ${isToday ? "text-marigold-deep" : "text-ink/45"}`}>
+                <div className={`mb-1 text-[11px] font-semibold uppercase tabular-nums tracking-wide ${isToday ? "text-marigold-deep" : "text-ink/45"}`}>
                   {WEEKDAYS[d.getDay()]} {d.getDate()}
                 </div>
                 <div className="space-y-1">
@@ -1770,7 +1899,7 @@ function MonthGrid({ cursor, today, itemsOn, onOpenDay }: {
           return (
             <button key={i} type="button" onClick={() => onOpenDay(date)}
               className={`aspect-square rounded-lg border p-1 text-left transition-colors hover:border-pine/40 ${isToday ? "border-marigold bg-marigold-soft/20" : "border-pine/8 bg-pine/[0.015]"}`}>
-              <div className={`text-[11px] font-semibold ${isToday ? "text-marigold-deep" : "text-ink/55"}`}>{date.getDate()}</div>
+              <div className={`text-[11px] font-semibold tabular-nums ${isToday ? "text-marigold-deep" : "text-ink/55"}`}>{date.getDate()}</div>
               <div className="mt-0.5 space-y-0.5">
                 {its.slice(0, 3).map((it) => (
                   <div key={it.id} className="truncate rounded px-1 text-[9px] font-medium" style={{ backgroundColor: it.color.bg, color: it.color.fg }} title={it.title}>{it.title}</div>
@@ -1856,7 +1985,7 @@ function FullScreenModal({ title, onClose, children }: { title: string; onClose:
   return (
     // z-[60]: above the site's fixed header (z-50), which used to cover the ✕.
     <div className="fixed inset-0 z-[60] flex flex-col bg-ink/60" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="flex h-full w-full flex-col bg-paper">
+      <div className="safe-edges flex h-full w-full flex-col bg-paper">
         <div className="flex items-center justify-between border-b border-pine/10 px-6 py-4">
           <h3 className="font-display text-2xl font-semibold text-pine-deep">{title}</h3>
           <button data-tour="fs-close" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
@@ -1868,7 +1997,7 @@ function FullScreenModal({ title, onClose, children }: { title: string; onClose:
       {/* Same floating Back as the rest of the site (BackButton.tsx). The
           site-wide one sits under overlays, so this one closes the overlay. */}
       <button onClick={onClose} aria-label="Close and go back" title="Back"
-        className="fixed bottom-6 left-6 z-[61] inline-flex items-center gap-2 rounded-full border border-pine/20 bg-paper/95 px-4 py-2.5 text-sm font-semibold text-pine-deep shadow-lg backdrop-blur transition-colors hover:bg-pine hover:text-paper">
+        className="fixed bottom-[calc(1.5rem+var(--safe-bottom))] left-[calc(1.5rem+var(--safe-left))] z-[61] inline-flex items-center gap-2 rounded-full border border-pine/20 bg-paper/95 px-4 py-2.5 text-sm font-semibold text-pine-deep shadow-lg backdrop-blur transition-colors hover:bg-pine hover:text-paper">
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M19 12H5M11 6l-6 6 6 6" />
         </svg>
@@ -1926,7 +2055,7 @@ function PastTaskRow({ g, onOpen, onUnarchive }: {
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 safe-overlay" onClick={onClose}>
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-paper p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl font-semibold text-pine-deep">{title}</h3>
@@ -1971,7 +2100,7 @@ function MemberPicker({ members, selected, onToggle, single, onSetAll }: {
           </label>
         ))}
       </div>
-      {selected.length > 0 && <p className="mt-1 text-xs text-ink/45">{selected.length} selected</p>}
+      {selected.length > 0 && <p className="mt-1 text-xs tabular-nums text-ink/45">{selected.length} selected</p>}
     </div>
   );
 }
@@ -2253,7 +2382,7 @@ function EventForm({ meta, editing, onClose, onCreated }: { meta: Meta; editing?
         </label>
 
         {allDay ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><label className={labelCls}>Start date</label>
               <input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
             {hasEnd && (
@@ -2262,7 +2391,7 @@ function EventForm({ meta, editing, onClose, onCreated }: { meta: Meta; editing?
             )}
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><label className={labelCls}>Start date &amp; time</label>
               <input type="datetime-local" className={inputCls} value={startAt} onChange={(e) => setStartAt(e.target.value)} /></div>
             {hasEnd && (
@@ -2342,8 +2471,9 @@ function SegToggle({ label, value, onChange, options }: {
       <div className="inline-flex rounded-full border border-pine/20 bg-paper p-0.5">
         {options.map(([val, lbl]) => (
           <button key={val} onClick={() => onChange(val)}
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${value === val ? "bg-pine text-paper" : "text-pine-deep hover:bg-pine/5"}`}>
-            {lbl}
+            className={`relative rounded-full px-3 py-1 text-xs font-semibold transition-colors ${value === val ? "text-paper" : "text-pine-deep hover:bg-pine/5"}`}>
+            {value === val && <ActivePill id={`seg-${label}`} />}
+            <span className="relative">{lbl}</span>
           </button>
         ))}
       </div>
@@ -2412,7 +2542,7 @@ function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask,
               <div className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded" style={{ backgroundColor: c.dot }} />
                 <h4 className="font-display text-lg font-semibold text-pine-deep">{LANE_LABEL[lane]}</h4>
-                <span className="text-xs text-ink/40">{laneGroups.length} task{laneGroups.length === 1 ? "" : "s"} · {laneEvents.length} event{laneEvents.length === 1 ? "" : "s"}</span>
+                <span className="text-xs tabular-nums text-ink/40">{laneGroups.length} task{laneGroups.length === 1 ? "" : "s"} · {laneEvents.length} event{laneEvents.length === 1 ? "" : "s"}</span>
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {laneGroups.map((g) => {

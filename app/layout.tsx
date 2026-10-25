@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import "./dark-theme.css"; // dashboard dark mode (generated: scripts/gen-dark-theme.mjs)
@@ -6,6 +6,7 @@ import "./ai-theme.css";   // RISHI AI light/dark (generated: scripts/gen-ai-the
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BackButton from "@/components/BackButton";
+import { Toaster } from "@/components/Toast";
 import AuthProvider from "@/components/AuthProvider";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -41,6 +42,14 @@ export const metadata: Metadata = {
   },
 };
 
+// viewport-fit=cover lets the page draw under the notch and home indicator on
+// iPhones; the --safe-* insets in globals.css keep everything tappable clear.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -60,6 +69,7 @@ export default function RootLayout({
         <AuthProvider>
           <Navbar />
           <BackButton />
+          <Toaster />
           <main>{children}</main>
           <Footer />
         </AuthProvider>

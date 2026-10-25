@@ -282,7 +282,7 @@ export default function MeetingEditor({
 
   if (fullscreen) {
     return (
-      <div className="fixed inset-0 z-[1200] flex flex-col bg-[#e9e7df]">
+      <div className="safe-edges fixed inset-0 z-[1200] flex flex-col bg-[#e9e7df]">
         <div className="shrink-0 shadow-sm">{toolbar}</div>
         {bubble}
         <div className="flex-1 overflow-y-auto py-8">

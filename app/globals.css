@@ -17,7 +17,17 @@
   --chip-archived-bg: rgba(27, 38, 32, 0.08); --chip-archived-fg: #1B2620;
   --notif-panel-bg: #eef1ec;
 
-  --header-h: 76px;
+  /* Safe-area insets (notch, Dynamic Island, home indicator, landscape
+     sides). All 0 on devices without them, so nothing moves there. Needs
+     viewport-fit=cover, set in app/layout.tsx. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* The header grows by the top inset so its contents sit below the notch;
+     everything that offsets by --header-h follows automatically. */
+  --header-h: calc(76px + var(--safe-top));
 }
 
 html {
@@ -45,6 +55,40 @@ body {
   h4 {
     font-family: theme("fontFamily.display");
     letter-spacing: -0.02em;
+    /* Even line lengths on headings, so a two-line title never ends on one
+       stranded word. Browsers without support just wrap normally. */
+    text-wrap: balance;
+  }
+  h5,
+  h6,
+  figcaption,
+  label,
+  button,
+  summary {
+    text-wrap: balance;
+  }
+
+  /* Paragraphs avoid a lone last-line word ("orphan") without the cost of
+     balancing every line. */
+  p,
+  li,
+  blockquote,
+  dd {
+    text-wrap: pretty;
+  }
+
+  /* Digits all the same width wherever numbers sit in columns or tick up and
+     down — tables, times, counters — so they don't jiggle as values change.
+     Body text keeps proportional figures. Individual counters opt in with
+     Tailwind's `tabular-nums` class. */
+  table,
+  time,
+  kbd,
+  input[type="number"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"] {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Keyboard focus ring — visible and on-brand */
@@ -60,7 +104,27 @@ body {
 
 @layer components {
   .container-rishi {
-    @apply mx-auto w-full max-w-content px-6 sm:px-8;
+    @apply mx-auto w-full max-w-content;
+    /* Same 1.5rem / 2rem gutters as before, plus any side inset in landscape. */
+    padding-left: calc(1.5rem + var(--safe-left));
+    padding-right: calc(1.5rem + var(--safe-right));
+  }
+  @media (min-width: 640px) {
+    .container-rishi {
+      padding-left: calc(2rem + var(--safe-left));
+      padding-right: calc(2rem + var(--safe-right));
+    }
+  }
+
+  /* Full-screen overlays: keep their 1rem breathing room, but never less
+     than the safe-area inset on that side. */
+  .safe-overlay {
+    padding: max(1rem, var(--safe-top)) max(1rem, var(--safe-right))
+      max(1rem, var(--safe-bottom)) max(1rem, var(--safe-left));
+  }
+  /* Edge-to-edge panels (full-screen editors, previews): pad by the inset only. */
+  .safe-edges {
+    padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   }
 
   /* Small uppercase label used as section eyebrows */
@@ -92,6 +156,72 @@ body {
 .attention-pulse {
   mix-blend-mode: multiply;
   animation: attention-pulse 1.5s ease-in-out 2;
+}
+
+/* Continuous (squircle) corners on cards, panels and inputs, alongside the
+   existing border-radius. Only Chromium draws corner-shape; every other
+   browser skips this block and keeps the ordinary rounded corners. Pills
+   (rounded-full) and small radii are left alone — a squircle pill reads boxier,
+   and on a 4px corner the difference is invisible. */
+@supports (corner-shape: squircle) {
+  [class*="rounded-lg"],
+  [class*="rounded-xl"],
+  [class*="rounded-2xl"],
+  [class*="rounded-3xl"] {
+    corner-shape: squircle;
+  }
+}
+
+/* View transitions.
+   Between pages: full-page loads within the site cross-fade in 200ms
+   (Next's client-side navigations aren't page loads, so this covers sign-in
+   and hard reloads). Off for people who prefer reduced motion.
+   On a page we deliberately don't use document.startViewTransition: in
+   Chromium a click that lands during one is dropped, which breaks "never block
+   input while animating". Tab and toggle highlights slide with a framer-motion
+   spring instead (components/ActivePill.tsx). */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 200ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Touch hit areas (the web's version of hitSlop).
+   On touch screens every control gets an invisible ::after that grows its
+   tappable area to at least 44x44 around its centre, without changing how it
+   looks. Each axis only grows when that side is under 44px:
+   min(0px, (100% - 44px) / 2) is 0 for a big control and negative for a small
+   one. Inline links inside running text are left alone (they'd overlap the
+   line above and below). Checkbox rows get real height
+   instead, and anything else that's tightly stacked opts out with .no-hit-slop
+   and gets real spacing, so neighbours never overlap.
+   :where() keeps specificity at zero, so a control's own absolute/fixed/sticky
+   positioning still wins over the `relative` set here. */
+@media (pointer: coarse) {
+  :where(button, [role="button"], a[href], summary, label:has(> input[type="checkbox"], > input[type="radio"])):not(:where(p, blockquote, .doc-prose, .prose, [contenteditable]) a):not(.no-hit-slop) {
+    position: relative;
+  }
+  :where(button, [role="button"], a[href], summary, label:has(> input[type="checkbox"], > input[type="radio"])):not(:where(p, blockquote, .doc-prose, .prose, [contenteditable]) a):not(.no-hit-slop)::after {
+    content: "";
+    position: absolute;
+    top: min(0px, calc((100% - 44px) / 2));
+    bottom: min(0px, calc((100% - 44px) / 2));
+    left: min(0px, calc((100% - 44px) / 2));
+    right: min(0px, calc((100% - 44px) / 2));
+  }
+  /* Checkbox rows are often stacked tightly (member pickers), where a slop
+     area would cover the next row. Give them real height instead; for a block
+     or flex row that makes the ::after above a no-op. Inline labels ignore
+     min-height and keep the slop. */
+  :where(label:has(> input[type="checkbox"], > input[type="radio"])):not(.no-hit-slop) {
+    min-height: 44px;
+  }
 }
 
 /* Respect users who prefer reduced motion */

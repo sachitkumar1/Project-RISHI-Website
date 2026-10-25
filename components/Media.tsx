@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { placeholderFor } from "@/lib/imagePlaceholders";
 
 /**
  * Media — a drop-in image slot.
@@ -28,6 +29,9 @@ export default function Media({
   sizes?: string;
 }) {
   if (src) {
+    // Site photos have a precomputed blurred preview, shown at the frame's
+    // exact size until the photo arrives (lib/imagePlaceholders.ts).
+    const ph = placeholderFor(src);
     return (
       <div className={`relative overflow-hidden ${rounded} ${className}`}>
         <Image
@@ -36,6 +40,8 @@ export default function Media({
           fill
           sizes={sizes}
           priority={priority}
+          placeholder={ph ? "blur" : "empty"}
+          blurDataURL={ph?.blur}
           className="object-cover"
         />
       </div>
