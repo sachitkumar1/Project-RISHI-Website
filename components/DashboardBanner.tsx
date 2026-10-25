@@ -180,12 +180,12 @@ function Picker({ saved: savedRaw, fallback, draft, setDraft, onClose, onSaved }
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="banner-picker-title" className="font-display text-xl font-semibold text-pine-deep">Your banner</h2>
-            <p className="mt-0.5 text-xs text-ink/55">Previewing live above. Only you see your banner.</p>
+            <p className="mt-0.5 text-xs text-ink/70">Previewing live above. Only you see your banner.</p>
           </div>
-          <button onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5 hover:text-ink">✕</button>
+          <button onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full text-ink/70 hover:bg-ink/5 hover:text-ink">✕</button>
         </div>
 
-        <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-ink/45">Colours</p>
+        <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-ink/65">Colours</p>
         <div className="mt-2 grid grid-cols-4 gap-2">
           {BANNER_PRESETS.map((p) => (
             <button key={p.id} onClick={() => setDraft({ ...draft, choice: { kind: "preset", id: p.id }, pendingImage: undefined })}
@@ -196,7 +196,7 @@ function Picker({ saved: savedRaw, fallback, draft, setDraft, onClose, onSaved }
           ))}
         </div>
 
-        <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink/45">Club photos</p>
+        <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink/65">Club photos</p>
         <div className="mt-2 grid grid-cols-4 gap-2">
           {BANNER_PHOTOS.map((p) => (
             <button key={p.id} onClick={() => setDraft({ ...draft, choice: { kind: "photo", id: p.id, pos: p.pos }, pendingImage: undefined })}
@@ -207,7 +207,7 @@ function Picker({ saved: savedRaw, fallback, draft, setDraft, onClose, onSaved }
           ))}
         </div>
 
-        <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink/45">Your own photo</p>
+        <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink/65">Your own photo</p>
         <div className="mt-2 flex items-center gap-2">
           {hasUpload && (
             <button onClick={() => setDraft({ ...draft, choice: { kind: "upload", path: "pending", pos: c.kind === "upload" ? c.pos : saved.choice.kind === "upload" ? saved.choice.pos : 50 } })}
@@ -224,18 +224,18 @@ function Picker({ saved: savedRaw, fallback, draft, setDraft, onClose, onSaved }
 
         {(c.kind === "photo" || c.kind === "upload") && (
           <label className="mt-4 block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink/45">Photo position</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-ink/65">Photo position</span>
             <input type="range" min={0} max={100} value={c.pos} aria-label="Photo position (top to bottom)"
               onChange={(e) => setDraft({ ...draft, choice: { ...c, pos: Number(e.target.value) } })}
               className="mt-2 w-full accent-[#E2A02F]" />
-            <span className="flex justify-between text-[10.5px] text-ink/40"><span>Top</span><span>Bottom</span></span>
+            <span className="flex justify-between text-[10.5px] text-ink/65"><span>Top</span><span>Bottom</span></span>
           </label>
         )}
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
         <div className="mt-5 flex items-center justify-between gap-2">
-          <button onClick={reset} disabled={busy} title="Pine in light mode, Midnight in dark mode" className="text-sm text-ink/55 hover:text-ink disabled:opacity-50">Reset to default</button>
+          <button onClick={reset} disabled={busy} title="Pine in light mode, Midnight in dark mode" className="text-sm text-ink/70 hover:text-ink disabled:opacity-50">Reset to default</button>
           <div className="flex gap-2">
             <button onClick={onClose} disabled={busy} className="rounded-full px-4 py-2 text-sm font-semibold text-ink/65 hover:text-ink">Cancel</button>
             <button onClick={save} disabled={busy || (same(draft.choice, saved.choice) && !draft.pendingImage && (c.kind === "preset" || (saved.choice.kind !== "preset" && c.pos === (saved.choice as { pos: number }).pos)))}

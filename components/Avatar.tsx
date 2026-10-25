@@ -33,8 +33,9 @@ export default function Avatar({
   return (
     <span
       style={dim}
+      role="img"
       aria-label={name ? `${name} (no profile photo)` : "No profile photo"}
-      className={`grid shrink-0 place-items-center rounded-full bg-ink/10 text-ink/40 ring-1 ring-black/5 ${className}`}
+      className={`grid shrink-0 place-items-center rounded-full bg-ink/10 text-ink/65 ring-1 ring-black/5 ${className}`}
     >
       <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: size * 0.62, height: size * 0.62 }}>
         <path d="M12 12.75a4.125 4.125 0 1 0 0-8.25 4.125 4.125 0 0 0 0 8.25Zm0 1.5c-3.32 0-7.5 1.67-7.5 4.5v.75c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-.75c0-2.83-4.18-4.5-7.5-4.5Z" />

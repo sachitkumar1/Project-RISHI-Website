@@ -37,7 +37,7 @@ const BOARDS: { kind: Kind; tab: string; blurb: string; empty: string }[] = [
 ];
 
 const inputCls = "mt-1 w-full rounded-xl border border-pine/15 bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-pine/40";
-const labelCls = "text-xs font-semibold uppercase tracking-wide text-ink/45";
+const labelCls = "text-xs font-semibold uppercase tracking-wide text-ink/65";
 const btn = "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors";
 
 const fmtDate = (iso: string | null) =>
@@ -228,23 +228,23 @@ export default function PvpPortal() {
               className={`relative rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
                 on ? "border-pine text-paper" : "border-pine/20 text-pine-deep hover:bg-pine/5"}`}>
               {on && <ActivePill id="pvp-tab" />}
-              <span className="relative">{b.tab}{n > 0 && <span className={`ml-1.5 text-xs tabular-nums ${on ? "text-paper/70" : "text-ink/40"}`}>{n}</span>}</span>
+              <span className="relative">{b.tab}{n > 0 && <span className={`ml-1.5 text-xs tabular-nums ${on ? "text-paper/70" : "text-ink/65"}`}>{n}</span>}</span>
             </button>
           );
         })}
       </div>
 
-      <p className="mt-4 text-sm text-ink/55">{board.blurb}</p>
+      <p className="mt-4 text-sm text-ink/70">{board.blurb}</p>
       {err && <p className="mt-3 rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700">{err}</p>}
 
       {/* key={tab}: a fresh, closed editor on every tab switch */}
       <NewItem key={tab} kind={tab} approvers={approvers} onCreate={(p) => act({ action: "create", kind: tab, ...p })} />
 
       <div className="mt-5 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink/40">
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink/65">
           {mine.length} {mine.length === 1 ? "item" : "items"}
         </span>
-        <label className="flex items-center gap-1.5 text-xs text-ink/55">
+        <label className="flex items-center gap-1.5 text-xs text-ink/70">
           <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
           Show finished
         </label>
@@ -263,7 +263,7 @@ export default function PvpPortal() {
           </SkeletonRegion>
         ) : null
       ) : mine.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-pine/15 bg-pine/[0.03] px-4 py-6 text-center text-sm text-ink/55">{board.empty}</p>
+        <p className="mt-6 rounded-2xl border border-pine/15 bg-pine/[0.03] px-4 py-6 text-center text-sm text-ink/70">{board.empty}</p>
       ) : tab === "meeting" ? (
         // Meetings split in two: the ones with a time on them, soonest first,
         // then the ones still to arrange. Sorting the booked ones by date is
@@ -274,11 +274,11 @@ export default function PvpPortal() {
             ["Not set up yet", mine.filter((i) => !i.scheduledAt)],
           ] as [string, Item[]][]).map(([heading, group]) => (
             <div key={heading}>
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink/40">
-                {heading}<span className="ml-1.5 tabular-nums text-ink/30">{group.length}</span>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink/65">
+                {heading}<span className="ml-1.5 tabular-nums text-ink/65">{group.length}</span>
               </h2>
               {group.length === 0 ? (
-                <p className="mt-2 text-sm text-ink/40">
+                <p className="mt-2 text-sm text-ink/65">
                   {heading === "Set up" ? "Nothing booked yet." : "Everything on the list has a time."}
                 </p>
               ) : (
@@ -344,12 +344,12 @@ function NewItem({ kind, approvers, onCreate }: {
             <input className={inputCls} value={counterpart} onChange={(e) => setCounterpart(e.target.value)} placeholder="Name, org, or a few people" /></div>
           <div className="mt-3"><label className={labelCls}>When, if it&apos;s already booked</label>
             <input type="datetime-local" className={inputCls} value={when} onChange={(e) => setWhen(e.target.value)} />
-            <p className="mt-1 text-xs text-ink/45">Leave blank and it stays under &ldquo;Not set up yet&rdquo;.</p></div>
+            <p className="mt-1 text-xs text-ink/65">Leave blank and it stays under &ldquo;Not set up yet&rdquo;.</p></div>
           <div className="mt-3"><label className={labelCls}>How long</label>
             <select className={inputCls} value={mins} onChange={(e) => setMins(Number(e.target.value))}>
               {DURATIONS.map((m) => <option key={m} value={m}>{fmtMins(m)}</option>)}
             </select>
-            {when && <p className="mt-1 text-xs text-ink/45">{fmtSpan(new Date(when).toISOString(), mins)}</p>}</div>
+            {when && <p className="mt-1 text-xs text-ink/65">{fmtSpan(new Date(when).toISOString(), mins)}</p>}</div>
         </>
       )}
 
@@ -375,7 +375,7 @@ function NewItem({ kind, approvers, onCreate }: {
                 </label>
               ))}
             </div>
-            <p className="mt-1 text-xs text-ink/45">
+            <p className="mt-1 text-xs text-ink/65">
               {owners.length === 0 ? "Nobody — it just sits on the list." : "Pick as many as you like."}
             </p></div>
           <div className="mt-3"><label className={labelCls}>By when (optional)</label>
@@ -446,7 +446,7 @@ function Card({ item, me, canApprove, approvers, nameOf, act, onDelete }: {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className={`text-sm font-semibold text-ink ${done ? "line-through" : ""}`}>{item.title}</p>
-          <p className="mt-0.5 text-xs text-ink/50">
+          <p className="mt-0.5 text-xs text-ink/70">
             {item.kind === "meeting" && (
               <>{item.counterpart || "No one named yet"}
                 {item.scheduledAt ? ` · ${fmtSpan(item.scheduledAt, item.durationMinutes)}` : " · not set up yet"}</>
@@ -472,8 +472,8 @@ function Card({ item, me, canApprove, approvers, nameOf, act, onDelete }: {
           {item.kind === "task" && !done && (
             <button onClick={() => setStatus("done")} className={`${btn} border border-pine/20 text-pine-deep hover:bg-pine/5`}>Done</button>
           )}
-          {done && <button onClick={() => setStatus(item.kind === "message" ? "draft" : "open")} className={`${btn} text-ink/45 hover:bg-pine/5`}>Reopen</button>}
-          <button onClick={() => setOpen((o) => !o)} className={`${btn} text-ink/45 hover:bg-pine/5`}>{open ? "Hide" : "Open"}</button>
+          {done && <button onClick={() => setStatus(item.kind === "message" ? "draft" : "open")} className={`${btn} text-ink/65 hover:bg-pine/5`}>Reopen</button>}
+          <button onClick={() => setOpen((o) => !o)} className={`${btn} text-ink/65 hover:bg-pine/5`}>{open ? "Hide" : "Open"}</button>
         </div>
       </div>
 
@@ -486,14 +486,14 @@ function Card({ item, me, canApprove, approvers, nameOf, act, onDelete }: {
             return (
               <span key={p.email}
                 className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
-                  ok ? "border-pine/30 bg-pine/10 text-pine-deep" : "border-ink/15 text-ink/45"}`}>
+                  ok ? "border-pine/30 bg-pine/10 text-pine-deep" : "border-ink/15 text-ink/65"}`}>
                 {ok ? "✓" : "○"} {p.name.split(" ")[0]}{isMe && " (you)"}
               </span>
             );
           })}
           {canApprove && !done && (
             <button onClick={() => void toggleApproval()} disabled={busy}
-              className={`${btn} ${approvedBy.has(me) ? "border border-pine/20 text-ink/50" : "bg-marigold text-pine-deep hover:brightness-95"}`}>
+              className={`${btn} ${approvedBy.has(me) ? "border border-pine/20 text-ink/70" : "bg-marigold text-pine-deep hover:brightness-95"}`}>
               {approvedBy.has(me) ? "Take back my approval" : "Approve"}
             </button>
           )}
@@ -523,14 +523,14 @@ function Card({ item, me, canApprove, approvers, nameOf, act, onDelete }: {
                     scheduledAt: when ? new Date(when).toISOString() : null, status: when ? "scheduled" : "to_set_up" })}
                   className={`${btn} bg-pine text-paper hover:bg-pine-deep`}>Save</button>
               </div>
-              {when && <p className="mt-1.5 text-xs text-ink/50">{fmtSpan(new Date(when).toISOString(), mins)}</p>}
+              {when && <p className="mt-1.5 text-xs text-ink/70">{fmtSpan(new Date(when).toISOString(), mins)}</p>}
             </>
           )}
 
           {/* Whose calendar actually has it. Worth stating plainly: anyone who
               hasn't connected Google Calendar silently gets nothing. */}
           {item.kind === "meeting" && item.scheduledAt && (
-            <p className="mt-3 text-xs text-ink/50">
+            <p className="mt-3 text-xs text-ink/70">
               {item.calendarPushed.length
                 ? `On the calendar of ${item.calendarPushed.map(nameOf).join(", ")}.`
                 : "Not on anyone's Google Calendar yet — nobody in PVP has connected one."}
@@ -539,12 +539,12 @@ function Card({ item, me, canApprove, approvers, nameOf, act, onDelete }: {
 
           <div className="mt-4">
             <p className={labelCls}>Notes</p>
-            {item.notes.length === 0 && <p className="mt-1 text-xs text-ink/40">Nothing yet.</p>}
+            {item.notes.length === 0 && <p className="mt-1 text-xs text-ink/65">Nothing yet.</p>}
             <div className="mt-1 space-y-2">
               {item.notes.map((n) => (
                 <div key={n.id} className="rounded-xl bg-pine/[0.04] px-3 py-2 text-sm text-ink/80">
                   <span className="text-xs font-semibold text-pine-deep">{nameOf(n.author)}</span>
-                  <span className="ml-1.5 text-xs text-ink/40">{fmtDay(n.at)}</span>
+                  <span className="ml-1.5 text-xs text-ink/65">{fmtDay(n.at)}</span>
                   <p className="mt-0.5 whitespace-pre-wrap">{n.body}</p>
                 </div>
               ))}

@@ -28,7 +28,7 @@ export default function MeetingsHome() {
             <Link key={g} href={`/dashboard/files/meetings/g/${g}`}
               className="group flex items-center justify-between rounded-3xl border border-pine/15 bg-pine/[0.03] p-7 transition-colors hover:border-pine hover:bg-pine hover:text-paper">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-marigold-deep group-hover:text-marigold-soft">Project group</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-marigold-ink group-hover:text-marigold-soft">Project group</p>
                 <h2 className="mt-1 font-display text-2xl font-semibold">{PROJECT_GROUP_LABELS[g]}</h2>
                 <p className="mt-1 text-sm opacity-70">{GROUP_BLURB[g]} meetings & notes</p>
               </div>

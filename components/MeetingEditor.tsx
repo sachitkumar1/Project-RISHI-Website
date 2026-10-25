@@ -256,7 +256,7 @@ export default function MeetingEditor({
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen, onToggleFullscreen]);
 
-  if (!editor) return <div className="rounded-2xl border border-pine/12 bg-paper p-6 text-sm text-ink/40">Loading editor...</div>;
+  if (!editor) return <div className="rounded-2xl border border-pine/12 bg-paper p-6 text-sm text-ink/65">Loading editor...</div>;
 
   const toolbar = editable && (
     <div className="flex items-center justify-between gap-2 border-b border-pine/12 bg-paper">

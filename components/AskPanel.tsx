@@ -135,7 +135,7 @@ function Trace({ ex }: { ex: Exchange }) {
   if (ex.status !== "asking") {
     const n = ex.sources?.filter((s) => s.cited).length ?? 0;
     return (
-      <p className="font-mono text-[11px] tracking-wide text-paper/40">
+      <p className="font-mono text-[11px] tracking-wide text-paper/65">
         {ex.status === "done"
           ? `${ex.sources?.length ? `${n || ex.sources.length} ${n === 1 || (!n && ex.sources.length === 1) ? "source" : "sources"}` : "no sources"} · ${secs(ex.ms ?? 0)}`
           : `stopped · ${secs(ex.ms ?? 0)}`}
@@ -161,7 +161,7 @@ function Trace({ ex }: { ex: Exchange }) {
             )}
           </span>
           <span className={i === active ? "text-paper" : "text-paper/55"}>{s.label}</span>
-          {i === active && <span className="ml-auto font-mono text-[11px] text-paper/40">{secs(elapsed)}</span>}
+          {i === active && <span className="ml-auto font-mono text-[11px] text-paper/65">{secs(elapsed)}</span>}
         </li>
       ))}
     </ol>
@@ -183,7 +183,7 @@ function SourceCard({ s, active, onRef }: { s: Source; active: boolean; onRef?: 
               <svg className="mt-0.5 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7M9 7h8v8" /></svg>
             </a>
           ) : <span className="text-sm font-medium text-paper">{s.name}</span>}
-          <p className="mt-0.5 truncate font-mono text-[10.5px] text-paper/40">
+          <p className="mt-0.5 truncate font-mono text-[10.5px] text-paper/65">
             {[s.year, s.path].filter(Boolean).join(" / ")}{s.modifiedAt ? ` · ${fmtDate(s.modifiedAt)}` : ""}
           </p>
           {excerpt && <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-paper/55">{excerpt}</p>}
@@ -304,7 +304,7 @@ function SaveChatButton({ thread, compact = false }: { thread: Exchange[]; compa
             <button key={f} role="menuitem" onClick={() => { exportChat(thread, f); setOpen(false); }}
               className="block w-full rounded-lg px-3 py-2 text-left hover:bg-paper/10">
               <span className="block text-sm text-paper">{label}</span>
-              <span className="block text-[11px] text-paper/45">{hint}</span>
+              <span className="block text-[11px] text-paper/65">{hint}</span>
             </button>
           ))}
         </div>
@@ -323,7 +323,7 @@ function UsagePanel({ status, remaining }: { status: Status | null; remaining: n
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <p className="font-mono text-[10.5px] text-paper/35">Usage today</p>
+        <p className="font-mono text-[10.5px] text-paper/65">Usage today</p>
         <p className="font-mono text-[11px] tabular-nums text-paper/70">{unlimited ? "unlimited" : `${left} / ${daily} credits`}</p>
       </div>
       {!unlimited && (
@@ -339,13 +339,13 @@ function UsagePanel({ status, remaining }: { status: Status | null; remaining: n
               <tr key={d}>
                 <td className="py-0.5 text-paper/75">{status?.depths?.[d]?.label ?? DEFAULT_LABELS[d]}</td>
                 <td className="py-0.5 text-right">{w} {w === 1 ? "credit" : "credits"}</td>
-                <td className="w-12 py-0.5 text-right text-paper/40">{unlimited ? "—" : `×${Math.floor(left / w)}`}</td>
+                <td className="w-12 py-0.5 text-right text-paper/65">{unlimited ? "—" : `×${Math.floor(left / w)}`}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      <p className="mt-2 text-[10.5px] leading-relaxed text-paper/35">
+      <p className="mt-2 text-[10.5px] leading-relaxed text-paper/65">
         {unlimited ? "No daily limit on this account." : `Resets at ${reset}. ×n is how many more answers of that level you can ask today.`}
       </p>
     </div>
@@ -488,9 +488,9 @@ export default function AskPanel() {
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
             </button>
             <div className="mt-2"><SaveChatButton thread={thread} /></div>
-            <p className="mt-7 font-mono text-[10.5px] text-paper/35">This session</p>
+            <p className="mt-7 font-mono text-[10.5px] text-paper/65">This session</p>
             <ol className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-              {thread.length === 0 && <li className="text-xs text-paper/30">Nothing asked yet.</li>}
+              {thread.length === 0 && <li className="text-xs text-paper/65">Nothing asked yet.</li>}
               {thread.map((t) => (
                 <li key={t.id}>
                   <button onClick={() => { exRefs.current.get(t.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); if (t.status === "done") setSelected(t.id); }}
@@ -503,13 +503,13 @@ export default function AskPanel() {
             <div className="mt-4 border-t border-paper/10 pt-4">
               <UsagePanel status={status} remaining={remaining} />
             </div>
-            <div className="mt-4 space-y-2 border-t border-paper/10 pt-4 font-mono text-[10.5px] leading-relaxed text-paper/45">
+            <div className="mt-4 space-y-2 border-t border-paper/10 pt-4 font-mono text-[10.5px] leading-relaxed text-paper/65">
               <p className="flex items-center gap-2">
                 <span className={`h-1.5 w-1.5 rounded-full ${status?.enabled ? "bg-marigold shadow-[0_0_8px_#E2A02F]" : "bg-paper/30"}`} />
                 {status == null ? "connecting…" : status.enabled ? "archive online" : "offline"}
               </p>
               <p>{statusLine}</p>
-              <p className="text-paper/30">answers use only files you can open</p>
+              <p className="text-paper/65">answers use only files you can open</p>
             </div>
           </div>
         </aside>
@@ -523,7 +523,7 @@ export default function AskPanel() {
               </span>
               <div>
                 <h1 className="font-display text-2xl font-semibold leading-none">RISHI AI</h1>
-                <p className="mt-1 font-mono text-[10.5px] text-paper/40 xl:hidden">{status?.enabled ? statusLine : "offline"}</p>
+                <p className="mt-1 font-mono text-[10.5px] text-paper/65 xl:hidden">{status?.enabled ? statusLine : "offline"}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 xl:hidden">
@@ -613,7 +613,7 @@ export default function AskPanel() {
                       {/* Below the desktop breakpoint, sources sit under the answer. */}
                       {t.sources && t.sources.length > 0 && (
                         <div className="mt-6 xl:hidden">
-                          <p className="mb-2 font-mono text-[10.5px] text-paper/40">Sources</p>
+                          <p className="mb-2 font-mono text-[10.5px] text-paper/65">Sources</p>
                           <ul className="space-y-2">
                             {t.sources.filter((s) => s.cited || !t.sources!.some((x) => x.cited)).map((s) => (
                               <div key={s.n} id={`src-${t.id}-${s.n}`}><SourceCard s={s} active={inspected?.id === t.id && activeN === s.n} /></div>
@@ -621,7 +621,7 @@ export default function AskPanel() {
                           </ul>
                         </div>
                       )}
-                      <p className="mt-4 font-mono text-[10.5px] text-paper/30">
+                      <p className="mt-4 font-mono text-[10.5px] text-paper/65">
                         {t.model ? `${t.model} · ` : ""}check the sources for anything important
                       </p>
                     </div>
@@ -641,9 +641,9 @@ export default function AskPanel() {
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submit(); } }}
                   rows={1} maxLength={1000} aria-label="Your question"
                   placeholder={thread.length ? "Ask a follow-up…" : "Ask about projects, partners, surveys, meetings…"}
-                  className="max-h-[180px] min-h-[2.75rem] flex-1 resize-none bg-transparent px-3 py-2.5 text-[15px] text-paper outline-none placeholder:text-paper/30" />
+                  className="max-h-[180px] min-h-[2.75rem] flex-1 resize-none bg-transparent px-3 py-2.5 text-[15px] text-paper outline-none placeholder:text-paper/65" />
                 <button type="submit" disabled={busy || draft.trim().length < 3 || !status?.enabled} aria-label="Ask"
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-marigold text-pine-deep transition-colors hover:bg-marigold-soft disabled:bg-paper/10 disabled:text-paper/30">
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-marigold text-pine-deep transition-colors hover:bg-marigold-soft disabled:bg-paper/10 disabled:text-paper/65">
                   {busy
                     ? <span className="h-3 w-3 animate-pulse rounded-sm bg-current" />
                     : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 19V5M5 12l7-7 7 7" /></svg>}
@@ -663,7 +663,7 @@ export default function AskPanel() {
                     );
                   })}
                 </div>
-                <span className="font-mono text-[10px] text-paper/35">
+                <span className="font-mono text-[10px] text-paper/65">
                   {remaining !== null && remaining < 999
                     ? (() => {
                         const w = status?.depths?.[depth]?.weight ?? DEFAULT_WEIGHTS[depth];
@@ -692,7 +692,7 @@ export default function AskPanel() {
         {/* ─────────── inspector ─────────── */}
         <aside className="hidden border-l border-paper/10 xl:block">
           <div className="sticky top-[var(--header-h)] h-[calc(100vh-var(--header-h))] overflow-y-auto p-5">
-            <p className="font-mono text-[10.5px] text-paper/35">Sources</p>
+            <p className="font-mono text-[10.5px] text-paper/65">Sources</p>
             {inspected?.sources?.length ? (
               <>
                 <p className="mt-1 line-clamp-2 text-xs text-paper/50">{inspected.q}</p>
@@ -702,7 +702,7 @@ export default function AskPanel() {
                 </div>
               </>
             ) : (
-              <p className="mt-3 text-xs leading-relaxed text-paper/35">
+              <p className="mt-3 text-xs leading-relaxed text-paper/65">
                 The files behind each answer appear here. Click a citation number to jump to its source.
               </p>
             )}

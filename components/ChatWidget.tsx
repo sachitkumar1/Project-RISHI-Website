@@ -250,7 +250,7 @@ export default function ChatWidget() {
               )}
               <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
                 {chats.length === 0 ? (
-                  <p className="px-3 py-8 text-center text-sm text-ink/45">No conversations yet. Start one!</p>
+                  <p className="px-3 py-8 text-center text-sm text-ink/65">No conversations yet. Start one!</p>
                 ) : chats.map((c) => {
                   const seen = lastSeenMap();
                   const unread = c.lastAt && (!seen[c.id] || c.lastAt > seen[c.id]);
@@ -262,15 +262,15 @@ export default function ChatWidget() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <p className={`truncate text-sm ${unread ? "font-bold text-ink" : "font-semibold text-ink/90"}`}>{chatTitle(c)}</p>
-                            {c.lastAt && <span className="shrink-0 text-[11px] text-ink/40">{fmtDay(c.lastAt)}</span>}
+                            {c.lastAt && <span className="shrink-0 text-[11px] text-ink/65">{fmtDay(c.lastAt)}</span>}
                           </div>
-                          <p className={`truncate text-xs ${unread ? "text-ink/80" : "text-ink/50"}`}>{c.lastMessage ?? "No messages yet"}</p>
+                          <p className={`truncate text-xs ${unread ? "text-ink/80" : "text-ink/70"}`}>{c.lastMessage ?? "No messages yet"}</p>
                         </div>
                         {unread && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-marigold" />}
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id, chatTitle(c)); }}
                         title="Delete conversation" aria-label="Delete conversation"
-                        className="shrink-0 rounded-full p-1.5 text-ink/30 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
+                        className="shrink-0 rounded-full p-1.5 text-ink/65 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
                         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
                       </button>
                     </div>
@@ -303,7 +303,7 @@ export default function ChatWidget() {
                     </button>
                   );
                 })}
-                {filteredContacts.length === 0 && <p className="px-2 py-6 text-center text-sm text-ink/45">No members found.</p>}
+                {filteredContacts.length === 0 && <p className="px-2 py-6 text-center text-sm text-ink/65">No members found.</p>}
               </div>
               <button onClick={startChat} disabled={picked.length === 0}
                 className="mt-2 rounded-xl bg-pine px-4 py-2.5 text-sm font-semibold text-paper disabled:opacity-50">
@@ -315,7 +315,7 @@ export default function ChatWidget() {
           {view === "thread" && (
             <div className="flex min-h-0 flex-1 flex-col">
               <div ref={scrollRef} className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
-                {messages.length === 0 && <p className="py-8 text-center text-sm text-ink/45">Say hello 👋</p>}
+                {messages.length === 0 && <p className="py-8 text-center text-sm text-ink/65">Say hello 👋</p>}
                 {messages.map((m, i) => {
                   const mine = m.senderEmail.toLowerCase() === me.toLowerCase();
                   const prev = messages[i - 1];
@@ -325,7 +325,7 @@ export default function ChatWidget() {
                   const reacts = groupReactions(m);
                   return (
                     <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-                      {showSender && isGroup && <span className="mb-0.5 ml-1 text-[11px] font-medium text-ink/50">{nameOf(m.senderEmail)}</span>}
+                      {showSender && isGroup && <span className="mb-0.5 ml-1 text-[11px] font-medium text-ink/70">{nameOf(m.senderEmail)}</span>}
                       <div className="group relative max-w-[80%]">
                         <div
                           onClick={() => setReactingTo(reactingTo === m.id ? null : m.id)}
@@ -342,14 +342,14 @@ export default function ChatWidget() {
                           </div>
                         )}
                         <div className={`mt-0.5 flex items-center gap-1 ${mine ? "justify-end" : "justify-start"}`}>
-                          <span className="text-[10px] text-ink/35">{fmtTime(m.createdAt)}</span>
+                          <span className="text-[10px] text-ink/65">{fmtTime(m.createdAt)}</span>
                         </div>
                         {reacts.length > 0 && (
                           <div className={`-mt-0.5 flex flex-wrap gap-1 ${mine ? "justify-end" : "justify-start"}`}>
                             {reacts.map(([emoji, info]) => (
                               <button key={emoji} onClick={() => react(m.id, emoji)}
                                 className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[11px] ${info.mine ? "border-pine bg-pine/10" : "border-pine/15 bg-paper"}`}>
-                                <span>{emoji}</span><span className="text-ink/60">{info.n}</span>
+                                <span>{emoji}</span><span className="text-ink/75">{info.n}</span>
                               </button>
                             ))}
                           </div>

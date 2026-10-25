@@ -22,7 +22,7 @@ function Select({ label, value, onChange, options }: {
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 rounded-full border border-pine/20 bg-paper py-1 pl-3 pr-1 text-sm">
-      <span className="text-xs font-semibold text-ink/45">{label}:</span>
+      <span className="text-xs font-semibold text-ink/65">{label}:</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -172,7 +172,7 @@ export default function DirectoryPage() {
             <div className="mt-4 overflow-x-auto rounded-2xl border border-pine/12">
               <table className="w-full min-w-[860px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-pine/12 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/50">
+                  <tr className="border-b border-pine/12 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/70">
                     {["Name", "Role", "Project Group", "Year", "Email", "Phone"].map((h) => (
                       <th key={h} className="px-4 py-3 font-semibold">{h}</th>
                     ))}
@@ -227,12 +227,12 @@ export default function DirectoryPage() {
               )}
             </div>
 
-            <p className="mt-3 text-xs text-ink/45">{filtered.length} of {entries.length} members</p>
+            <p className="mt-3 text-xs text-ink/65">{filtered.length} of {entries.length} members</p>
 
-            <div className="mt-4 overflow-x-auto rounded-2xl border border-pine/12">
+            <div className="mt-4 overflow-x-auto rounded-2xl border border-pine/12" tabIndex={0} role="region" aria-label="Member directory table">
               <table className="w-full min-w-[860px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-pine/12 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/50">
+                  <tr className="border-b border-pine/12 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/70">
                     <th className="px-4 py-3 font-semibold">Name</th>
                     <th className="px-4 py-3 font-semibold">Role</th>
                     <th className="px-4 py-3 font-semibold">Project Group</th>
@@ -252,12 +252,12 @@ export default function DirectoryPage() {
                         </td>
                         <td className="px-4 py-3 text-ink/70">{e.role}</td>
                         <td className="px-4 py-3 text-ink/70">{e.group}</td>
-                        <td className="px-4 py-3 text-ink/70">{e.year || <span className="text-ink/30">&mdash;</span>}</td>
+                        <td className="px-4 py-3 text-ink/70">{e.year || <span className="text-ink/65">&mdash;</span>}</td>
                         <td className="px-4 py-3">
                           <a href={`mailto:${e.email}`} className="text-pine hover:underline">{e.email}</a>
                         </td>
                         <td className="px-4 py-3 text-ink/70">
-                          {e.phone ? <a href={`tel:${e.phone}`} className="hover:underline">{e.phone}</a> : <span className="text-ink/30">—</span>}
+                          {e.phone ? <a href={`tel:${e.phone}`} className="hover:underline">{e.phone}</a> : <span className="text-ink/65">—</span>}
                         </td>
                         {canEditAll && (
                           <td className="px-4 py-3 text-right">
@@ -269,7 +269,7 @@ export default function DirectoryPage() {
                     );
                   })}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={canEditAll ? 7 : 6} className="px-4 py-8 text-center text-ink/45">No members match your filters.</td></tr>
+                    <tr><td colSpan={canEditAll ? 7 : 6} className="px-4 py-8 text-center text-ink/65">No members match your filters.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -285,7 +285,7 @@ export default function DirectoryPage() {
           <div className="w-full max-w-md rounded-3xl bg-paper p-6 shadow-xl" onClick={(ev) => ev.stopPropagation()}>
             <div className="mb-3 flex items-start justify-between">
               <h2 className="font-display text-xl font-semibold text-pine-deep">Request a contact info change</h2>
-              <button onClick={() => setRequesting(false)} className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+              <button onClick={() => setRequesting(false)} className="grid h-8 w-8 place-items-center rounded-full text-ink/70 hover:bg-ink/5" aria-label="Close">✕</button>
             </div>
             <ContactRequestForm current={{ email: mine.email, phone: mine.phone }} onDone={() => setRequesting(false)} />
           </div>
@@ -298,21 +298,21 @@ export default function DirectoryPage() {
           <div className="w-full max-w-md rounded-3xl bg-paper p-6 shadow-xl" onClick={(ev) => ev.stopPropagation()}>
             <div className="flex items-start justify-between">
               <h2 className="font-display text-xl font-semibold text-pine-deep">{editTarget.loginEmail === me ? "Your contact info" : `${editTarget.name}'s contact info`}</h2>
-              <button onClick={() => setEditing(false)} className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+              <button onClick={() => setEditing(false)} className="grid h-8 w-8 place-items-center rounded-full text-ink/70 hover:bg-ink/5" aria-label="Close">✕</button>
             </div>
-            <p className="mt-1 text-xs text-ink/50">This only changes how you appear in this directory. It does not change the email you log in with.</p>
+            <p className="mt-1 text-xs text-ink/70">This only changes how you appear in this directory. It does not change the email you log in with.</p>
 
             <label className="mt-4 block">
-              <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Email</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Email</span>
               <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="you@example.com"
                 className="mt-1.5 w-full rounded-xl border border-pine/20 px-4 py-2.5 text-sm outline-none focus:border-pine" />
             </label>
             <label className="mt-3 block">
-              <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Phone</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Phone</span>
               <input value={editPhone} onChange={(e) => setEditPhone(formatPhoneInput(e.target.value))} placeholder="(555) 123-4567"
                 className="mt-1.5 w-full rounded-xl border border-pine/20 px-4 py-2.5 text-sm outline-none focus:border-pine" />
             </label>
-            <p className="mt-2 text-[11px] text-ink/40">Leave a field blank to reset it to your default from the club roster.</p>
+            <p className="mt-2 text-[11px] text-ink/65">Leave a field blank to reset it to your default from the club roster.</p>
 
             {saveErr && <p className="mt-2 text-xs text-red-600">{saveErr}</p>}
 

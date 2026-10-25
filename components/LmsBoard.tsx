@@ -772,7 +772,7 @@ export default function LmsBoard() {
             onOpenTask={(id) => setDetailTaskId(id)} onOpenEvent={(id) => setDetailEventId(id)} />
         )}
       </div>}
-      {overviewOn && !overview && <p className="mt-3 text-sm text-ink/50">Loading the full club view…</p>}
+      {overviewOn && !overview && <p className="mt-3 text-sm text-ink/70">Loading the full club view…</p>}
 
       {!overviewOn && (<>
       <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -789,14 +789,14 @@ export default function LmsBoard() {
           <button onClick={connectGoogleCalendar} className="btn-accent text-sm">Connect Google Calendar</button>
         )}
       </div>
-      {syncMsg && <p className="mt-2 text-sm text-ink/60">{syncMsg}</p>}
+      {syncMsg && <p className="mt-2 text-sm text-ink/75">{syncMsg}</p>}
 
       <div className="mt-10 space-y-10">
         {pendingOrdered.length > 0 && (
           <section data-tour="pending-approval">
             <div className="flex flex-wrap items-baseline gap-3">
               <h3 className="font-display text-xl font-semibold text-pine-deep">Pending Your Approval</h3>
-              <span className="rounded-full bg-marigold-soft px-2.5 py-0.5 text-xs font-semibold text-marigold-deep">
+              <span className="rounded-full bg-marigold-soft px-2.5 py-0.5 text-xs font-semibold text-marigold-ink">
                 {pendingOrdered.length} {pendingOrdered.length === 1 ? "task" : "tasks"}
               </span>
             </div>
@@ -875,7 +875,7 @@ export default function LmsBoard() {
         {coLeadGroups.length > 0 && (
           <section>
             <h3 className="font-display text-xl font-semibold text-pine-deep">Assigned by my co-leads</h3>
-            <p className="mt-1 text-xs text-ink/50">
+            <p className="mt-1 text-xs text-ink/70">
               Tasks assigned by the other lead(s) of your project group or your co-NMT leaders. You have full control over these.
             </p>
             <div className={CARD_GRID}>
@@ -947,7 +947,7 @@ export default function LmsBoard() {
       {historyOpen && (
         <FullScreenModal title="History" onClose={() => { setHistoryOpen(false); setHistoryOverview(false); }}>
           <div data-tour="history-panel" className="mb-6 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-ink/55">
+            <p className="text-sm text-ink/70">
               Everything finished or archived. The dashboard itself only shows active work.
             </p>
             <div className="flex flex-wrap items-center gap-2">
@@ -980,7 +980,7 @@ export default function LmsBoard() {
                     onOpenEvent={(id) => { setDetailEventId(id); setHistoryOpen(false); }} />
                 </div>
               </>
-            ) : <p className="text-sm text-ink/50">Loading the full club view…</p>
+            ) : <p className="text-sm text-ink/70">Loading the full club view…</p>
           ) : (
             <div className="space-y-10">
               {historyCalendar && (
@@ -1035,11 +1035,11 @@ export default function LmsBoard() {
                     <div className="flex items-center justify-between gap-2">
                       <button onClick={() => setDetailEventId(e.id)}
                         className="text-left font-medium text-ink hover:underline">{e.title}</button>
-                      <span className="shrink-0 text-xs text-ink/50">
+                      <span className="shrink-0 text-xs text-ink/70">
                         {e.archived ? "Archived · " : ""}{e.allDay ? fmtDateOnly(e.startAt) : fmtDateTime(e.startAt)}
                       </span>
                     </div>
-                    {e.description && <p className="mt-1 text-xs text-ink/60">{e.description}</p>}
+                    {e.description && <p className="mt-1 text-xs text-ink/75">{e.description}</p>}
                     {e.canManage && e.archived && (
                       <button onClick={() => archiveEvent(e.id, false)}
                         className="mt-2 rounded-full border border-pine/20 px-3 py-1 text-xs font-medium text-pine-deep hover:bg-pine/5">Unarchive</button>
@@ -1054,14 +1054,14 @@ export default function LmsBoard() {
 
       {overviewGroupKey && overviewGroupRows.length > 0 && (
         <Modal title={overviewGroupRows[0].title} onClose={() => setOverviewGroupKey(null)}>
-          <p className="text-sm text-ink/55">Assigned to {overviewGroupRows.length} {overviewGroupRows.length === 1 ? "person" : "people"} · {overviewGroupRows[0].dueAt ? `due ${fmtDateTime(overviewGroupRows[0].dueAt)}` : "no due date"}</p>
+          <p className="text-sm text-ink/70">Assigned to {overviewGroupRows.length} {overviewGroupRows.length === 1 ? "person" : "people"} · {overviewGroupRows[0].dueAt ? `due ${fmtDateTime(overviewGroupRows[0].dueAt)}` : "no due date"}</p>
           {overviewGroupRows[0].description && <p className="mt-3 whitespace-pre-wrap text-sm text-ink/75">{overviewGroupRows[0].description}</p>}
           <div className="mt-4 space-y-2">
             {overviewGroupRows.map((r) => (
               <button key={r.id} onClick={() => { setDetailTaskId(r.id); setOverviewGroupKey(null); }}
                 className="flex w-full items-center justify-between gap-3 rounded-xl border border-pine/12 px-4 py-2.5 text-left hover:border-pine/40">
                 <span className="font-medium text-ink">{nameOf(r.assigneeEmail)}</span>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.status === "complete" ? "bg-pine/15 text-pine-deep" : r.status === "pending" ? "bg-marigold-soft/50 text-marigold-deep" : "bg-ink/8 text-ink/60"}`}>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.status === "complete" ? "bg-pine/15 text-pine-deep" : r.status === "pending" ? "bg-marigold-soft/50 text-marigold-ink" : "bg-ink/8 text-ink/75"}`}>
                   {r.status === "complete" ? "Complete" : r.status === "pending" ? "Pending approval" : "Not complete"}
                 </span>
               </button>
@@ -1072,8 +1072,8 @@ export default function LmsBoard() {
 
       {openGroupKey && openGroupRows.length > 0 && (
         <Modal title={openGroupRows[0].title} onClose={() => setOpenGroupKey(null)}>
-          <p className="text-sm text-ink/60">{openGroupRows[0].description || "Assigned to multiple people."}</p>
-          <p className="mt-1 text-xs text-ink/45">{openGroupRows[0].dueAt ? `Due ${fmtDateTime(openGroupRows[0].dueAt)}` : "No due date"}</p>
+          <p className="text-sm text-ink/75">{openGroupRows[0].description || "Assigned to multiple people."}</p>
+          <p className="mt-1 text-xs text-ink/65">{openGroupRows[0].dueAt ? `Due ${fmtDateTime(openGroupRows[0].dueAt)}` : "No due date"}</p>
           <div className="mt-4 space-y-2">
             {openGroupRows.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2 rounded-xl border border-pine/12 p-3">
@@ -1081,7 +1081,7 @@ export default function LmsBoard() {
                   <Avatar src={avatarOf(r.assigneeEmail)} name={nameOf(r.assigneeEmail)} size={28} />
                   <div>
                     <p className="text-sm font-medium text-ink">{nameOf(r.assigneeEmail)}</p>
-                    <p className="text-xs text-ink/45">
+                    <p className="text-xs text-ink/65">
                       {r.status === "complete" ? "Complete" : r.status === "pending" ? "Pending review" : "Not yet complete"}
                       {r.archived ? " · archived" : ""}
                     </p>
@@ -1096,7 +1096,7 @@ export default function LmsBoard() {
                   )}
                   {r.canManage && r.status !== "complete" && r.assigneeEmail.toLowerCase() !== myEmail.toLowerCase() && (
                     <button onClick={() => nudge(r.id, nameOf(r.assigneeEmail))} disabled={nudgeLockedIds.includes(r.id)}
-                      className="rounded-full border border-marigold/50 bg-marigold-soft/40 px-2 py-1 text-xs font-medium text-marigold-deep hover:bg-marigold-soft/70 disabled:cursor-not-allowed disabled:opacity-50">
+                      className="rounded-full border border-marigold/50 bg-marigold-soft/40 px-2 py-1 text-xs font-medium text-marigold-ink hover:bg-marigold-soft/70 disabled:cursor-not-allowed disabled:opacity-50">
                       {nudgeLockedIds.includes(r.id) ? "Nudged" : "Nudge"}
                     </button>
                   )}
@@ -1129,7 +1129,7 @@ export default function LmsBoard() {
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-2xl border border-dashed border-pine/15 bg-pine/[0.02] p-4 text-sm text-ink/45">{children}</p>;
+  return <p className="rounded-2xl border border-dashed border-pine/15 bg-pine/[0.02] p-4 text-sm text-ink/65">{children}</p>;
 }
 
 // --------------------------------------------------------------------- task row
@@ -1155,12 +1155,12 @@ export function statusChipFor(status: Task["status"], late = false) {
     return <span className="rounded-full bg-pine px-2.5 py-1 text-xs font-semibold text-paper">Complete</span>;
   if (status === "pending")
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-marigold-soft px-2.5 py-1 text-xs font-semibold text-marigold-deep">
+      <span className="inline-flex items-center gap-1 rounded-full bg-marigold-soft px-2.5 py-1 text-xs font-semibold text-marigold-ink">
         <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
         Pending
       </span>
     );
-  return <span className="rounded-full border border-ink/15 px-2.5 py-1 text-xs font-medium text-ink/55">Not yet complete</span>;
+  return <span className="rounded-full border border-ink/15 px-2.5 py-1 text-xs font-medium text-ink/70">Not yet complete</span>;
 }
 
 function TaskRow({
@@ -1186,11 +1186,11 @@ function TaskRow({
             <span key={tag} className="rounded-full bg-sage/15 px-2 py-0.5 text-[11px] font-medium text-pine-deep">#{tag}</span>
           ))}
           {task.requireSubmission && (
-            <span className="rounded-full bg-marigold-soft/60 px-2 py-0.5 text-[11px] font-medium text-marigold-deep">submission required</span>
+            <span className="rounded-full bg-marigold-soft/60 px-2 py-0.5 text-[11px] font-medium text-marigold-ink">submission required</span>
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span className="flex items-center gap-1.5 text-ink/50">
+          <span className="flex items-center gap-1.5 text-ink/70">
             {task.dueAt ? `Due ${fmtDateTime(task.dueAt)}` : "No due date"}
             {role === "assigner" && assigneeName ? (
               <span className="inline-flex items-center gap-1.5">
@@ -1199,10 +1199,10 @@ function TaskRow({
                 {assigneeName}
               </span>
             ) : ""}
-            {byline ? <span className="text-ink/40">· {byline}</span> : ""}
+            {byline ? <span className="text-ink/65">· {byline}</span> : ""}
           </span>
           {task.submittedAt && (
-            <span className={overdue ? "font-semibold text-red-600" : "text-ink/50"}>
+            <span className={overdue ? "font-semibold text-red-600" : "text-ink/70"}>
               Submitted {fmtDateTime(task.submittedAt)}{overdue ? " (late)" : ""}
             </span>
           )}
@@ -1244,10 +1244,10 @@ export function PendingApprovalCard({
         <span className="shrink-0">{statusChipFor("pending")}</span>
       </div>
       {t.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70 [overflow-wrap:anywhere]">{t.description}</p>}
-      <p className="mt-2 text-xs text-ink/50">
+      <p className="mt-2 text-xs text-ink/70">
         {t.dueAt && hasRealDueDate(t.tags) ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}
         {groupSize > 1 ? ` · ${rows.length} of ${groupSize} people waiting` : ""}
-        {byline ? <span className="text-ink/40"> · {byline}</span> : null}
+        {byline ? <span className="text-ink/65"> · {byline}</span> : null}
       </p>
       <div className="mt-3 space-y-2">
         {rows.map((r) => {
@@ -1259,7 +1259,7 @@ export function PendingApprovalCard({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-ink">{nameOf(r.assigneeEmail)}</p>
                   {r.submittedAt && (
-                    <p className={`text-[11px] ${late ? "font-semibold text-red-600" : "text-ink/50"}`}>
+                    <p className={`text-[11px] ${late ? "font-semibold text-red-600" : "text-ink/70"}`}>
                       Submitted {fmtDateTime(r.submittedAt)}{late ? " (late)" : ""}
                     </p>
                   )}
@@ -1307,7 +1307,7 @@ function EventRow({ event, onOpen }: { event: ClubEvent; onOpen: () => void }) {
         </span>
       </div>
       {event.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70 [overflow-wrap:anywhere]">{event.description}</p>}
-      <p className="mt-2 text-xs text-ink/45">
+      <p className="mt-2 text-xs text-ink/65">
         {event.scopeKind === "club" && "Whole club"}
         {event.scopeKind === "all_newbies" && "All newbies"}
         {event.scopeKind === "group" && `Groups: ${event.scopeGroups.map((g) => GROUP_LABEL[g]).join(", ")}`}
@@ -1328,13 +1328,13 @@ function GroupCard({ group, byline, onOpen, onArchive }: { group: TaskGroup; byl
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="rounded-full bg-sage/15 px-2.5 py-1 text-xs font-semibold tabular-nums text-pine-deep">{done}/{total} complete</span>
           {group.rows.some((r) => r.canManage) && (
-            <button onClick={onArchive} title="Archive for everyone" className="grid h-6 w-6 place-items-center rounded-full text-ink/40 hover:bg-pine/5 hover:text-pine-deep">🗄</button>
+            <button onClick={onArchive} title="Archive for everyone" className="grid h-6 w-6 place-items-center rounded-full text-ink/65 hover:bg-pine/5 hover:text-pine-deep">🗄</button>
           )}
         </div>
       </div>
       {t.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink/70 [overflow-wrap:anywhere]">{t.description}</p>}
       <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs">
-        <span className="text-ink/50">{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"} · {total} people{byline ? ` · ${byline}` : ""}</span>
+        <span className="text-ink/70">{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"} · {total} people{byline ? ` · ${byline}` : ""}</span>
         <button onClick={onOpen} className="rounded-full border border-pine/20 px-3 py-1 font-medium text-pine-deep hover:bg-pine/5">View / manage</button>
       </div>
     </div>
@@ -1428,19 +1428,19 @@ export function TaskDetail({
         <div className="flex flex-wrap items-center gap-2">
           {statusChipFor(task.status, wasLate(task))}
           {task.requireSubmission && (
-            <span className="rounded-full bg-marigold-soft/60 px-2.5 py-1 text-xs font-medium text-marigold-deep">submission required</span>
+            <span className="rounded-full bg-marigold-soft/60 px-2.5 py-1 text-xs font-medium text-marigold-ink">submission required</span>
           )}
-          {task.archived && <span className="rounded-full bg-ink/10 px-2.5 py-1 text-xs font-medium text-ink/60">archived</span>}
+          {task.archived && <span className="rounded-full bg-ink/10 px-2.5 py-1 text-xs font-medium text-ink/75">archived</span>}
         </div>
 
         {task.description && <p className="whitespace-pre-line text-sm text-ink/75">{task.description}</p>}
 
-        <div className="grid grid-cols-2 gap-3 text-xs text-ink/55">
+        <div className="grid grid-cols-2 gap-3 text-xs text-ink/70">
           <div><span className="font-semibold text-ink/70">Due</span><br />{hasRealDueDate(task.tags) && task.dueAt ? fmtDateTime(task.dueAt) : "Not set"}</div>
           {task.submittedAt && (
             <div>
               <span className="font-semibold text-ink/70">Submitted</span><br />
-              <span className={wasLate(task) ? "font-semibold text-marigold-deep" : ""}>
+              <span className={wasLate(task) ? "font-semibold text-marigold-ink" : ""}>
                 {fmtDateTime(task.submittedAt)}{wasLate(task) ? " · late" : ""}
               </span>
             </div>
@@ -1463,8 +1463,8 @@ export function TaskDetail({
                     </span>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                       p.status === "complete" ? "bg-pine/15 text-pine-deep"
-                      : p.status === "pending" ? "bg-marigold-soft/50 text-marigold-deep"
-                      : "bg-ink/8 text-ink/60"}`}>
+                      : p.status === "pending" ? "bg-marigold-soft/50 text-marigold-ink"
+                      : "bg-ink/8 text-ink/75"}`}>
                       {p.status === "complete" ? "Complete" : p.status === "pending" ? "Pending approval" : "Not complete"}
                     </span>
                   </li>
@@ -1502,7 +1502,7 @@ export function TaskDetail({
                       {myFiles.map((f) => (
                         <li key={f.id} className="flex items-center gap-2 text-xs">
                           <span className="min-w-0 flex-1 truncate text-ink/75">{f.name}</span>
-                          <button onClick={() => void detach(f.id)} className="shrink-0 text-ink/45 hover:text-ink">
+                          <button onClick={() => void detach(f.id)} className="shrink-0 text-ink/65 hover:text-ink">
                             Remove
                           </button>
                         </li>
@@ -1515,7 +1515,7 @@ export function TaskDetail({
                     className="mt-2 rounded-full border border-pine/20 px-3 py-1.5 text-xs font-semibold text-pine hover:bg-pine/5 disabled:opacity-60">
                     {uploading ? "Uploading…" : myFiles.length > 0 ? "Add another file" : "Choose a file"}
                   </button>
-                  {fileErr && <p className="mt-2 text-xs text-marigold-deep">{fileErr}</p>}
+                  {fileErr && <p className="mt-2 text-xs text-marigold-ink">{fileErr}</p>}
                 </div>
 
                 <button disabled={busy || (task.requiresFile && myFiles.length === 0)}
@@ -1524,9 +1524,9 @@ export function TaskDetail({
                   {busy ? "Saving…" : "Mark complete"}
                 </button>
                 {task.requiresFile && myFiles.length === 0 && (
-                  <p className="text-xs text-ink/45">Attach a file to enable this.</p>
+                  <p className="text-xs text-ink/65">Attach a file to enable this.</p>
                 )}
-                <p className="text-xs text-ink/45">
+                <p className="text-xs text-ink/65">
                   {meLead
                     ? "As a lead, this completes the task immediately."
                     : "This sends it to your assigner (and their co-leads) for approval."}
@@ -1538,7 +1538,7 @@ export function TaskDetail({
                 {task.submissionLink && (
                   <a href={task.submissionLink} target="_blank" rel="noreferrer" className="break-all text-pine underline">{task.submissionLink}</a>
                 )}
-                {!task.submissionText && !task.submissionLink && files.length === 0 && <p className="text-ink/40">Nothing submitted yet.</p>}
+                {!task.submissionText && !task.submissionLink && files.length === 0 && <p className="text-ink/65">Nothing submitted yet.</p>}
                 {files.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {files.map((f) => (
@@ -1553,7 +1553,7 @@ export function TaskDetail({
                         >
                           {f.name}
                         </button>
-                        <span className="shrink-0 text-xs text-ink/45">{nameOf(f.uploadedBy ?? "")}</span>
+                        <span className="shrink-0 text-xs text-ink/65">{nameOf(f.uploadedBy ?? "")}</span>
                       </li>
                     ))}
                   </ul>
@@ -1565,7 +1565,7 @@ export function TaskDetail({
 
         {/* Doer's own task is pending approval */}
         {canDoerMark && task.status === "pending" && (
-          <div className="rounded-2xl border border-marigold/40 bg-marigold-soft/20 p-4 text-sm text-marigold-deep">
+          <div className="rounded-2xl border border-marigold/40 bg-marigold-soft/20 p-4 text-sm text-marigold-ink">
             You marked this complete — it's awaiting your assigner's approval.
             <button disabled={busy} onClick={() => run("unmark")} className="ml-2 font-semibold underline">Undo</button>
           </div>
@@ -1595,7 +1595,7 @@ export function TaskDetail({
           )}
           {canManage && !isAssignee && task.status !== "complete" && (
             <button disabled={nudgeLocked} onClick={onNudge}
-              className="rounded-full border border-marigold/50 bg-marigold-soft/40 px-4 py-2 text-xs font-semibold text-marigold-deep hover:bg-marigold-soft/70 disabled:cursor-not-allowed disabled:opacity-50">
+              className="rounded-full border border-marigold/50 bg-marigold-soft/40 px-4 py-2 text-xs font-semibold text-marigold-ink hover:bg-marigold-soft/70 disabled:cursor-not-allowed disabled:opacity-50">
               {nudgeLocked ? "Nudged" : "Nudge"}
             </button>
           )}
@@ -1614,14 +1614,14 @@ export function TaskDetail({
         <div>
           <p className="text-sm font-semibold text-ink">Activity history</p>
           <ol className="mt-2 space-y-2">
-            {task.history.length === 0 && <li className="text-xs text-ink/40">No activity yet.</li>}
+            {task.history.length === 0 && <li className="text-xs text-ink/65">No activity yet.</li>}
             {task.history.map((h) => (
-              <li key={h.id} className="flex gap-2 text-xs text-ink/60">
+              <li key={h.id} className="flex gap-2 text-xs text-ink/75">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-pine/40" />
                 <span>
                   <span className="font-medium text-ink/80">{HISTORY_LABEL[h.action]}</span>
                   {" "}by {nameOf(h.actorEmail)} · {fmtDateTime(h.at)}
-                  {h.note && <span className="mt-0.5 block text-ink/55">“{h.note}”</span>}
+                  {h.note && <span className="mt-0.5 block text-ink/70">“{h.note}”</span>}
                 </span>
               </li>
             ))}
@@ -1632,16 +1632,16 @@ export function TaskDetail({
         <div>
           <p className="text-sm font-semibold text-ink">Comments</p>
           <div className="mt-2 space-y-3">
-            {topComments.length === 0 && <p className="text-xs text-ink/40">No comments yet.</p>}
+            {topComments.length === 0 && <p className="text-xs text-ink/65">No comments yet.</p>}
             {topComments.map((c) => (
               <div key={c.id} className="rounded-xl border border-pine/10 p-3">
-                <p className="text-xs font-semibold text-ink/80">{nameOf(c.authorEmail)} <span className="font-normal text-ink/40">· {fmtDateTime(c.at)}</span></p>
+                <p className="text-xs font-semibold text-ink/80">{nameOf(c.authorEmail)} <span className="font-normal text-ink/65">· {fmtDateTime(c.at)}</span></p>
                 <p className="mt-1 whitespace-pre-wrap text-sm text-ink/75">{c.body}</p>
                 {canComment && <button onClick={() => setReplyTo(replyTo === c.id ? null : c.id)} className="mt-1 text-[11px] font-medium text-pine-deep hover:underline">Reply</button>}
                 <div className="mt-2 space-y-2 border-l border-pine/10 pl-3">
                   {repliesOf(c.id).map((r) => (
                     <div key={r.id}>
-                      <p className="text-xs font-semibold text-ink/80">{nameOf(r.authorEmail)} <span className="font-normal text-ink/40">· {fmtDateTime(r.at)}</span></p>
+                      <p className="text-xs font-semibold text-ink/80">{nameOf(r.authorEmail)} <span className="font-normal text-ink/65">· {fmtDateTime(r.at)}</span></p>
                       <p className="mt-0.5 whitespace-pre-wrap text-sm text-ink/75">{r.body}</p>
                     </div>
                   ))}
@@ -1665,7 +1665,7 @@ export function TaskDetail({
               </div>
             )
           ) : (
-            <p className="mt-3 text-xs text-ink/40">Only the people involved in this task can comment.</p>
+            <p className="mt-3 text-xs text-ink/65">Only the people involved in this task can comment.</p>
           )}
         </div>
       </div>
@@ -1688,7 +1688,7 @@ function EventDetail({
       <div className="space-y-4">
         <p className="inline-block rounded-full bg-sage/15 px-3 py-1 text-sm font-medium text-pine-deep">{when}</p>
         {event.description && <p className="text-sm text-ink/75">{event.description}</p>}
-        <div className="grid grid-cols-2 gap-3 text-xs text-ink/55">
+        <div className="grid grid-cols-2 gap-3 text-xs text-ink/70">
           <div><span className="font-semibold text-ink/70">Created by</span><br />{nameOf(event.creatorEmail)}</div>
           <div><span className="font-semibold text-ink/70">Audience</span><br />
             {event.scopeKind === "club" && "Whole club"}
@@ -1798,7 +1798,7 @@ function CalendarView({ title, items, period, legend }: {
               <div key={d.toISOString()} onClick={() => setOpenDay(d)} role="button" tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter") setOpenDay(d); }} title="Open this day"
                 className={`min-h-[8rem] cursor-pointer rounded-xl border p-2 transition-colors hover:border-pine/40 ${isToday ? "border-marigold bg-marigold-soft/15" : "border-pine/10 bg-pine/[0.015]"}`}>
-                <div className={`mb-1 text-[11px] font-semibold uppercase tabular-nums tracking-wide ${isToday ? "text-marigold-deep" : "text-ink/45"}`}>
+                <div className={`mb-1 text-[11px] font-semibold uppercase tabular-nums tracking-wide ${isToday ? "text-marigold-ink" : "text-ink/65"}`}>
                   {WEEKDAYS[d.getDay()]} {d.getDate()}
                 </div>
                 <div className="space-y-1">
@@ -1829,7 +1829,7 @@ function CalendarView({ title, items, period, legend }: {
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-ink/55">{legend}</div>
+      <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-ink/70">{legend}</div>
 
       {openDay && (
         <Modal title={openDay.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} onClose={() => setOpenDay(null)}>
@@ -1844,7 +1844,7 @@ function DayAgenda({ date, items, big, onNavigate }: {
   date: Date; items: CalItem[]; big?: boolean; onNavigate?: () => void;
 }) {
   if (items.length === 0)
-    return <p className={`text-ink/50 ${big ? "rounded-2xl border border-pine/10 bg-pine/[0.015] p-6 text-center text-sm" : "text-sm"}`}>Nothing scheduled for this day.</p>;
+    return <p className={`text-ink/70 ${big ? "rounded-2xl border border-pine/10 bg-pine/[0.015] p-6 text-center text-sm" : "text-sm"}`}>Nothing scheduled for this day.</p>;
   const events = items.filter((i) => i.kind === "event");
   const tasks = items.filter((i) => i.kind === "task");
   const Row = (it: CalItem) => (
@@ -1853,7 +1853,7 @@ function DayAgenda({ date, items, big, onNavigate }: {
       <div className="flex items-center gap-2">
         <span className="h-2.5 w-2.5 shrink-0 rounded" style={{ backgroundColor: it.color.dot ?? it.color.bg }} />
         <span className="font-medium text-ink">{it.title}</span>
-        <span className="ml-auto text-xs text-ink/50">{it.kind === "event" ? (it.allDay ? "Event · all day" : `Event · ${fmtDateTime(it.at)}`) : `Task · due ${fmtDateTime(it.at)}`}</span>
+        <span className="ml-auto text-xs text-ink/70">{it.kind === "event" ? (it.allDay ? "Event · all day" : `Event · ${fmtDateTime(it.at)}`) : `Task · due ${fmtDateTime(it.at)}`}</span>
       </div>
     </button>
   );
@@ -1861,13 +1861,13 @@ function DayAgenda({ date, items, big, onNavigate }: {
     <div className="space-y-4">
       {events.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">Events</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">Events</p>
           <div className="mt-2 space-y-2">{events.map(Row)}</div>
         </div>
       )}
       {tasks.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink/40">Tasks due</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">Tasks due</p>
           <div className="mt-2 space-y-2">{tasks.map(Row)}</div>
         </div>
       )}
@@ -1888,7 +1888,7 @@ function MonthGrid({ cursor, today, itemsOn, onOpenDay }: {
   while (cells.length % 7 !== 0) cells.push(null);
   return (
     <>
-      <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wide text-ink/40">
+      <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wide text-ink/65">
         {WEEKDAYS.map((d) => <div key={d}>{d}</div>)}
       </div>
       <div className="mt-1 grid grid-cols-7 gap-1">
@@ -1899,12 +1899,12 @@ function MonthGrid({ cursor, today, itemsOn, onOpenDay }: {
           return (
             <button key={i} type="button" onClick={() => onOpenDay(date)}
               className={`aspect-square rounded-lg border p-1 text-left transition-colors hover:border-pine/40 ${isToday ? "border-marigold bg-marigold-soft/20" : "border-pine/8 bg-pine/[0.015]"}`}>
-              <div className={`text-[11px] font-semibold tabular-nums ${isToday ? "text-marigold-deep" : "text-ink/55"}`}>{date.getDate()}</div>
+              <div className={`text-[11px] font-semibold tabular-nums ${isToday ? "text-marigold-ink" : "text-ink/70"}`}>{date.getDate()}</div>
               <div className="mt-0.5 space-y-0.5">
                 {its.slice(0, 3).map((it) => (
                   <div key={it.id} className="truncate rounded px-1 text-[9px] font-medium" style={{ backgroundColor: it.color.bg, color: it.color.fg }} title={it.title}>{it.title}</div>
                 ))}
-                {its.length > 3 && <div className="text-[9px] text-ink/40">+{its.length - 3} more</div>}
+                {its.length > 3 && <div className="text-[9px] text-ink/65">+{its.length - 3} more</div>}
               </div>
             </button>
           );
@@ -1927,7 +1927,7 @@ function MiniMonth({ year, month, today, itemsOn, onDrill }: {
     <button type="button" onClick={() => onDrill(year, month)} title={`Open ${new Date(year, month, 1).toLocaleString(undefined, { month: "long" })}`}
       className="rounded-2xl border border-pine/10 bg-pine/[0.015] p-3 text-left transition-colors hover:border-pine/40 hover:bg-pine/[0.04]">
       <p className="mb-2 text-sm font-semibold text-pine-deep">{new Date(year, month, 1).toLocaleString(undefined, { month: "long" })}</p>
-      <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] text-ink/35">
+      <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] text-ink/65">
         {WEEKDAYS.map((d) => <div key={d}>{d[0]}</div>)}
       </div>
       <div className="mt-0.5 grid grid-cols-7 gap-0.5">
@@ -1938,7 +1938,7 @@ function MiniMonth({ year, month, today, itemsOn, onDrill }: {
           const isToday = sameDay(today, date);
           return (
             <div key={i}
-              className={`relative grid aspect-square place-items-center rounded text-[10px] ${isToday ? "bg-marigold-soft/40 font-bold text-marigold-deep" : its.length ? "font-semibold text-ink" : "text-ink/40"}`}>
+              className={`relative grid aspect-square place-items-center rounded text-[10px] ${isToday ? "bg-marigold-soft/40 font-bold text-marigold-ink" : its.length ? "font-semibold text-ink" : "text-ink/65"}`}>
               {d}
               {its.length > 0 && <span className="absolute bottom-0.5 h-1 w-1 rounded-full" style={{ backgroundColor: its[0].color.dot ?? its[0].color.bg }} />}
             </div>
@@ -1988,7 +1988,7 @@ function FullScreenModal({ title, onClose, children }: { title: string; onClose:
       <div className="safe-edges flex h-full w-full flex-col bg-paper">
         <div className="flex items-center justify-between border-b border-pine/10 px-6 py-4">
           <h3 className="font-display text-2xl font-semibold text-pine-deep">{title}</h3>
-          <button data-tour="fs-close" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+          <button data-tour="fs-close" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-ink/70 hover:bg-ink/5" aria-label="Close">✕</button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 pb-24">
           <div className="mx-auto max-w-5xl">{children}</div>
@@ -2014,7 +2014,7 @@ function HistorySection({ title, empty, children }: { title: string; empty: stri
     <section>
       <h4 className="font-display text-lg font-semibold text-pine-deep">{title}</h4>
       {items.length === 0
-        ? <p className="mt-2 text-sm text-ink/45">{empty}</p>
+        ? <p className="mt-2 text-sm text-ink/65">{empty}</p>
         : <div className="mt-3 space-y-2">{items}</div>}
     </section>
   );
@@ -2038,7 +2038,7 @@ function PastTaskRow({ g, onOpen, onUnarchive }: {
           {anyArchived ? "Archived" : "Complete"}
         </span>
       </div>
-      <p className="mt-1 text-xs text-ink/50">
+      <p className="mt-1 text-xs text-ink/70">
         {multi
           ? `Assigned to ${g.rows.length} people · ${doneCount} complete`
           : <>{hasRealDueDate(t.tags) && t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}{t.submittedAt && <span className={late ? "font-semibold text-red-600" : ""}> · Completed {fmtDateTime(t.submittedAt)}{late ? " (late)" : ""}</span>}</>}
@@ -2059,7 +2059,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-paper p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl font-semibold text-pine-deep">{title}</h3>
-          <button data-tour="tf-close" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+          <button data-tour="tf-close" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full text-ink/70 hover:bg-ink/5" aria-label="Close">✕</button>
         </div>
         <div className="mt-5">{children}</div>
       </div>
@@ -2087,20 +2087,20 @@ function MemberPicker({ members, selected, onToggle, single, onSetAll }: {
           <button type="button" onClick={() => onSetAll(members.map((m) => m.email))}
             className="font-semibold text-pine-deep hover:underline">Select all</button>
           <button type="button" onClick={() => onSetAll([])}
-            className="font-semibold text-ink/45 hover:underline">Clear</button>
+            className="font-semibold text-ink/65 hover:underline">Clear</button>
         </div>
       )}
       <input className={inputCls} style={{ marginTop: 0 }} placeholder="Search members by name…" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="mt-2 max-h-44 space-y-1 overflow-y-auto rounded-xl border border-pine/15 p-2">
-        {filtered.length === 0 && <p className="px-2 py-1 text-xs text-ink/40">No matches.</p>}
+        {filtered.length === 0 && <p className="px-2 py-1 text-xs text-ink/65">No matches.</p>}
         {filtered.map((m) => (
           <label key={m.email} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-pine/5">
             <input type={single ? "radio" : "checkbox"} checked={selected.includes(m.email)} onChange={() => onToggle(m.email)} />
-            {m.name} <span className="text-xs text-ink/40">· {m.group ? GROUP_LABEL[m.group] : "No group yet"}</span>
+            {m.name} <span className="text-xs text-ink/65">· {m.group ? GROUP_LABEL[m.group] : "No group yet"}</span>
           </label>
         ))}
       </div>
-      {selected.length > 0 && <p className="mt-1 text-xs tabular-nums text-ink/45">{selected.length} selected</p>}
+      {selected.length > 0 && <p className="mt-1 text-xs tabular-nums text-ink/65">{selected.length} selected</p>}
     </div>
   );
 }
@@ -2120,7 +2120,7 @@ function CohortPicker({ cohort, members, selected, onToggle, onSetAll }: {
   }
   return (
     <div>
-      <p className="mb-1.5 text-xs text-ink/55">
+      <p className="mb-1.5 text-xs text-ink/70">
         All {list.length} {cohort === "leads" ? "leads" : "exec members"} start ticked — untick anyone
         who shouldn&apos;t get this.
       </p>
@@ -2230,7 +2230,7 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
           <div className="mt-2 flex flex-wrap gap-1.5">
             {tags.map((t) => (
               <span key={t} className="inline-flex items-center gap-1 rounded-full bg-sage/15 px-2 py-0.5 text-xs text-pine-deep">
-                #{t}<button onClick={() => setTags(tags.filter((x) => x !== t))} className="text-ink/40">✕</button>
+                #{t}<button onClick={() => setTags(tags.filter((x) => x !== t))} className="text-ink/65">✕</button>
               </span>
             ))}
           </div>
@@ -2279,7 +2279,7 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
           <input type="checkbox" className="mt-1" checked={requiresFile} onChange={(e) => setRequiresFile(e.target.checked)} />
           <span>
             Require a file upload before the doer can mark it complete
-            <span className="block text-xs text-ink/45">
+            <span className="block text-xs text-ink/65">
               Uploads are filed under Files → Tasks, visible to this group&apos;s leads.
             </span>
           </span>
@@ -2290,7 +2290,7 @@ export function TaskForm({ meta, editing, editGroupAssignees, meetingId, onClose
             <input type="checkbox" checked={emailEnabled} onChange={(e) => setEmailEnabled(e.target.checked)} className="accent-pine" />
             Attach an email template
           </label>
-          <p className="mt-1 text-xs text-ink/50">
+          <p className="mt-1 text-xs text-ink/70">
             The person doing this task gets a one-click button to open a pre-filled email. Any{" "}
             <code className="rounded bg-ink/[0.06] px-1">{"{{word}}"}</code> becomes a mail-merge column for them to fill.
           </p>
@@ -2441,7 +2441,7 @@ function EventForm({ meta, editing, onClose, onCreated }: { meta: Meta; editing?
           <div>
             <label className={labelCls}>Which members?</label>
             {meta.eventMemberTargets.length === 0 ? (
-              <p className="mt-1 text-xs text-ink/50">No members available to target.</p>
+              <p className="mt-1 text-xs text-ink/70">No members available to target.</p>
             ) : (
               <div className="mt-1">
                 <MemberPicker members={meta.eventMemberTargets} selected={scopeEmails}
@@ -2467,7 +2467,7 @@ function SegToggle({ label, value, onChange, options }: {
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs font-semibold uppercase tracking-wide text-ink/45">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-ink/65">{label}</span>
       <div className="inline-flex rounded-full border border-pine/20 bg-paper p-0.5">
         {options.map(([val, lbl]) => (
           <button key={val} onClick={() => onChange(val)}
@@ -2530,7 +2530,7 @@ function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask,
   return (
     <div className="mt-10">
       <h3 className="font-display text-2xl font-semibold text-pine-deep">Full Club Overview</h3>
-      {nothing && <p className="mt-6 text-sm text-ink/45">Nothing matches the selected filters.</p>}
+      {nothing && <p className="mt-6 text-sm text-ink/65">Nothing matches the selected filters.</p>}
       <div className="mt-6 space-y-8">
         {LANE_ORDER.map((lane) => {
           const laneGroups = groups.filter((g) => laneOfTask(g.head as OTask) === lane);
@@ -2542,7 +2542,7 @@ function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask,
               <div className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded" style={{ backgroundColor: c.dot }} />
                 <h4 className="font-display text-lg font-semibold text-pine-deep">{LANE_LABEL[lane]}</h4>
-                <span className="text-xs tabular-nums text-ink/40">{laneGroups.length} task{laneGroups.length === 1 ? "" : "s"} · {laneEvents.length} event{laneEvents.length === 1 ? "" : "s"}</span>
+                <span className="text-xs tabular-nums text-ink/65">{laneGroups.length} task{laneGroups.length === 1 ? "" : "s"} · {laneEvents.length} event{laneEvents.length === 1 ? "" : "s"}</span>
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {laneGroups.map((g) => {
@@ -2556,10 +2556,10 @@ function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask,
                         <span className="font-medium text-ink">{t.title}</span>
                         <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: c.bg, color: c.fg }}>Task</span>
                       </div>
-                      <p className="mt-1 text-xs text-ink/50">
+                      <p className="mt-1 text-xs text-ink/70">
                         by {nameOf(t.assignerEmail)} · {g.rows.length === 1 ? `to ${nameOf(t.assigneeEmail)}` : `${g.rows.length} people`} · {done}/{g.rows.length} done{archived ? " · archived" : ""}
                       </p>
-                      <p className="mt-0.5 text-xs text-ink/40">{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}</p>
+                      <p className="mt-0.5 text-xs text-ink/65">{t.dueAt ? `Due ${fmtDateTime(t.dueAt)}` : "No due date"}</p>
                     </button>
                   );
                 })}
@@ -2570,8 +2570,8 @@ function ClubOverviewLists({ tasks, events, archive, period, nameOf, onOpenTask,
                       <span className="font-medium text-ink">{e.title}</span>
                       <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: c.bg, color: c.fg }}>Event</span>
                     </div>
-                    <p className="mt-1 text-xs text-ink/50">by {nameOf(e.creatorEmail)}{e.archived ? " · archived" : ""}</p>
-                    <p className="mt-0.5 text-xs text-ink/40">{e.allDay ? `${fmtDateOnly(e.startAt)} · all day` : fmtDateTime(e.startAt)}</p>
+                    <p className="mt-1 text-xs text-ink/70">by {nameOf(e.creatorEmail)}{e.archived ? " · archived" : ""}</p>
+                    <p className="mt-0.5 text-xs text-ink/65">{e.allDay ? `${fmtDateOnly(e.startAt)} · all day` : fmtDateTime(e.startAt)}</p>
                   </button>
                 ))}
               </div>

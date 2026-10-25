@@ -49,7 +49,7 @@ export default function AboutPage() {
 
           <Reveal delay={0.15}>
             <div className="rounded-3xl border border-pine/12 bg-pine/[0.03] p-8">
-              <p className="eyebrow text-sage">{ABOUT.methodology.title}</p>
+              <p className="eyebrow text-sage-deep">{ABOUT.methodology.title}</p>
               <ol className="mt-5 space-y-3">
                 {ABOUT.methodology.steps.map((step, i) => (
                   <li key={step} className="flex items-center gap-4">

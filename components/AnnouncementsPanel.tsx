@@ -116,14 +116,14 @@ export default function AnnouncementsPanel({ compact = false }: { compact?: bool
           </span>
           <div>
             <h2 className={`font-display font-semibold text-pine-deep ${compact ? "text-lg" : "text-2xl"}`}>Announcements</h2>
-            <p className={`${compact ? "text-[11px]" : "text-sm"} text-ink/55`}>{unread > 0 ? `${unread} unread` : "You're all caught up"}</p>
+            <p className={`${compact ? "text-[11px]" : "text-sm"} text-ink/70`}>{unread > 0 ? `${unread} unread` : "You're all caught up"}</p>
           </div>
         </div>
       </div>
 
       {/* List */}
-      <div className={`${compact ? "mt-1" : "mt-5"} -mx-2 min-h-0 max-h-72 flex-1 overflow-y-auto px-2`}>
-        {items.length === 0 && <p className={`${compact ? "py-1 text-[11px]" : "py-8 text-sm"} text-center text-ink/50`}>No announcements yet.</p>}
+      <div className={`${compact ? "mt-1" : "mt-5"} -mx-2 min-h-0 max-h-72 flex-1 overflow-y-auto px-2`} tabIndex={0} role="region" aria-label="Announcements">
+        {items.length === 0 && <p className={`${compact ? "py-1 text-[11px]" : "py-8 text-sm"} text-center text-ink/70`}>No announcements yet.</p>}
         {items.map((item) => (
           <button
             key={item.id}
@@ -135,9 +135,9 @@ export default function AnnouncementsPanel({ compact = false }: { compact?: bool
             <Avatar src={item.authorAvatar} name={item.authorName} size={compact ? 28 : 36} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-ink/55">{item.authorName}</span>
+                <span className="text-xs font-medium text-ink/70">{item.authorName}</span>
                 {!item.read && <span className="h-2 w-2 rounded-full bg-marigold" />}
-                <span className="ml-auto text-[11px] text-ink/40">{relTime(item.createdAt)}</span>
+                <span className="ml-auto text-[11px] text-ink/65">{relTime(item.createdAt)}</span>
               </div>
               <p className="mt-0.5 truncate font-semibold text-ink">{item.subject}</p>
             </div>
@@ -158,7 +158,7 @@ export default function AnnouncementsPanel({ compact = false }: { compact?: bool
                 <Avatar src={openItem.authorAvatar} name={openItem.authorName} size={40} />
                 <div>
                   <p className="text-sm font-semibold text-ink">{openItem.authorName}</p>
-                  <p className="text-xs text-ink/45">{fullTime(openItem.createdAt)}</p>
+                  <p className="text-xs text-ink/65">{fullTime(openItem.createdAt)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -166,7 +166,7 @@ export default function AnnouncementsPanel({ compact = false }: { compact?: bool
                   onClick={() => setRead(openItem.id, !openItem.read)}
                   title={openItem.read ? "Mark as unread" : "Mark as read"}
                   aria-label={openItem.read ? "Mark as unread" : "Mark as read"}
-                  className="grid h-9 w-9 place-items-center rounded-full text-ink/55 hover:bg-ink/10 hover:text-pine-deep"
+                  className="grid h-9 w-9 place-items-center rounded-full text-ink/70 hover:bg-ink/10 hover:text-pine-deep"
                 >
                   <EnvelopeIcon unread={openItem.read} className="h-5 w-5" />
                 </button>
@@ -175,7 +175,7 @@ export default function AnnouncementsPanel({ compact = false }: { compact?: bool
                     onClick={() => setConfirmDelete(true)}
                     title="Delete announcement"
                     aria-label="Delete announcement"
-                    className="grid h-9 w-9 place-items-center rounded-full text-ink/55 hover:bg-red-50 hover:text-red-600"
+                    className="grid h-9 w-9 place-items-center rounded-full text-ink/70 hover:bg-red-50 hover:text-red-600"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                       <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6" />
@@ -187,7 +187,7 @@ export default function AnnouncementsPanel({ compact = false }: { compact?: bool
                   onClick={closeModal}
                   title="Close"
                   aria-label="Close"
-                  className="grid h-9 w-9 place-items-center rounded-full text-ink/55 hover:bg-ink/10 hover:text-ink"
+                  className="grid h-9 w-9 place-items-center rounded-full text-ink/70 hover:bg-ink/10 hover:text-ink"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
                     <path d="M6 6l12 12M18 6L6 18" />

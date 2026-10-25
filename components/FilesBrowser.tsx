@@ -168,7 +168,7 @@ function FileCard({ n, onOpen, onDelete, showPath, big }: {
       <li>
         <div aria-disabled="true" data-locked-folder title="Unlocks once you're placed in a project group"
           className={`flex w-full cursor-not-allowed select-none items-start gap-3 rounded-2xl border border-dashed border-ink/15 bg-ink/[0.03] text-left opacity-60 grayscale ${big ? "p-6" : "p-4"}`}>
-          <span className={`mt-0.5 grid shrink-0 place-items-center rounded-xl bg-ink/10 text-ink/60 ${big ? "h-12 w-12" : "h-9 w-9"}`}>
+          <span className={`mt-0.5 grid shrink-0 place-items-center rounded-xl bg-ink/10 text-ink/75 ${big ? "h-12 w-12" : "h-9 w-9"}`}>
             <LockIcon className={big ? "h-6 w-6" : "h-4 w-4"} />
           </span>
           <span className="min-w-0 flex-1">
@@ -184,7 +184,7 @@ function FileCard({ n, onOpen, onDelete, showPath, big }: {
       {n.canDelete && (
         <button
           onClick={() => void onDelete(n)}
-          className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-paper/80 text-ink/40 opacity-0 transition-opacity hover:bg-marigold/30 hover:text-ink focus:opacity-100 group-hover/item:opacity-100"
+          className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-paper/80 text-ink/65 opacity-0 transition-opacity hover:bg-marigold/30 hover:text-ink focus:opacity-100 group-hover/item:opacity-100"
           aria-label={`Delete ${n.name}`}
           title="Delete this file"
         >
@@ -204,7 +204,7 @@ function FileCard({ n, onOpen, onDelete, showPath, big }: {
         </span>
         <span className="min-w-0 flex-1">
           <span className={`block truncate font-semibold leading-snug ${big ? "text-xl" : ""}`}>{n.name}</span>
-          <span className="mt-0.5 block truncate text-xs opacity-60">
+          <span className="mt-0.5 block truncate text-xs opacity-75">
             {[
               fileLabel(n),
               showPath ? [n.year, n.path].filter(Boolean).join("/") : dateLabel(n.modifiedAt),
@@ -386,7 +386,7 @@ export default function FilesBrowser() {
           </button>
           {crumbs.map((c, i) => (
             <span key={c.key} className="flex min-w-0 items-center gap-1.5">
-              <span className="text-ink/30">/</span>
+              <span className="text-ink/65">/</span>
               {i === crumbs.length - 1 ? (
                 <span className="truncate px-1 font-semibold text-ink">{c.name}</span>
               ) : (
@@ -404,7 +404,7 @@ export default function FilesBrowser() {
         <div className="flex items-center gap-2">
           <label className="relative">
             <span className="sr-only">Search files</span>
-            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40"
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/65"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
             </svg>
@@ -465,19 +465,19 @@ export default function FilesBrowser() {
 
       {results && (
         <div className="mt-4">
-          <p className="text-sm text-ink/60">
+          <p className="text-sm text-ink/75">
             {results.length} result{results.length === 1 ? "" : "s"} for “{q.trim()}”
             {deepSearch ? " in names and file contents" : " in names"}
           </p>
           {deepSearch && (
             <>
-              <p className="text-xs text-ink/45">Searches inside Docs, Sheets, Slides, PDFs and text files.</p>
+              <p className="text-xs text-ink/65">Searches inside Docs, Sheets, Slides, PDFs and text files.</p>
               <div className="mt-2 flex flex-wrap items-center gap-4">
-                <label className="flex items-center gap-2 text-xs text-ink/60">
+                <label className="flex items-center gap-2 text-xs text-ink/75">
                   <input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} />
                   Whole words only
                 </label>
-                <label className="flex items-center gap-2 text-xs text-ink/60">
+                <label className="flex items-center gap-2 text-xs text-ink/75">
                   <input type="checkbox" checked={caseSensitive} onChange={(e) => setCaseSensitive(e.target.checked)} />
                   Case sensitive
                 </label>
@@ -496,7 +496,7 @@ export default function FilesBrowser() {
             ))}
           </div>
         ) : empty ? (
-          <p className="rounded-3xl border border-dashed border-pine/20 px-6 py-12 text-center text-sm text-ink/55">
+          <p className="rounded-3xl border border-dashed border-pine/20 px-6 py-12 text-center text-sm text-ink/70">
             {empty}
           </p>
         ) : results ? (
@@ -507,7 +507,7 @@ export default function FilesBrowser() {
               <section key={year}>
                 <h3 className="text-lg font-semibold text-pine-deep">
                   {year === UNDATED ? "Other results" : `${year} Results`}
-                  <span className="ml-2 text-xs font-normal tabular-nums text-ink/40">{hits.length}</span>
+                  <span className="ml-2 text-xs font-normal tabular-nums text-ink/65">{hits.length}</span>
                 </h3>
                 <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {hits.map((n) => (
@@ -530,7 +530,7 @@ export default function FilesBrowser() {
             )}
             {pastRoots.length > 0 && (
               <section>
-                <h3 className="text-base font-semibold text-ink/55">Past years</h3>
+                <h3 className="text-base font-semibold text-ink/70">Past years</h3>
                 <ul className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
                   {pastRoots.map((n) => (
                     <FileCard key={n.id} n={n} onOpen={(x) => void open(x)} onDelete={(x) => void remove(x)} />
@@ -568,7 +568,7 @@ export default function FilesBrowser() {
                 <h3 className="truncate font-display text-lg font-semibold text-pine-deep">
                   {preview.name}
                 </h3>
-                <p className="mt-0.5 truncate text-xs text-ink/55">
+                <p className="mt-0.5 truncate text-xs text-ink/70">
                   {[
                     fileLabel(preview),
                     sizeLabel(preview.sizeBytes),
@@ -609,7 +609,7 @@ export default function FilesBrowser() {
 
               <button
                 onClick={() => { setExpanded(false); setPreview(null); }}
-                className="shrink-0 rounded-full p-1.5 text-ink/50 hover:bg-pine/10 hover:text-ink"
+                className="shrink-0 rounded-full p-1.5 text-ink/70 hover:bg-pine/10 hover:text-ink"
                 aria-label="Close preview"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

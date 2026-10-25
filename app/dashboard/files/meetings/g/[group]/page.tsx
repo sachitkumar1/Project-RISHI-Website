@@ -79,11 +79,11 @@ export default function GroupMeetings({ params }: { params: { group: string } })
           </div>
         )}
 
-        {loading && <p className="text-ink/50">Loading…</p>}
+        {loading && <p className="text-ink/70">Loading…</p>}
         {!loading && meetings.length === 0 && (
           <div className="rounded-2xl border border-dashed border-pine/20 bg-pine/[0.02] p-10 text-center">
-            <p className="text-ink/55">No meetings yet.</p>
-            {canCreate && <p className="mt-1 text-sm text-ink/40">Create the first one — it'll start from this group's template.</p>}
+            <p className="text-ink/70">No meetings yet.</p>
+            {canCreate && <p className="mt-1 text-sm text-ink/65">Create the first one — it'll start from this group's template.</p>}
           </div>
         )}
 
@@ -96,11 +96,11 @@ export default function GroupMeetings({ params }: { params: { group: string } })
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-display text-lg font-semibold text-pine-deep">{m.title || "Untitled meeting"}</p>
-                <p className="mt-0.5 text-sm text-ink/55">
+                <p className="mt-0.5 text-sm text-ink/70">
                   {fmt(m.date, m.createdAt)}{m.location ? ` · ${m.location}` : ""}
                 </p>
               </div>
-              <svg className="h-5 w-5 shrink-0 text-ink/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
+              <svg className="h-5 w-5 shrink-0 text-ink/65" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
             </Link>
           ))}
         </div>

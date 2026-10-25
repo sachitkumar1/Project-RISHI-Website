@@ -32,7 +32,8 @@ const OUT = path.join(ROOT, "app/dark-theme.css");
 const hex = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const LIGHT = {
   paper: "#FBF8F1", ink: "#1B2620", pine: "#1E4D3A", "pine-deep": "#143628", "pine-soft": "#2C5F49",
-  sage: "#5B7C6A", marigold: "#E2A02F", "marigold-deep": "#C27E18", "marigold-soft": "#F2C879",
+  sage: "#5B7C6A", "sage-deep": "#4A6A59", marigold: "#E2A02F", "marigold-deep": "#C27E18", "marigold-soft": "#F2C879",
+  "marigold-ink": "#744A0A",
   white: "#FFFFFF", black: "#000000",
   "red-50": "#FEF2F2", "red-100": "#FEE2E2", "red-200": "#FECACA", "red-300": "#FCA5A5",
   "red-500": "#EF4444", "red-600": "#DC2626", "red-700": "#B91C1C",
@@ -83,12 +84,12 @@ function map(kind, color, alpha) {
       if (kind === "text" || kind === "placeholder" || kind === "decoration" || kind === "fill" || kind === "stroke") return [hex(D.mintLight), a];
       if (kind === "bg" || kind === "grad") return solid ? [hex(D.pineDeepSolid), 1] : tint(D.mint, 1.4);
       return solid ? [hex(D.mint), 0.6] : tint(D.mintLight, 1.25);
-    case "sage":
+    case "sage": case "sage-deep":
       if (kind === "text") return [hex(D.sage), a];
       return tint(D.mint, 1.2);
     case "marigold":
       return null;
-    case "marigold-deep":
+    case "marigold-deep": case "marigold-ink":
       if (kind === "text" || kind === "decoration") return [hex(D.marigoldText), a];
       return null;
     case "marigold-soft":

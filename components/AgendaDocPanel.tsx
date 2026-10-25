@@ -32,10 +32,10 @@ export default function AgendaDocPanel({
   if (!docId)
     return (
       <div className="rounded-2xl border border-dashed border-pine/20 px-6 py-10 text-center">
-        <p className="text-sm text-ink/55">
+        <p className="text-sm text-ink/70">
           No 2026-2027 agenda doc is linked for {groupLabel} yet.
         </p>
-        <p className="mt-1 text-xs text-ink/40">
+        <p className="mt-1 text-xs text-ink/65">
           Add one in Drive under Project Groups and re-sync Files.
         </p>
       </div>
@@ -51,7 +51,7 @@ export default function AgendaDocPanel({
         <div className="flex items-center gap-3 border-b border-pine/10 bg-pine/[0.03] px-4 py-2.5">
           <p className="min-w-0 flex-1 truncate text-sm font-semibold text-pine-deep">
             {docName || `${groupLabel} agenda`}
-            {tabId && <span className="ml-2 text-xs font-normal text-ink/45">this meeting&apos;s tab</span>}
+            {tabId && <span className="ml-2 text-xs font-normal text-ink/65">this meeting&apos;s tab</span>}
           </p>
           <button
             onClick={() => setExpanded(true)}
@@ -93,7 +93,7 @@ export default function AgendaDocPanel({
               </a>
               <button
                 onClick={() => setExpanded(false)}
-                className="shrink-0 rounded-full p-1.5 text-ink/50 hover:bg-pine/10 hover:text-ink"
+                className="shrink-0 rounded-full p-1.5 text-ink/70 hover:bg-pine/10 hover:text-ink"
                 aria-label="Close"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

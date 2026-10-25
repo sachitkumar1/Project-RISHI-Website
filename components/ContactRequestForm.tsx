@@ -46,22 +46,22 @@ export default function ContactRequestForm({ current, onDone }: {
   return (
     <div data-contact-request-form>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-2xl bg-ink/[0.03] px-4 py-3 text-sm">
-        <dt className="text-ink/50">Current email</dt><dd className="truncate text-ink/80">{current.email || "—"}</dd>
-        <dt className="text-ink/50">Current phone</dt><dd className="text-ink/80">{current.phone || "—"}</dd>
+        <dt className="text-ink/70">Current email</dt><dd className="truncate text-ink/80">{current.email || "—"}</dd>
+        <dt className="text-ink/70">Current phone</dt><dd className="text-ink/80">{current.phone || "—"}</dd>
       </dl>
       <label className="mt-4 block">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">New email</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">New email</span>
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Leave blank to keep the current one" className={field} />
       </label>
       <label className="mt-3 block">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">New phone</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">New phone</span>
         <input value={phone} onChange={(e) => setPhone(formatPhoneInput(e.target.value))} placeholder="Leave blank to keep the current one" className={field} />
       </label>
       <label className="mt-3 block">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Note (optional)</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Note (optional)</span>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} placeholder="Anything the webmaster should know" className={`${field} resize-none`} />
       </label>
-      <p className="mt-2 text-[11px] text-ink/45">Your request is emailed to the webmaster, who makes the change once they approve it. This never changes the email you log in with.</p>
+      <p className="mt-2 text-[11px] text-ink/65">Your request is emailed to the webmaster, who makes the change once they approve it. This never changes the email you log in with.</p>
       {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
       <button onClick={send} disabled={busy || (!email.trim() && !phone.trim())}
         className="mt-4 rounded-full bg-pine px-5 py-2 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-50">

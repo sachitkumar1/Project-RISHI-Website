@@ -110,7 +110,7 @@ export default function RichTextEditor({
   }, [editor, registerInsert]);
 
   if (!editor) {
-    return <div className="rounded-xl border border-ink/15 p-4 text-sm text-ink/40">Loading editor…</div>;
+    return <div className="rounded-xl border border-ink/15 p-4 text-sm text-ink/65">Loading editor…</div>;
   }
 
   const e = editor as Editor;
@@ -259,7 +259,7 @@ export default function RichTextEditor({
           {files.map((f, i) => (
             <span key={`${f.name}-${i}`} className="inline-flex items-center gap-1.5 rounded-full bg-ink/[0.06] px-3 py-1 text-xs text-ink/70">
               📎 {f.name}
-              <button type="button" className="text-ink/40 hover:text-red-600"
+              <button type="button" className="text-ink/65 hover:text-red-600"
                 onClick={() => setFilesAndEmit(files.filter((_, j) => j !== i))}>✕</button>
             </span>
           ))}

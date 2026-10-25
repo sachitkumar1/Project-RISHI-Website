@@ -48,7 +48,7 @@ export default function ProjectPage({ project }: { project: Project }) {
                 &ldquo;{project.quote}&rdquo;
               </p>
               {project.quoteAuthor && (
-                <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-sage">
+                <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-sage-deep">
                   — {project.quoteAuthor}
                 </p>
               )}
@@ -128,7 +128,7 @@ export default function ProjectPage({ project }: { project: Project }) {
         </div>
 
         <div className="mt-14">
-          <p className="eyebrow text-sage">Other teams</p>
+          <p className="eyebrow text-sage-deep">Other teams</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             {others.map((o) => (
               <Link

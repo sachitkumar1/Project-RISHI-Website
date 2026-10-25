@@ -64,7 +64,7 @@ export default function AgentSettingsPanel() {
   return (
     <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8" data-agent-settings>
       <h2 className="font-display text-lg font-semibold text-pine-deep">RISHI AI</h2>
-      <p className="mt-1 text-sm text-ink/60">
+      <p className="mt-1 text-sm text-ink/75">
         Members ask questions and get answers built only from files they can open, with links to each file.
       </p>
 
@@ -72,7 +72,7 @@ export default function AgentSettingsPanel() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-ink">Search index</p>
-            <p className="mt-0.5 text-xs text-ink/55">
+            <p className="mt-0.5 text-xs text-ink/70">
               {s.index.chunks.toLocaleString()} passages, {pct}% with meaning-search embeddings
               {s.index.filesPending > 0 ? `; ${s.index.filesPending} files queued` : ""}. The hourly
               files job keeps this up to date; keyword search works even before embedding finishes.
@@ -89,7 +89,7 @@ export default function AgentSettingsPanel() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-ink">Models</p>
-            <p className="mt-0.5 text-xs text-ink/55">
+            <p className="mt-0.5 text-xs text-ink/70">
               Tried in order: {s.models.primary.join(", ")} (free), then {s.keys.anthropic ? s.models.haiku : "Haiku — no key"} (paid,
               capped), then {s.models.fallback} (free).
             </p>
@@ -101,13 +101,13 @@ export default function AgentSettingsPanel() {
         </div>
         {!s.keys.gemini && <p className="mt-2 text-xs font-semibold text-red-700">GEMINI_API_KEY isn&apos;t set, so Ask is off.</p>}
         {parked.length > 0 && (
-          <p className="mt-2 text-xs text-ink/55">
+          <p className="mt-2 text-xs text-ink/70">
             Skipping for now: {parked.map(([m, until]) => `${m} until ${new Date(until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`).join("; ")}.
           </p>
         )}
         {Object.keys(s.lastErrors ?? {}).length > 0 && (
-          <div className="mt-2 space-y-0.5 text-xs text-ink/55">
-            <p className="font-semibold text-ink/60">Last time each model was skipped</p>
+          <div className="mt-2 space-y-0.5 text-xs text-ink/70">
+            <p className="font-semibold text-ink/75">Last time each model was skipped</p>
             {Object.entries(s.lastErrors).map(([m, e]) => (
               <p key={m}>
                 <code>{m}</code>, {new Date(e.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}:{" "}
@@ -130,7 +130,7 @@ export default function AgentSettingsPanel() {
               </li>
             ))}
             {checks.availableGemini.length > 0 && (
-              <li className="text-ink/55">Models this key can use: {checks.availableGemini.join(", ")}</li>
+              <li className="text-ink/70">Models this key can use: {checks.availableGemini.join(", ")}</li>
             )}
           </ul>
         )}
@@ -138,7 +138,7 @@ export default function AgentSettingsPanel() {
 
       <div className="mt-4 rounded-xl border border-ink/10 p-4">
         <p className="text-sm font-semibold text-ink">Usage</p>
-        <p className="mt-0.5 text-xs text-ink/55">
+        <p className="mt-0.5 text-xs text-ink/70">
           Haiku this month: ${s.haiku.spentThisMonth.toFixed(2)} of ${s.haiku.cap.toFixed(2)}.{" "}
           {s.today.questions} {s.today.questions === 1 ? "answer" : "answers"} today
           {Object.keys(s.today.byModel).length ? ` (${Object.entries(s.today.byModel).map(([m, n]) => `${m}: ${n}`).join(", ")})` : ""}.

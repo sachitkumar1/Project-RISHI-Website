@@ -57,7 +57,7 @@ function LineageCard({
     >
       <div className="mb-2 flex items-center justify-between gap-3">
         <div>
-          <p className="eyebrow text-sage">
+          <p className="eyebrow text-sage-deep">
             <span className="h-1.5 w-1.5 rounded-full bg-pine" />
             Lineage Head
           </p>
@@ -72,7 +72,7 @@ function LineageCard({
         )}
       </div>
 
-      <div className="overflow-x-auto pb-2">
+      <div className="overflow-x-auto pb-2" tabIndex={0} role="region" aria-label="Family tree (scrolls sideways)">
         <div className="familytree">
           <ul>
             <TreeNode node={tree} userName={userName} />
@@ -126,7 +126,7 @@ export default function LineagePage() {
         })}
 
         {LINEAGES.length === 0 && (
-          <p className="text-center text-ink/60">No lineages have been added yet.</p>
+          <p className="text-center text-ink/75">No lineages have been added yet.</p>
         )}
       </section>
     </>

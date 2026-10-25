@@ -1,4 +1,3 @@
-import Reveal from "@/components/Reveal";
 
 export default function SectionHeading({
   eyebrow,
@@ -14,21 +13,17 @@ export default function SectionHeading({
   /** "light" = for paper/light sections; "dark" = for pine/dark sections */
   tone?: "light" | "dark";
 }) {
-  const dot = accent === "marigold" ? "bg-marigold" : "bg-pine";
-  const eyebrowColor = tone === "dark" ? "text-marigold-soft" : "text-sage";
+  // Section headings stand on their own: the small all-caps label above them
+  // now appears only once per page, in the page's hero. `eyebrow` and
+  // `accent` are accepted but no longer drawn, so call sites stay unchanged.
+  void eyebrow; void accent;
   const titleColor = tone === "dark" ? "text-paper" : "text-pine-deep";
 
   return (
-    <Reveal className={align === "center" ? "text-center" : ""}>
-      {eyebrow && (
-        <span className={`eyebrow ${eyebrowColor}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-          {eyebrow}
-        </span>
-      )}
-      <h2 className={`mt-3 font-display text-3xl font-semibold sm:text-4xl ${titleColor}`}>
+    <div className={align === "center" ? "text-center" : ""}>
+      <h2 className={`font-display text-3xl font-semibold sm:text-4xl ${titleColor}`}>
         {title}
       </h2>
-    </Reveal>
+    </div>
   );
 }

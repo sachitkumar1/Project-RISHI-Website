@@ -75,7 +75,7 @@ export default function CreateMenu() {
                   </span>
                   <span>
                     <span className="block text-sm font-semibold text-ink">{MODE_LABEL[m]}</span>
-                    <span className="block text-xs text-ink/50">{MODE_DESC[m]}</span>
+                    <span className="block text-xs text-ink/70">{MODE_DESC[m]}</span>
                   </span>
                 </button>
               ))}

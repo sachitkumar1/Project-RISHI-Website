@@ -35,8 +35,8 @@ type GmailStatus = {
 function ReadonlyField({ label, value }: { label: string; value: string }) {
   return (
     <label className="block">
-      <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">{label}</span>
-      <div className="mt-1.5 cursor-not-allowed select-none rounded-xl border border-ink/10 bg-ink/[0.04] px-4 py-3 text-sm text-ink/60">
+      <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">{label}</span>
+      <div className="mt-1.5 cursor-not-allowed select-none rounded-xl border border-ink/10 bg-ink/[0.04] px-4 py-3 text-sm text-ink/75">
         {value || "—"}
       </div>
     </label>
@@ -187,7 +187,7 @@ export default function SettingsPage() {
       </DashboardBanner>
 
       <section className="container-rishi py-12">
-        {loading && <p className="text-ink/60">Loading…</p>}
+        {loading && <p className="text-ink/75">Loading…</p>}
         {error && <p className="text-red-600">{error}</p>}
 
         {profile && (
@@ -203,7 +203,7 @@ export default function SettingsPage() {
                   >
                     Change photo
                   </button>
-                  <p className="mt-2 text-xs text-ink/50">JPG or PNG. You can crop and zoom after choosing.</p>
+                  <p className="mt-2 text-xs text-ink/70">JPG or PNG. You can crop and zoom after choosing.</p>
                 </div>
               </div>
 
@@ -231,7 +231,7 @@ export default function SettingsPage() {
             {!canEditContact && (
               <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
                 <h2 className="font-display text-lg font-semibold text-pine-deep">Directory contact info</h2>
-                <p className="mt-1 mb-4 text-sm text-ink/60">
+                <p className="mt-1 mb-4 text-sm text-ink/75">
                   How you appear in the <a href="/dashboard/directory" className="text-pine underline">member directory</a>.
                   To change it, send a request and the webmaster will update it.
                 </p>
@@ -241,23 +241,23 @@ export default function SettingsPage() {
             {canEditContact && (
             <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
               <h2 className="font-display text-lg font-semibold text-pine-deep">Directory contact info</h2>
-              <p className="mt-1 text-sm text-ink/60">
+              <p className="mt-1 text-sm text-ink/75">
                 How you appear in the <a href="/dashboard/directory" className="text-pine underline">member directory</a>.
                 Editing this does <strong>not</strong> change the email you log in with.
               </p>
               <div className="mt-5 grid gap-4">
                 <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Email</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Email</span>
                   <input value={cEmail} onChange={(e) => setCEmail(e.target.value)} placeholder="you@example.com"
                     className="mt-1.5 w-full rounded-xl border border-pine/20 px-4 py-3 text-sm outline-none focus:border-pine" />
                 </label>
                 <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Phone</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Phone</span>
                   <input value={cPhone} onChange={(e) => setCPhone(formatPhoneInput(e.target.value))} placeholder="(555) 123-4567"
                     className="mt-1.5 w-full rounded-xl border border-pine/20 px-4 py-3 text-sm outline-none focus:border-pine" />
                 </label>
               </div>
-              <p className="mt-2 text-[11px] text-ink/40">Leave a field blank to reset it to your default from the club roster.</p>
+              <p className="mt-2 text-[11px] text-ink/65">Leave a field blank to reset it to your default from the club roster.</p>
               <div className="mt-4 flex items-center gap-3">
                 <button onClick={saveContact} disabled={cSaving}
                   className="rounded-full bg-pine px-5 py-2 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-60">
@@ -272,7 +272,7 @@ export default function SettingsPage() {
             {roster && (
               <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
                 <h2 className="font-display text-lg font-semibold text-pine-deep">Member roster</h2>
-                <p className="mt-1 text-sm text-ink/60">
+                <p className="mt-1 text-sm text-ink/75">
                   By default the roster comes from <code>lib/members.ts</code>. Turn on Google Sheet sync to
                   manage members and roles from the{" "}
                   <a href={roster.sheetUrl} target="_blank" rel="noreferrer" className="text-pine underline">roster Google Sheet</a>
@@ -283,7 +283,7 @@ export default function SettingsPage() {
                 <div className="mt-4 flex items-center justify-between rounded-2xl border border-pine/12 bg-paper px-4 py-3">
                   <div>
                     <p className="text-sm font-semibold text-ink">Sync roster with Google Sheet</p>
-                    <p className="mt-0.5 text-xs text-ink/50">
+                    <p className="mt-0.5 text-xs text-ink/70">
                       {roster.mode === "sheet"
                         ? `On — the Google Sheet controls the roster (${roster.rows} row${roster.rows === 1 ? "" : "s"}).`
                         : "Off — using members.ts only. The Google Sheet is ignored."}
@@ -303,14 +303,14 @@ export default function SettingsPage() {
                       className="rounded-full bg-pine px-5 py-2 text-sm font-semibold text-paper hover:bg-pine-deep disabled:opacity-60">
                       {rSyncing ? "Syncing\u2026" : "Sync roster from sheet"}
                     </button>
-                    <span className="text-xs text-ink/45">Applies sheet edits right now instead of waiting for the hourly sync.</span>
+                    <span className="text-xs text-ink/65">Applies sheet edits right now instead of waiting for the hourly sync.</span>
                   </div>
                 )}
                 {rMsg && <p className="mt-2 text-sm text-ink/70">{rMsg}</p>}
 
                 <div className="mt-6 border-t border-pine/10 pt-4">
                   <p className="text-sm font-semibold text-ink">Keep the code roster in step</p>
-                  <p className="mt-1 text-xs text-ink/55">
+                  <p className="mt-1 text-xs text-ink/70">
                     The sheet is what the site uses. <code>lib/members.ts</code> is the fallback if the sheet
                     roster is ever empty — so it&apos;s worth refreshing now and then (say, once a semester).
                     This copies the roster as code; paste it over the <code>BASE_MEMBERS</code> array and commit.
@@ -322,7 +322,7 @@ export default function SettingsPage() {
                     </button>
                     {exportCode && (
                       <button onClick={() => { setExportCode(null); setExportMsg(null); }}
-                        className="text-xs font-semibold text-ink/45 hover:text-ink/70">Hide</button>
+                        className="text-xs font-semibold text-ink/65 hover:text-ink/70">Hide</button>
                     )}
                   </div>
                   {exportMsg && <p className="mt-2 text-xs text-ink/70">{exportMsg}</p>}
@@ -344,7 +344,7 @@ export default function SettingsPage() {
             {gmail && (
               <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
                 <h2 className="font-display text-lg font-semibold text-pine-deep">Email sending</h2>
-                <p className="mt-1 text-sm text-ink/60">
+                <p className="mt-1 text-sm text-ink/75">
                   Connect an account so the dashboard can send announcements and emails on your behalf.
                   This uses send-only access &mdash; it can never read or delete your mail.
                 </p>
@@ -353,7 +353,7 @@ export default function SettingsPage() {
                 <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-ink/10 p-4">
                   <div>
                     <p className="text-sm font-semibold text-ink">Your email</p>
-                    <p className="text-xs text-ink/50">{gmail.personalEmail}</p>
+                    <p className="text-xs text-ink/70">{gmail.personalEmail}</p>
                   </div>
                   {gmail.personal ? (
                     <button onClick={() => disconnectGmail("personal")} className="rounded-full border border-ink/15 px-4 py-2 text-xs font-semibold text-ink/70 hover:bg-ink/5">
@@ -371,7 +371,7 @@ export default function SettingsPage() {
                   <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-ink/10 p-4">
                     <div>
                       <p className="text-sm font-semibold text-ink">Announcements &amp; newsletters</p>
-                      <p className="text-xs text-ink/50">{gmail.sharedSender}</p>
+                      <p className="text-xs text-ink/70">{gmail.sharedSender}</p>
                     </div>
                     {gmail.club ? (
                       <button onClick={() => disconnectGmail("club")} className="rounded-full border border-ink/15 px-4 py-2 text-xs font-semibold text-ink/70 hover:bg-ink/5">
@@ -390,7 +390,7 @@ export default function SettingsPage() {
                   <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-ink/10 p-4">
                     <div>
                       <p className="text-sm font-semibold text-ink">Task &amp; reminder notifications</p>
-                      <p className="text-xs text-ink/50">{gmail.notifySender}</p>
+                      <p className="text-xs text-ink/70">{gmail.notifySender}</p>
                     </div>
                     {gmail.notify ? (
                       <button onClick={() => disconnectGmail("notify")} className="rounded-full border border-ink/15 px-4 py-2 text-xs font-semibold text-ink/70 hover:bg-ink/5">

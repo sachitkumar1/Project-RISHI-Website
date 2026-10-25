@@ -75,7 +75,7 @@ export default function MergeTable({
 
   return (
     <div ref={wrapRef} className="relative">
-      <div className="overflow-x-auto rounded-xl border border-ink/15">
+      <div className="overflow-x-auto rounded-xl border border-ink/15" tabIndex={0} role="region" aria-label="Mail-merge table">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-ink/[0.04]">
@@ -90,7 +90,7 @@ export default function MergeTable({
                 </th>
               ))}
               <th className="w-9 border-b border-ink/10 bg-ink/[0.02] p-0">
-                <button onClick={addColumn} title="Add column" className="grid h-full w-full place-items-center py-2 text-ink/40 hover:bg-pine/5 hover:text-pine">
+                <button onClick={addColumn} title="Add column" className="grid h-full w-full place-items-center py-2 text-ink/65 hover:bg-pine/5 hover:text-pine">
                   +
                 </button>
               </th>
@@ -137,7 +137,7 @@ export default function MergeTable({
           </div>
         )}
       </div>
-      <p className="mt-1.5 text-xs text-ink/40">Right-click a cell to delete its row or column.</p>
+      <p className="mt-1.5 text-xs text-ink/65">Right-click a cell to delete its row or column.</p>
 
       {/* Right-click menu */}
       {menu && (

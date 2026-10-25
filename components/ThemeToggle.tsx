@@ -85,12 +85,12 @@ export function ThemeSetting() {
     <div className="mx-auto mt-6 flex max-w-xl items-center justify-between gap-4 rounded-3xl border border-pine/15 bg-pine/[0.03] p-6">
       <div>
         <h2 className="font-display text-lg font-semibold text-pine-deep">Appearance</h2>
-        <p className="mt-1 text-sm text-ink/60">Dark mode applies to the dashboard in this browser.</p>
+        <p className="mt-1 text-sm text-ink/75">Dark mode applies to the dashboard in this browser.</p>
       </div>
       <div role="radiogroup" aria-label="Theme" className="flex shrink-0 rounded-full border border-pine/20 p-1">
         {(["light", "dark"] as const).map((t) => (
           <button key={t} role="radio" aria-checked={theme === t} onClick={() => setTheme(t)}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize transition-colors ${theme === t ? "bg-pine text-paper" : "text-ink/60 hover:text-ink"}`}>
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize transition-colors ${theme === t ? "bg-pine text-paper" : "text-ink/75 hover:text-ink"}`}>
             {t}
           </button>
         ))}

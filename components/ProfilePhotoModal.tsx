@@ -101,7 +101,7 @@ export default function ProfilePhotoModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="font-display text-xl font-semibold text-pine-deep">Profile photo</h3>
-        <p className="mt-1 text-sm text-ink/60">Choose a photo, then drag and zoom to frame it.</p>
+        <p className="mt-1 text-sm text-ink/75">Choose a photo, then drag and zoom to frame it.</p>
 
         <div className="relative mt-5 h-64 w-full overflow-hidden rounded-2xl bg-ink/5">
           {src ? (
@@ -128,7 +128,7 @@ export default function ProfilePhotoModal({
 
         {src && (
           <div className="mt-4 flex items-center gap-3">
-            <span className="text-xs font-medium text-ink/50">Zoom</span>
+            <span className="text-xs font-medium text-ink/70">Zoom</span>
             <input
               type="range" min={1} max={3} step={0.01} value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}

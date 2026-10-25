@@ -57,8 +57,8 @@ export default function TemplateEditor({ params }: { params: { group: string } }
       </DashboardBanner>
 
       <section className="container-rishi max-w-4xl py-8">
-        {loading && <p className="text-ink/50">Loading…</p>}
-        {!loading && !canEdit && <p className="rounded-2xl border border-pine/12 bg-pine/[0.02] p-6 text-sm text-ink/55">Only {label} leads can edit this template.</p>}
+        {loading && <p className="text-ink/70">Loading…</p>}
+        {!loading && !canEdit && <p className="rounded-2xl border border-pine/12 bg-pine/[0.02] p-6 text-sm text-ink/70">Only {label} leads can edit this template.</p>}
         {!loading && canEdit && (
           <>
             <MeetingEditor html={body} editable placeholder="Build the standing agenda for this group…"

@@ -66,7 +66,7 @@ export default function MeetingOutline({
             </div>
           ),
         )}
-        {blocks.every((b) => !b.text.trim()) && <p className="text-sm text-ink/40">Nothing here yet.</p>}
+        {blocks.every((b) => !b.text.trim()) && <p className="text-sm text-ink/65">Nothing here yet.</p>}
       </div>
     );
   }
@@ -80,7 +80,7 @@ export default function MeetingOutline({
             type="button"
             onClick={() => patch(b.id, { kind: b.kind === "heading" ? "bullet" : "heading" })}
             title={b.kind === "heading" ? "Make bullet" : "Make heading"}
-            className="mt-2 grid h-5 w-5 shrink-0 place-items-center rounded text-ink/30 hover:bg-pine/5 hover:text-pine"
+            className="mt-2 grid h-5 w-5 shrink-0 place-items-center rounded text-ink/65 hover:bg-pine/5 hover:text-pine"
           >
             {b.kind === "heading" ? <span className="text-[11px] font-bold">H</span> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
           </button>
@@ -102,20 +102,20 @@ export default function MeetingOutline({
 
           {/* hover controls */}
           <div className="mt-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
-            <button type="button" onClick={() => move(b.id, -1)} title="Move up" className="grid h-6 w-6 place-items-center rounded text-ink/30 hover:bg-pine/5 hover:text-pine">↑</button>
-            <button type="button" onClick={() => move(b.id, 1)} title="Move down" className="grid h-6 w-6 place-items-center rounded text-ink/30 hover:bg-pine/5 hover:text-pine">↓</button>
-            <button type="button" onClick={() => remove(b.id)} title="Delete" className="grid h-6 w-6 place-items-center rounded text-ink/30 hover:bg-red-50 hover:text-red-500">✕</button>
+            <button type="button" onClick={() => move(b.id, -1)} title="Move up" className="grid h-6 w-6 place-items-center rounded text-ink/65 hover:bg-pine/5 hover:text-pine">↑</button>
+            <button type="button" onClick={() => move(b.id, 1)} title="Move down" className="grid h-6 w-6 place-items-center rounded text-ink/65 hover:bg-pine/5 hover:text-pine">↓</button>
+            <button type="button" onClick={() => remove(b.id)} title="Delete" className="grid h-6 w-6 place-items-center rounded text-ink/65 hover:bg-red-50 hover:text-red-500">✕</button>
           </div>
         </div>
       ))}
       <button
         type="button"
         onClick={() => { const nb: Block = { id: uid(), kind: "bullet", text: "", indent: 0 }; set([...blocks, nb]); focusBlock(nb.id); }}
-        className="mt-1 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-ink/40 hover:bg-pine/5 hover:text-pine"
+        className="mt-1 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-ink/65 hover:bg-pine/5 hover:text-pine"
       >
         + Add line
       </button>
-      <p className="mt-1 text-[11px] text-ink/30">Enter for a new line · Tab / Shift-Tab to indent · click on the • or H to switch between bullet/heading</p>
+      <p className="mt-1 text-[11px] text-ink/65">Enter for a new line · Tab / Shift-Tab to indent · click on the • or H to switch between bullet/heading</p>
     </div>
   );
 }

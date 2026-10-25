@@ -49,17 +49,17 @@ export default function ApplyPage() {
           {APPLY.timeline.map((t, i) => (
             <Reveal key={t.label} delay={i * 0.08}>
               <div className="relative h-full rounded-2xl border border-pine/12 p-6">
-                <span className="font-display text-3xl font-semibold text-marigold">
+                <span className="font-display text-3xl font-semibold text-marigold-ink">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <p className="mt-3 text-sm font-semibold uppercase tracking-wider text-sage">
+                <p className="mt-3 text-sm font-semibold uppercase tracking-wider text-sage-deep">
                   {t.label}
                 </p>
                 <p className="mt-1 font-display text-xl font-semibold text-pine-deep">
                   {t.value}
                 </p>
                 {"time" in t && t.time ? (
-                  <p className="mt-1 text-sm font-medium uppercase tracking-widest text-marigold-deep/80">
+                  <p className="mt-1 text-sm font-medium uppercase tracking-widest text-marigold-ink">
                     {t.time}
                   </p>
                 ) : null}

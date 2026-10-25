@@ -139,14 +139,14 @@ export default function NotificationBell() {
       </div>
 
       {perm !== "granted" && (
-        <button onClick={requestPermission} className="block w-full border-b border-pine/15 bg-marigold-soft/40 px-4 py-2 text-left text-xs text-marigold-deep hover:bg-marigold-soft/60">
+        <button onClick={requestPermission} className="block w-full border-b border-pine/15 bg-marigold-soft/40 px-4 py-2 text-left text-xs text-marigold-ink hover:bg-marigold-soft/60">
           Turn on browser notifications →
         </button>
       )}
 
       <div className="max-h-[60vh] overflow-y-auto">
         {items.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-ink/40">No notifications yet.</p>
+          <p className="px-4 py-8 text-center text-sm text-ink/65">No notifications yet.</p>
         ) : (
           items.map((n) => (
             <button
@@ -159,7 +159,7 @@ export default function NotificationBell() {
                 <div className={n.read ? "pl-4" : ""}>
                   <p className="text-sm font-semibold text-ink">{n.title}</p>
                   <p className="mt-0.5 line-clamp-2 text-xs text-ink/65">{n.body}</p>
-                  <p className="mt-1 text-[11px] text-ink/40">{fmtWhen(n.createdAt)} · tap to open</p>
+                  <p className="mt-1 text-[11px] text-ink/65">{fmtWhen(n.createdAt)} · tap to open</p>
                 </div>
               </div>
             </button>
@@ -174,9 +174,9 @@ export default function NotificationBell() {
       <div className="w-full max-w-md overflow-y-auto rounded-3xl p-6 shadow-xl" style={{ backgroundColor: PANEL_BG, maxHeight: "85vh" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-lg font-semibold text-pine-deep">{selected.title}</h3>
-          <button onClick={() => setSelected(null)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink/50 hover:bg-ink/5" aria-label="Close">✕</button>
+          <button onClick={() => setSelected(null)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink/70 hover:bg-ink/5" aria-label="Close">✕</button>
         </div>
-        <p className="mt-1 text-xs text-ink/45">{fmtFull(selected.createdAt)}</p>
+        <p className="mt-1 text-xs text-ink/65">{fmtFull(selected.createdAt)}</p>
         <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-ink/80">{selected.body}</p>
       </div>
     </div>

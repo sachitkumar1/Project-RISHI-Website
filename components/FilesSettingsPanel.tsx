@@ -177,7 +177,7 @@ export default function FilesSettingsPanel() {
   return (
     <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-pine/15 bg-pine/[0.03] p-8">
       <h2 className="font-display text-lg font-semibold text-pine-deep">Files</h2>
-      <p className="mt-1 text-sm text-ink/60">
+      <p className="mt-1 text-sm text-ink/75">
         The Files section mirrors the club&apos;s Drive folders. Only names and links are copied —
         the documents themselves stay in Drive, so nothing here goes out of date.
       </p>
@@ -185,7 +185,7 @@ export default function FilesSettingsPanel() {
       <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-ink/10 p-4">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-ink">Re-index Drive</p>
-          <p className="mt-0.5 text-xs text-ink/50">
+          <p className="mt-0.5 text-xs text-ink/70">
             {status.lastSync
               ? `Last run ${new Date(status.lastSync).toLocaleString()}.`
               : "Hasn't run yet."}{" "}
@@ -202,7 +202,7 @@ export default function FilesSettingsPanel() {
       </div>
 
       {status.serviceAccount && (
-        <p className="mt-2 text-xs text-ink/45">
+        <p className="mt-2 text-xs text-ink/65">
           Reading Drive as <code className="break-all">{status.serviceAccount}</code>. If a sync finds
           nothing, that address hasn&apos;t been shared on the folders yet.
         </p>
@@ -214,7 +214,7 @@ export default function FilesSettingsPanel() {
 
       <div className="mt-4 rounded-xl border border-ink/10 p-4">
         <p className="text-sm font-semibold text-ink">Storage used by uploads</p>
-        <p className="mt-0.5 text-xs text-ink/55">
+        <p className="mt-0.5 text-xs text-ink/70">
           {mb(status.usedBytes)} of the 1 GB Supabase allowance. Files added through the site are
           capped at {mb(status.maxUploadBytes)} each; anything bigger belongs in Drive.
         </p>
@@ -223,7 +223,7 @@ export default function FilesSettingsPanel() {
       {status.index && (
         <div className="mt-4 rounded-xl border border-ink/10 p-4">
           <p className="text-sm font-semibold text-ink">Searchable file contents</p>
-          <p className="mt-0.5 text-xs text-ink/55">
+          <p className="mt-0.5 text-xs text-ink/70">
             {status.index.withText} of {status.index.total} files have their text indexed
             {status.index.pending > 0
               ? `, ${status.index.pending} still queued — the nightly job works through them, or press Sync now.`
@@ -241,12 +241,12 @@ export default function FilesSettingsPanel() {
         >
           <span>
             <span className="block text-sm font-semibold text-ink">Who can see which folder</span>
-            <span className="mt-0.5 block text-xs text-ink/55">
+            <span className="mt-0.5 block text-xs text-ink/70">
               Sub-folders follow their parent unless you set them yourself.
             </span>
           </span>
           <svg
-            className={`h-4 w-4 shrink-0 text-ink/40 transition-transform ${open ? "rotate-180" : ""}`}
+            className={`h-4 w-4 shrink-0 text-ink/65 transition-transform ${open ? "rotate-180" : ""}`}
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
           >
             <path d="M6 9l6 6 6-6" />
@@ -280,9 +280,9 @@ export default function FilesSettingsPanel() {
             />
 
             {!folders ? (
-              <p className="mt-3 text-xs text-ink/50">Loading folders…</p>
+              <p className="mt-3 text-xs text-ink/70">Loading folders…</p>
             ) : shown.length === 0 ? (
-              <p className="mt-3 text-xs text-ink/50">
+              <p className="mt-3 text-xs text-ink/70">
                 No folders indexed yet — run a sync first.
               </p>
             ) : (
@@ -292,7 +292,7 @@ export default function FilesSettingsPanel() {
                   return (
                     <li key={fid} className="rounded-xl border border-ink/10 p-3">
                       <p className="truncate text-sm font-semibold text-ink">{f.name}</p>
-                      <p className="truncate text-[11px] text-ink/45">
+                      <p className="truncate text-[11px] text-ink/65">
                         {[f.year, f.path].filter(Boolean).join(" / ") || "Top level"}
                       </p>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -317,12 +317,12 @@ export default function FilesSettingsPanel() {
                         {f.audienceExplicit ? (
                           <button
                             onClick={() => void save({ folderId: fid, inherit: true })}
-                            className="text-[11px] font-semibold text-ink/45 hover:text-ink/70"
+                            className="text-[11px] font-semibold text-ink/65 hover:text-ink/70"
                           >
                             Follow parent instead
                           </button>
                         ) : (
-                          <span className="text-[11px] text-ink/40">Following its parent</span>
+                          <span className="text-[11px] text-ink/65">Following its parent</span>
                         )}
                       </div>
 

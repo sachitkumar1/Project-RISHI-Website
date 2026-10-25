@@ -138,12 +138,12 @@ export default function NewsletterPanel({ compact = false }: { compact?: boolean
         </span>
         <div>
           <h2 className={`font-display font-semibold text-pine-deep ${compact ? "text-lg" : "text-2xl"}`}>Newsletters</h2>
-          <p className={`${compact ? "text-[11px]" : "text-sm"} text-ink/55`}>{unread > 0 ? `${unread} unread` : "You're all caught up"}</p>
+          <p className={`${compact ? "text-[11px]" : "text-sm"} text-ink/70`}>{unread > 0 ? `${unread} unread` : "You're all caught up"}</p>
         </div>
       </div>
 
-      <div className={`${compact ? "mt-1" : "mt-5"} -mx-2 min-h-0 max-h-72 flex-1 overflow-y-auto px-2`}>
-        {items.length === 0 && <p className={`${compact ? "py-1 text-[11px]" : "py-8 text-sm"} text-center text-ink/50`}>No newsletters yet.</p>}
+      <div className={`${compact ? "mt-1" : "mt-5"} -mx-2 min-h-0 max-h-72 flex-1 overflow-y-auto px-2`} tabIndex={0} role="region" aria-label="Newsletters">
+        {items.length === 0 && <p className={`${compact ? "py-1 text-[11px]" : "py-8 text-sm"} text-center text-ink/70`}>No newsletters yet.</p>}
         {items.map((item) => (
           <button
             key={item.id}
@@ -155,9 +155,9 @@ export default function NewsletterPanel({ compact = false }: { compact?: boolean
             <Avatar src={item.authorAvatar} name={item.authorName} size={compact ? 28 : 36} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-ink/55">{item.authorName}</span>
+                <span className="text-xs font-medium text-ink/70">{item.authorName}</span>
                 {!item.read && <span className="h-2 w-2 rounded-full bg-marigold" />}
-                <span className="ml-auto text-[11px] text-ink/40">{relTime(item.createdAt)}</span>
+                <span className="ml-auto text-[11px] text-ink/65">{relTime(item.createdAt)}</span>
               </div>
               <p className="mt-0.5 truncate font-semibold text-ink">{item.subject}</p>
             </div>
@@ -185,22 +185,22 @@ export default function NewsletterPanel({ compact = false }: { compact?: boolean
                 <Avatar src={openItem.authorAvatar} name={openItem.authorName} size={40} />
                 <div>
                   <p className="text-sm font-semibold text-ink">{openItem.authorName}</p>
-                  <p className="text-xs text-ink/45">{fullTime(openItem.createdAt)}</p>
+                  <p className="text-xs text-ink/65">{fullTime(openItem.createdAt)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => setRead(openItem.id, !openItem.read)} title={openItem.read ? "Mark as unread" : "Mark as read"} className="grid h-9 w-9 place-items-center rounded-full text-ink/55 hover:bg-ink/10 hover:text-pine-deep">
+                <button onClick={() => setRead(openItem.id, !openItem.read)} title={openItem.read ? "Mark as unread" : "Mark as read"} className="grid h-9 w-9 place-items-center rounded-full text-ink/70 hover:bg-ink/10 hover:text-pine-deep">
                   <EnvelopeIcon unread={openItem.read} className="h-5 w-5" />
                 </button>
                 {openItem.canDelete && (
-                  <button onClick={() => setConfirmDelete(true)} title="Delete newsletter" className="grid h-9 w-9 place-items-center rounded-full text-ink/55 hover:bg-red-50 hover:text-red-600">
+                  <button onClick={() => setConfirmDelete(true)} title="Delete newsletter" className="grid h-9 w-9 place-items-center rounded-full text-ink/70 hover:bg-red-50 hover:text-red-600">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                       <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6" />
                       <path d="M10 11v6M14 11v6" />
                     </svg>
                   </button>
                 )}
-                <button onClick={closeModal} title="Close" className="grid h-9 w-9 place-items-center rounded-full text-ink/55 hover:bg-ink/10 hover:text-ink">
+                <button onClick={closeModal} title="Close" className="grid h-9 w-9 place-items-center rounded-full text-ink/70 hover:bg-ink/10 hover:text-ink">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5"><path d="M6 6l12 12M18 6L6 18" /></svg>
                 </button>
               </div>
@@ -225,16 +225,16 @@ export default function NewsletterPanel({ compact = false }: { compact?: boolean
           <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-3xl bg-paper p-6 text-ink shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between gap-3">
               <h3 className="font-display text-xl font-semibold text-pine-deep">Newsletter subscribers</h3>
-              <button onClick={() => setShowSubs(false)} className="grid h-8 w-8 place-items-center rounded-full text-ink/55 hover:bg-ink/10">
+              <button onClick={() => setShowSubs(false)} className="grid h-8 w-8 place-items-center rounded-full text-ink/70 hover:bg-ink/10">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             </div>
-            <p className="mt-1 text-sm text-ink/55">{subs.length} {subs.length === 1 ? "person has" : "people have"} signed up from the website.</p>
+            <p className="mt-1 text-sm text-ink/70">{subs.length} {subs.length === 1 ? "person has" : "people have"} signed up from the website.</p>
             <div className="mt-4 flex-1 overflow-y-auto rounded-xl border border-ink/10">
               {subsError ? (
                 <p className="px-4 py-8 text-center text-sm text-red-600">Couldn&rsquo;t load subscribers: {subsError}</p>
               ) : subs.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-ink/50">No subscribers yet.</p>
+                <p className="px-4 py-8 text-center text-sm text-ink/70">No subscribers yet.</p>
               ) : (
                 subs.map((e) => <p key={e} className="border-b border-ink/8 px-4 py-2 text-sm text-ink last:border-b-0">{e}</p>)
               )}

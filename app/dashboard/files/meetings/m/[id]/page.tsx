@@ -59,7 +59,7 @@ type DirEntry = { loginEmail: string; name: string; group: string };
 const STATUS_LABEL: Record<string, string> = { not_complete: "Not complete", pending: "Pending approval", complete: "Complete" };
 const STATUS_ORDER: Record<string, number> = { not_complete: 0, pending: 1, complete: 2 };
 const STATUS_STYLE: Record<string, string> = {
-  not_complete: "bg-ink/8 text-ink/60", pending: "bg-marigold-soft/50 text-marigold-deep", complete: "bg-pine/15 text-pine-deep",
+  not_complete: "bg-ink/8 text-ink/75", pending: "bg-marigold-soft/50 text-marigold-ink", complete: "bg-pine/15 text-pine-deep",
 };
 
 export default function MeetingPage({ params }: { params: { id: string } }) {
@@ -196,7 +196,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
     save(patch);
   };
 
-  if (loading) return <Shell><p className="text-ink/50">Loading…</p></Shell>;
+  if (loading) return <Shell><p className="text-ink/70">Loading…</p></Shell>;
   if (error || !m) return <Shell><p className="text-red-600">{error ?? "Not found."}</p></Shell>;
 
   const label = GROUP_LABEL[m.group] ?? m.group;
@@ -244,9 +244,9 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
               : <span className="text-ink/80">{m.snack || "—"}</span>}
           </Field>
           <div className="sm:col-span-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink/45">Attendees</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">Attendees</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              {m.attendees.length === 0 && <span className="text-sm text-ink/40">None yet</span>}
+              {m.attendees.length === 0 && <span className="text-sm text-ink/65">None yet</span>}
               {m.attendees.map((e) => (
                 <span key={e} className="inline-flex items-center gap-1 rounded-full bg-pine/10 px-3 py-1 text-xs font-medium text-pine-deep">
                   {nameOf(e)}
@@ -287,7 +287,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
           <section data-tour="meeting-pending-approval" className="mt-8">
             <div className="flex flex-wrap items-baseline gap-3">
               <h2 className="font-display text-2xl font-semibold text-pine-deep">Pending Your Approval</h2>
-              <span className="rounded-full bg-marigold-soft px-2.5 py-0.5 text-xs font-semibold text-marigold-deep">
+              <span className="rounded-full bg-marigold-soft px-2.5 py-0.5 text-xs font-semibold text-marigold-ink">
                 {pendingOrdered.length} {pendingOrdered.length === 1 ? "task" : "tasks"}
               </span>
             </div>
@@ -321,10 +321,10 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
           </div>
           <div className="mt-3 overflow-hidden rounded-3xl border border-pine/12">
             {tableGroups.length === 0 ? (
-              <p className="p-6 text-sm text-ink/45">{tasks.length > 0 ? "Everything from this meeting is waiting on your approval above." : "No tasks assigned from this meeting yet."}{canManage ? " Use “Assign task” to create real dashboard tasks that everyone tracks." : ""}</p>
+              <p className="p-6 text-sm text-ink/65">{tasks.length > 0 ? "Everything from this meeting is waiting on your approval above." : "No tasks assigned from this meeting yet."}{canManage ? " Use “Assign task” to create real dashboard tasks that everyone tracks." : ""}</p>
             ) : (
               <table className="w-full text-left text-sm">
-                <thead><tr className="border-b border-pine/10 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/50">
+                <thead><tr className="border-b border-pine/10 bg-pine/[0.03] text-xs uppercase tracking-wide text-ink/70">
                   <th className="px-4 py-3 font-semibold">Task</th><th className="px-4 py-3 font-semibold">Description</th>
                   <th className="px-4 py-3 font-semibold">Assigned to</th>
                   <th className="px-4 py-3 font-semibold">Due</th><th className="px-4 py-3 font-semibold">Progress</th>
@@ -346,7 +346,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
                             {g.head.title}
                           </button>
                         </td>
-                        <td className="max-w-xs px-4 py-3 text-ink/60"><span className="line-clamp-2 whitespace-pre-wrap">{g.head.description || <span className="text-ink/30">—</span>}</span></td>
+                        <td className="max-w-xs px-4 py-3 text-ink/75"><span className="line-clamp-2 whitespace-pre-wrap">{g.head.description || <span className="text-ink/65">—</span>}</span></td>
                         <td className="px-4 py-3">
                           {/* each person keeps their own completion state */}
                           <ul className="flex flex-col gap-1.5">
@@ -364,7 +364,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
                                     </span>
                                   </span>
                                   {p.submittedAt && (
-                                    <span className="block pl-1 text-[11px] text-ink/40">
+                                    <span className="block pl-1 text-[11px] text-ink/65">
                                       Submitted {new Date(p.submittedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                                     </span>
                                   )}
@@ -374,10 +374,10 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
                           </ul>
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-ink/70">
-                          {hasDue ? new Date(g.head.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : <span className="text-ink/30">—</span>}
+                          {hasDue ? new Date(g.head.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : <span className="text-ink/65">—</span>}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
-                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${done === g.people.length ? "bg-pine/15 text-pine-deep" : "bg-ink/8 text-ink/60"}`}>
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${done === g.people.length ? "bg-pine/15 text-pine-deep" : "bg-ink/8 text-ink/75"}`}>
                             {done}/{g.people.length} done
                           </span>
                         </td>
@@ -388,7 +388,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
               </table>
             )}
           </div>
-          {tasks.length > 0 && <p className="mt-2 text-xs text-ink/40">These are live dashboard tasks — statuses update as people submit and get approved.</p>}
+          {tasks.length > 0 && <p className="mt-2 text-xs text-ink/65">These are live dashboard tasks — statuses update as people submit and get approved.</p>}
         </div>
 
         {canManage && (
@@ -422,7 +422,7 @@ export default function MeetingPage({ params }: { params: { id: string } }) {
 }
 
 function Field({ label, children, ...rest }: { label: string; children: React.ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
-  return (<div {...rest}><p className="text-xs font-semibold uppercase tracking-wide text-ink/45">{label}</p><div className="mt-1">{children}</div></div>);
+  return (<div {...rest}><p className="text-xs font-semibold uppercase tracking-wide text-ink/65">{label}</p><div className="mt-1">{children}</div></div>);
 }
 
 function Shell({ children }: { children: React.ReactNode }) {

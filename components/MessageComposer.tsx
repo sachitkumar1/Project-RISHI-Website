@@ -235,7 +235,7 @@ export default function MessageComposer({
   if (!opts) {
     return (
       <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 safe-overlay" onClick={onClose}>
-        <div className="rounded-2xl bg-paper px-6 py-4 text-sm text-ink/60">Loading…</div>
+        <div className="rounded-2xl bg-paper px-6 py-4 text-sm text-ink/75">Loading…</div>
       </div>
     );
   }
@@ -255,7 +255,7 @@ export default function MessageComposer({
               <button
                 key={m}
                 onClick={() => switchMode(m)}
-                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${mode === m ? "bg-pine text-paper" : "text-ink/60 hover:text-ink"}`}
+                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${mode === m ? "bg-pine text-paper" : "text-ink/75 hover:text-ink"}`}
               >
                 {MODE_LABEL[m]}
               </button>
@@ -267,7 +267,7 @@ export default function MessageComposer({
 
         {/* Subject */}
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">
+          <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">
             Subject {mode === "email" && <span className="text-red-500">*</span>}
           </span>
           <input
@@ -289,7 +289,7 @@ export default function MessageComposer({
 
           {mode === "announcement" && (
             <>
-              <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Send to</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Send to</span>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {opts.announce.scopes.map((s) => (
                   <button key={s} onClick={() => setScopeKind(s)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${scopeKind === s ? "bg-pine text-paper" : "border border-ink/15 text-ink/70 hover:bg-ink/5"}`}>
@@ -304,7 +304,7 @@ export default function MessageComposer({
                     {filteredAnn.map((m) => (
                       <label key={m.email} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm text-ink hover:bg-ink/5">
                         <input type="checkbox" checked={annMembers.includes(m.email)} onChange={() => setAnnMembers((l) => toggle(l, m.email))} className="accent-pine" />
-                        {m.name} <span className="text-xs text-ink/40">{m.group ? (GROUP_LABELS[m.group] ?? m.group) : "No group yet"}</span>
+                        {m.name} <span className="text-xs text-ink/65">{m.group ? (GROUP_LABELS[m.group] ?? m.group) : "No group yet"}</span>
                       </label>
                     ))}
                   </div>
@@ -320,13 +320,13 @@ export default function MessageComposer({
                   ))}
                 </div>
               )}
-              {scopeKind === "club" && <p className="mt-3 text-sm text-ink/60">Goes to every member of the club.</p>}
+              {scopeKind === "club" && <p className="mt-3 text-sm text-ink/75">Goes to every member of the club.</p>}
             </>
           )}
 
           {mode === "email" && (
             <>
-              <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Send to</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Send to</span>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {(["members", "group", "club"] as const).map((s) => (
                   <button key={s} onClick={() => setEmailScope(s)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${emailScope === s ? "bg-pine text-paper" : "border border-ink/15 text-ink/70 hover:bg-ink/5"}`}>
@@ -342,7 +342,7 @@ export default function MessageComposer({
                     {filteredEmail.map((m) => (
                       <label key={m.email} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm text-ink hover:bg-ink/5">
                         <input type="checkbox" checked={emailMembers.includes(m.email)} onChange={() => setEmailMembers((l) => toggle(l, m.email))} className="accent-pine" />
-                        {m.name} <span className="text-xs text-ink/40">{m.group ? (GROUP_LABELS[m.group] ?? m.group) : "No group yet"}</span>
+                        {m.name} <span className="text-xs text-ink/65">{m.group ? (GROUP_LABELS[m.group] ?? m.group) : "No group yet"}</span>
                       </label>
                     ))}
                   </div>
@@ -358,17 +358,17 @@ export default function MessageComposer({
                   ))}
                 </div>
               )}
-              {emailScope === "club" && <p className="mt-3 text-sm text-ink/60">Goes to every member of the club.</p>}
+              {emailScope === "club" && <p className="mt-3 text-sm text-ink/75">Goes to every member of the club.</p>}
 
               <div className="mt-3">
-                <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Other email addresses</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Other email addresses</span>
                 <div className="mt-1.5">
                   <EmailChipsInput value={externalChips} onChange={setExternalChips} />
                 </div>
               </div>
 
               <div className="mt-3">
-                <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">CC</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">CC</span>
                 <div className="mt-1.5">
                   <EmailChipsInput value={cc} onChange={setCc} placeholder="CC addresses (optional)…" />
                 </div>
@@ -379,10 +379,10 @@ export default function MessageComposer({
 
         {/* Sender */}
         {mode === "newsletter" ? (
-          <p className="mt-4 text-xs text-ink/50">Sent from the club email ({opts.senders.clubAddress}).</p>
+          <p className="mt-4 text-xs text-ink/70">Sent from the club email ({opts.senders.clubAddress}).</p>
         ) : (
           <div className="mt-4">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Send from</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Send from</span>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {(mode === "announcement" || clubAllowedForEmail) && (
                 <button onClick={() => setSender("club")} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${sender === "club" ? "bg-pine text-paper" : "border border-ink/15 text-ink/70 hover:bg-ink/5"}`}>
@@ -394,10 +394,10 @@ export default function MessageComposer({
               </button>
             </div>
             {mode === "email" && !clubAllowedForEmail && (
-              <p className="mt-1.5 text-xs text-ink/45">The club email is only available when writing to your own project group.</p>
+              <p className="mt-1.5 text-xs text-ink/65">The club email is only available when writing to your own project group.</p>
             )}
             {senderUnavailable && (
-              <p className="mt-1.5 text-xs text-marigold-deep">That account isn&rsquo;t connected — connect it in Account settings first.</p>
+              <p className="mt-1.5 text-xs text-marigold-ink">That account isn&rsquo;t connected — connect it in Account settings first.</p>
             )}
           </div>
         )}
@@ -412,17 +412,17 @@ export default function MessageComposer({
 
             {mailMerge && (
               <div className="mt-3">
-                <p className="text-xs text-ink/55">
+                <p className="text-xs text-ink/70">
                   Members fill in automatically. Add a row for anyone else (or to override / add attributes). The
                   <strong> Email</strong> column says who each row is for.
                 </p>
 
                 {/* source toggle */}
                 <div className="mt-2 inline-flex rounded-full bg-ink/[0.06] p-1">
-                  <button onClick={() => setMergeSource("table")} className={`rounded-full px-3 py-1 text-xs font-semibold ${mergeSource === "table" ? "bg-pine text-paper" : "text-ink/60"}`}>
+                  <button onClick={() => setMergeSource("table")} className={`rounded-full px-3 py-1 text-xs font-semibold ${mergeSource === "table" ? "bg-pine text-paper" : "text-ink/75"}`}>
                     Build a table
                   </button>
-                  <button onClick={() => setMergeSource("csv")} className={`rounded-full px-3 py-1 text-xs font-semibold ${mergeSource === "csv" ? "bg-pine text-paper" : "text-ink/60"}`}>
+                  <button onClick={() => setMergeSource("csv")} className={`rounded-full px-3 py-1 text-xs font-semibold ${mergeSource === "csv" ? "bg-pine text-paper" : "text-ink/75"}`}>
                     Upload CSV
                   </button>
                 </div>
@@ -433,7 +433,7 @@ export default function MessageComposer({
                       Choose .csv file
                       <input type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) loadCsv(f); e.target.value = ""; }} />
                     </label>
-                    {csvNote && <span className="ml-2 text-xs text-ink/50">{csvNote}</span>}
+                    {csvNote && <span className="ml-2 text-xs text-ink/70">{csvNote}</span>}
                   </div>
                 )}
 
@@ -453,7 +453,7 @@ export default function MessageComposer({
                 )}
 
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs text-ink/50">Insert:</span>
+                  <span className="text-xs text-ink/70">Insert:</span>
                   {insertChips.map((tag) => (
                     <button key={tag} onClick={() => insertRef.current?.(tag)} className="rounded-md bg-pine/10 px-2 py-0.5 text-xs font-medium text-pine hover:bg-pine/20">
                       {tag}
@@ -467,7 +467,7 @@ export default function MessageComposer({
 
         {/* Body */}
         <div className="mt-4">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink/50">Message</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-ink/70">Message</span>
           <div className="mt-1.5">
             <RichTextEditor value={prefill?.bodyHtml ?? ""} onChange={setBodyHtml} registerInsert={(fn) => (insertRef.current = fn)} placeholder="Write your message…" />
           </div>
