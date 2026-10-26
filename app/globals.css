@@ -31,7 +31,6 @@
 }
 
 html {
-  /* In-page #links: Lenis glides them on desktop; this covers touch and the dashboard. */
   scroll-behavior: smooth;
   scroll-padding-top: var(--header-h);
 }
@@ -102,6 +101,7 @@ body {
   select:focus-visible,
   textarea:focus-visible,
   summary:focus-visible,
+  iframe:focus-visible,
   [tabindex]:focus-visible {
     outline: 2px solid theme("colors.pine.deep");
     outline-offset: 3px;
@@ -183,195 +183,18 @@ body {
   }
 }
 
-/* ============================================================================
-   MOTION
-   Everything here is either (a) played once on load / on arrival, or
-   (b) tied to scroll position. Rules that move things are inside
-   prefers-reduced-motion: no-preference, and only transform-family
-   properties, opacity and clip-path animate, so it stays smooth on phones.
-   ========================================================================== */
-
-/* Lenis smooth scroll — its required base rules (components/SiteMotion.tsx). */
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth { scroll-behavior: auto !important; }
-.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
-.lenis.lenis-stopped { overflow: hidden; }
-
-/* Page heroes: lines rise in on load, slightly out of focus at first.
-   CSS, so it starts at first paint (never a blank hero while scripts load).
-   `translate`, not `transform`, so it doesn't fight Tailwind's centring. */
+/* The home hero's load sequence — the site's one orchestrated motion moment.
+   CSS rather than JavaScript so it starts at first paint (never a blank hero
+   while scripts load). Uses the `translate` property, not `transform`, so it
+   doesn't fight Tailwind's -translate-x-1/2 centring. The reduced-motion
+   rule below collapses it to an instant appearance. */
 @keyframes hero-rise {
-  from { opacity: 0; translate: 0 26px; filter: blur(6px); }
-  to { opacity: 1; translate: 0 0; filter: blur(0); }
+  from { opacity: 0; translate: 0 18px; }
+  to { opacity: 1; translate: 0 0; }
 }
 .hero-rise {
-  animation: hero-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(80ms + var(--i, 0) * 110ms);
-}
-
-/* Other pages' heroes: their lines rise in one after another on load. */
-.hero-seq > * { animation: hero-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(80ms + var(--i, 0) * 110ms); }
-.hero-seq > :nth-child(2) { --i: 1; }
-.hero-seq > :nth-child(3) { --i: 2; }
-.hero-seq > :nth-child(4) { --i: 3; }
-.hero-seq > :nth-child(n + 5) { --i: 4; }
-/* A hero photo unmasks from its centre on load. */
-@keyframes hero-unmask { from { clip-path: inset(14% 12% 14% 12% round 28px); opacity: 0.4; } to { clip-path: inset(0 0 0 0 round 0); opacity: 1; } }
-.hero-unmask { animation: hero-unmask 1300ms cubic-bezier(0.16, 1, 0.3, 1) 250ms both; }
-
-/* Page-to-page: the new page fades in (app/template.tsx). Opacity only, and
-   nothing left applied afterwards (fill: backwards), because a transform on a
-   wrapper would break every fixed-position popup inside the page. */
-@keyframes page-enter { from { opacity: 0; } }
-@media (prefers-reduced-motion: no-preference) {
-  .page-enter { animation: page-enter 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
-}
-
-/* Scroll-in reveals (data-reveal; see components/Reveal.tsx, SectionHeading,
-   SiteMotion). The page ships visible; SiteMotion marks only below-the-fold
-   elements "pending", then "in" as they arrive. Transitions (not keyframes),
-   so a reveal interrupted mid-way simply carries on from where it is. */
-.reveal-mask { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: 0.14em; margin-bottom: -0.14em; }
-.reveal-word { display: inline-block; }
-.reveal-rule { transform-origin: left center; }
-.reveal-rule.mx-auto { transform-origin: center; }
-@media (prefers-reduced-motion: no-preference) {
-  [data-reveal] { --reveal-ease: cubic-bezier(0.16, 1, 0.3, 1); }
-  [data-reveal-state="pending"]:not([data-reveal="words"]) { opacity: 0; }
-  [data-reveal="rise"][data-reveal-state="pending"] { translate: 0 40px; filter: blur(8px); }
-  [data-reveal="scale"][data-reveal-state="pending"] { scale: 0.94; translate: 0 24px; }
-  [data-reveal="clip"][data-reveal-state="pending"] { opacity: 1; clip-path: inset(10% 8% 10% 8% round 28px); scale: 1.04; }
-  [data-reveal-state="in"] {
-    transition: opacity 900ms var(--reveal-ease), translate 1000ms var(--reveal-ease),
-      scale 1100ms var(--reveal-ease), clip-path 1200ms var(--reveal-ease), filter 900ms var(--reveal-ease);
-    transition-delay: var(--reveal-delay, 0ms);
-  }
-  [data-reveal="words"][data-reveal-state="pending"] .reveal-word { translate: 0 115%; }
-  [data-reveal="words"][data-reveal-state="pending"] .reveal-rule { scale: 0 1; }
-  [data-reveal="words"][data-reveal-state="in"] .reveal-word {
-    transition: translate 950ms var(--reveal-ease);
-    transition-delay: calc(var(--reveal-delay, 0ms) + var(--w, 0) * 75ms);
-  }
-  [data-reveal="words"][data-reveal-state="in"] .reveal-rule { transition: scale 900ms var(--reveal-ease) 300ms; }
-}
-
-/* Home hero layers (the film itself is in the scroll-driven block below).
-   Beat 2 only exists where the film can play. */
-.hero-beat-2 { display: none; }
-.hero-mist { background: linear-gradient(to top, rgb(20 54 40 / 0.92), rgb(20 54 40 / 0.4) 45%, transparent); opacity: 0.55; }
-.film-grain {
-  opacity: 0.09; mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-}
-@media (prefers-reduced-motion: no-preference) {
-  .hero-cue-dot { animation: cue-dot 2.2s cubic-bezier(0.45, 0, 0.55, 1) 1.2s infinite; }
-  @keyframes cue-dot { 0%, 100% { translate: 0 0; opacity: 1; } 50% { translate: 0 9px; opacity: 0.4; } }
-}
-
-/* Chapters: big outlined numerals sit behind each chapter's content. */
-.chapter { overflow-x: clip; }
-.chapter > :not(.chapter-num):not(.absolute) { position: relative; z-index: 1; }
-.chapter-num {
-  position: absolute; z-index: 0; pointer-events: none; user-select: none;
-  font-family: var(--font-fraunces), Georgia, serif; font-weight: 600; line-height: 0.8;
-  font-size: clamp(7rem, 17vw, 15rem); color: transparent;
-  -webkit-text-stroke: 1px rgb(30 77 58 / 0.16);
-}
-.chapter-num-dark { -webkit-text-stroke-color: rgb(242 200 121 / 0.2); }
-
-/* Embedded videos: focus moves *into* the player, so the iframe itself never
-   matches :focus — ring its frame instead (outline isn't clipped by the frame's
-   own overflow). */
-.video-frame:focus-within { outline: 2px solid theme("colors.marigold.DEFAULT"); outline-offset: 4px; }
-
-/* Chapter rail (components/ChapterRail.tsx) */
-.chapter-rail { opacity: 0; pointer-events: none; transition: opacity 500ms ease-out, color 400ms ease-out; }
-.chapter-rail.is-on, .chapter-rail:focus-within { opacity: 1; pointer-events: auto; }
-
-/* Cursor ring (components/CursorRing.tsx): an accent; the real cursor stays. */
-.cursor-ring {
-  position: fixed; left: 0; top: 0; z-index: 9999; width: 34px; height: 34px; border-radius: 9999px;
-  border: 1.5px solid theme("colors.marigold.DEFAULT"); background: rgb(226 160 47 / 0.06);
-  pointer-events: none; opacity: 0; transition: opacity 300ms ease-out; will-change: transform;
-}
-
-/* Project cards: the photo eases closer on hover (`scale`, so it combines
-   with the scroll parallax below instead of replacing it). */
-.card-zoom img { transition: scale 700ms cubic-bezier(0.16, 1, 0.3, 1); }
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .group:hover .card-zoom img { scale: 1.06; }
-}
-
-/* Scroll-linked motion: pure CSS scroll-driven animations. Browsers without
-   them (Firefox today) simply show the page still; nothing is hidden. */
-.scroll-progress { display: none; }
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    /* thin marigold progress line along the very top */
-    .scroll-progress {
-      display: block; position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 60;
-      background: theme("colors.marigold.DEFAULT"); transform-origin: 0 50%; pointer-events: none;
-      animation: progress-grow linear both; animation-timeline: scroll(root block);
-    }
-    @keyframes progress-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-
-    /* the header lifts off the page once you start scrolling */
-    .site-header { animation: header-lift linear both; animation-timeline: scroll(root block); animation-range: 0 160px; }
-    @keyframes header-lift {
-      from { box-shadow: 0 0 0 0 rgb(20 54 40 / 0); }
-      to { box-shadow: 0 12px 32px -20px rgb(20 54 40 / 0.45); }
-    }
-
-    /* ---- home hero film: the stage pins while the section scrolls past ---- */
-    /* inset 0: otherwise the timeline inherits the header's scroll-padding and starts ~9% in */
-    .hero-scope { height: 190vh; height: 190svh; view-timeline: --hero block; view-timeline-inset: 0px; }
-    .hero-stage { position: sticky; top: 0; }
-    /* "contain" = exactly the stretch where the stage is pinned */
-    .hero-cam { animation: hero-cam linear both; animation-timeline: --hero; animation-range: contain 0% contain 100%; }
-    @keyframes hero-cam { from { transform: scale(1); } to { transform: scale(1.24) translateY(-3%); } }
-    .hero-depth-far { animation: depth-far linear both; animation-timeline: --hero; animation-range: contain 0% contain 100%; }
-    @keyframes depth-far { to { transform: translateY(-12%); } }
-    .hero-depth-near { animation: depth-near linear both; animation-timeline: --hero; animation-range: contain 0% contain 100%; }
-    @keyframes depth-near { from { transform: translateY(22%); } to { transform: translateY(-8%); } }
-    .hero-mist { animation: mist-rise linear both; animation-timeline: --hero; animation-range: contain 0% contain 70%; }
-    @keyframes mist-rise { from { opacity: 0.2; transform: translateY(30%); } to { opacity: 1; transform: none; } }
-    .hero-beat-1 { animation: beat-out linear both; animation-timeline: --hero; animation-range: contain 2% contain 34%; }
-    /* No blur on anything scroll-linked: a filter re-renders every frame (measured
-       ~2x more slow frames on a throttled CPU). One-shot reveals can keep theirs. */
-    @keyframes beat-out { to { opacity: 0; transform: translateY(-9vh) scale(0.96); visibility: hidden; } }
-    .hero-beat-2 { display: flex; animation: beat-in linear both; animation-timeline: --hero; animation-range: contain 28% contain 62%; }
-    @keyframes beat-in { from { opacity: 0; transform: translateY(7vh) scale(1.03); } to { opacity: 1; transform: none; } }
-    .hero-cue > div { animation: cue-out linear both; animation-timeline: --hero; animation-range: contain 0% contain 8%; }
-    @keyframes cue-out { to { opacity: 0; } }
-
-    /* ---- chapters ---- */
-    /* the big outlined chapter numerals drift against the scroll (depth) */
-    .chapter-num { animation: num-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
-    @keyframes num-drift { from { transform: translateY(18%); } to { transform: translateY(-18%); } }
-    .drift-slow { animation: num-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
-    /* hand-off: a chapter's content softens and lifts away as the next arrives */
-    .handoff { animation: handoff linear both; animation-timeline: view(); animation-range: exit 25% exit 100%; }
-    @keyframes handoff { to { opacity: 0.15; transform: translateY(-5%); } }
-
-    /* photos in frames drift a little inside them as they pass */
-    .parallax-img img { animation: img-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
-    @keyframes img-drift { from { transform: translateY(-5%) scale(1.12); } to { transform: translateY(5%) scale(1.12); } }
-
-    /* 5-step methodology: a line draws across and each step lights up in turn */
-    .steps-scope { view-timeline: --steps block; view-timeline-inset: 0px; }
-    .steps-line { animation: steps-line linear both; animation-timeline: --steps; animation-range: cover 22% cover 52%; transform-origin: 0 50%; }
-    @keyframes steps-line { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-    .step-card {
-      animation: step-on linear both; animation-timeline: --steps;
-      animation-range: cover calc(22% + var(--i, 0) * 6%) cover calc(28% + var(--i, 0) * 6%);
-    }
-    @keyframes step-on {
-      /* solid colours: the drawing line runs behind the cards and must not show through */
-      from { border-color: rgb(30 77 58 / 0.12); background-color: #FBF8F1; }
-      to { border-color: rgb(226 160 47 / 0.9); background-color: #FAF0DC; }
-    }
-    html.dark .step-card { animation: none; }
-  }
+  animation: hero-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(100ms + var(--i, 0) * 80ms);
 }
 
 /* View transitions.

@@ -7,8 +7,6 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BackButton from "@/components/BackButton";
 import { Toaster } from "@/components/Toast";
-import SiteMotion from "@/components/SiteMotion";
-import CursorRing from "@/components/CursorRing";
 import AuthProvider from "@/components/AuthProvider";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -72,8 +70,6 @@ export default function RootLayout({
           <Navbar />
           <BackButton />
           <Toaster />
-          <SiteMotion />
-          <CursorRing />
           <main>{children}</main>
           <Footer />
         </AuthProvider>

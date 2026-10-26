@@ -20,7 +20,7 @@ export default function AboutPage() {
       <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
         <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
         <div className="container-rishi relative z-10 py-20 lg:py-28">
-          <Reveal className="hero-seq">
+          <Reveal>
             <span className="eyebrow text-marigold-soft">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               About Us

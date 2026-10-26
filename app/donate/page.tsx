@@ -15,7 +15,7 @@ export default function DonatePage() {
     <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
       <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.1} />
       <div className="container-rishi relative z-10 grid min-h-[70vh] place-items-center py-20 text-center">
-        <Reveal className="hero-seq max-w-2xl">
+        <Reveal className="max-w-2xl">
           <span className="eyebrow text-marigold-soft">
             <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
             Support our work

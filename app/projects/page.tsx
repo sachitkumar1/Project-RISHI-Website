@@ -17,7 +17,7 @@ export default function ProjectsIndex() {
       <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
         <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
         <div className="container-rishi relative z-10 py-20 lg:py-28">
-          <Reveal className="hero-seq">
+          <Reveal>
             <span className="eyebrow text-marigold-soft">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               What We Do
@@ -47,7 +47,7 @@ export default function ProjectsIndex() {
           </Reveal>
 
           <Reveal delay={0.15}>
-            <div className="video-frame mt-10 overflow-hidden rounded-3xl border border-paper/10 bg-black/30 shadow-xl shadow-pine-deep/40">
+            <div className="mt-10 overflow-hidden rounded-3xl border border-paper/10 bg-black/30 shadow-xl shadow-pine-deep/40">
               <div className="relative aspect-video w-full">
                 {PROJECTS_PAGE.videoEmbedUrl ? (
                   <iframe
