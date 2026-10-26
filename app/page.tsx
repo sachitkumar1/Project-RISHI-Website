@@ -3,6 +3,9 @@ import type { CSSProperties } from "react";
 import Media from "@/components/Media";
 import PhotoJourney from "@/components/landscape/PhotoJourney";
 import MethodGraph from "@/components/MethodGraph";
+import CountUp from "@/components/CountUp";
+import Foliage from "@/components/landscape/Foliage";
+import Motes from "@/components/landscape/Motes";
 import { HOME, PROJECTS, ABOUT, LINKS } from "@/lib/content";
 
 /**
@@ -39,8 +42,17 @@ export default function Home() {
 
       {/* ------------------------------------------------------------------ HERO */}
       <section data-shot="0" className="relative flex min-h-[100svh] flex-col items-center justify-center pt-[var(--header-h)] text-center">
-        {/* shade behind the title, so it reads over sky and cloud alike */}
         <div aria-hidden className="hero-scrim pointer-events-none absolute inset-0" />
+        {/* sunrise light spilling in from the east, and pollen drifting through it */}
+        <div aria-hidden className="hero-glow pointer-events-none absolute inset-0" />
+        <Motes />
+        {/* a deodar bough overhead, grass and marigolds and a fern in the foreground */}
+        <Foliage plant="deodar" eager focus="exit" depth={0.9} flip origin="100% 8%"
+          className="-right-8 top-[calc(var(--header-h)-12px)] z-[5] w-[min(44vw,580px)]" />
+        <Foliage plant="grass" eager focus="exit" depth={0.45} origin="50% 100%"
+          className="-bottom-3 -left-10 z-[5] w-[min(62vw,500px)]" />
+        <Foliage plant="fern" eager focus="exit" depth={0.6} origin="40% 100%"
+          className="-bottom-4 -right-6 z-[5] w-[min(24vw,280px)]" />
         <div className="container-rishi relative z-10 flex flex-col items-center">
           <p style={i(0)} className="dawn-rise rounded-full bg-[rgb(9_22_16/0.55)] px-4 py-1.5 font-mono text-xs uppercase tracking-[0.32em] text-paper backdrop-blur-md">
             {HOME.heroEyebrow} · Bharog Baneri, Himachal Pradesh
@@ -65,6 +77,9 @@ export default function Home() {
 
       {/* --------------------------------------------------------------- MISSION */}
       <section id="mission" className="relative px-4 pb-10 pt-4 sm:px-6">
+        {/* burans (rhododendron), Himachal's state flower, leaning over the panel */}
+        <Foliage plant="rhodo" depth={0.7} origin="100% 25%"
+          className="-top-10 right-0 z-10 w-[min(46vw,400px)] sm:-right-6 lg:right-[max(0px,calc(50%-640px))]" />
         <div className="dawn-panel relative mx-auto max-w-content overflow-hidden rounded-[2rem] px-6 py-14 sm:px-12 sm:py-20">
           <div className="grid gap-12 lg:grid-cols-[1.05fr_1fr] lg:items-center">
             <div>
@@ -81,10 +96,10 @@ export default function Home() {
             </div>
           </div>
           <dl className="mt-14 grid gap-px overflow-hidden rounded-3xl border border-pine/10 bg-pine/10 sm:grid-cols-3">
-            {HOME.stats.map((s) => (
-              <div key={s.label} className="rise-in flex flex-col bg-paper p-8 text-center">
+            {HOME.stats.map((s, k) => (
+              <div key={s.label} className={`rise-in flex flex-col p-8 text-center ${["stat-marigold", "stat-sage", "stat-rose"][k % 3]}`}>
                 <dt className="order-2 mt-2 text-sm text-ink/75">{s.label}</dt>
-                <dd className="font-display text-5xl font-semibold text-pine tabular-nums">{s.value}</dd>
+                <dd className="font-display text-5xl font-semibold text-pine tabular-nums"><CountUp value={s.value} /></dd>
               </div>
             ))}
           </dl>
@@ -93,6 +108,8 @@ export default function Home() {
 
       {/* ----------------------------------------------------------------- TEAMS */}
       <section id="teams" data-shot="1" className="relative px-4 pb-10 sm:px-6">
+        <Foliage plant="fern" depth={0.8} origin="50% 100%"
+          className="-bottom-6 z-10 hidden w-[200px] md:block md:left-0 lg:left-[max(0px,calc(50%-700px))]" />
         <div className="relative mx-auto max-w-content overflow-hidden rounded-[2rem] bg-pine-deep px-6 py-14 text-paper shadow-[0_40px_80px_-40px_rgb(20_54_40/0.6)] sm:px-12 sm:py-20">
           <h2 className="rise-in font-display text-4xl font-semibold sm:text-5xl">Four teams, One village</h2>
           <p className="rise-in mt-5 max-w-2xl text-paper/75">
@@ -125,6 +142,8 @@ export default function Home() {
           The five steps are a real sequence: a graph that rises step by step,
           each step pinging as the line reaches it while you scroll. */}
       <section id="method" data-shot="2" className="relative px-4 pb-10 sm:px-6">
+        <Foliage plant="grass" depth={0.5} flip origin="50% 100%"
+          className="bottom-4 right-0 z-10 w-[min(56vw,540px)] lg:right-[max(0px,calc(50%-640px))]" />
         <div className="dawn-panel relative mx-auto max-w-content overflow-hidden rounded-[2rem] px-6 py-14 sm:px-12 sm:py-20">
           <h2 className="rise-in text-center font-display text-4xl font-semibold text-pine-deep sm:text-5xl">{ABOUT.methodology.title}</h2>
           <p className="rise-in mx-auto mt-4 max-w-xl text-center text-ink/75">The path every project follows, from first conversation to looking back.</p>
@@ -135,7 +154,10 @@ export default function Home() {
       </section>
 
       {/* ------------------------------------------------------------------ JOIN */}
-      <section id="join" data-shot="3" className="relative px-4 pb-24 sm:px-6">
+      <section id="join" data-shot="3" className="relative px-4 pb-24 pt-28 sm:px-6 sm:pt-40">
+        {/* a marigold toran, as hung over doorways for a welcome */}
+        <Foliage plant="toran" depth={0.25} origin="50% 0%"
+          className="left-1/2 top-2 z-10 w-[min(calc(100%-1rem),1180px)] -translate-x-1/2" />
         <div className="mx-auto grid max-w-content gap-6 lg:grid-cols-2">
           <div className="rise-in relative overflow-hidden rounded-[2rem] bg-pine p-10 text-paper sm:p-12">
             <h3 className="font-display text-4xl font-semibold">Join us</h3>

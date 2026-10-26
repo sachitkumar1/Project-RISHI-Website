@@ -210,11 +210,31 @@ body {
   /* no shade pool behind the title (he found it too heavy): only a soft fall-off at the very bottom */
   background: linear-gradient(to top, rgb(9 22 16 / 0.22), transparent 22%);
 }
+/* sunrise spilling in from the east (top right), warming the hero */
+.hero-glow {
+  background:
+    radial-gradient(55% 60% at 96% 6%, rgb(255 176 92 / 0.38), rgb(255 150 90 / 0.12) 55%, transparent 80%),
+    linear-gradient(to bottom, rgb(255 190 140 / 0.12), transparent 40%);
+  mix-blend-mode: screen;
+}
+/* pollen in the light */
+.mote { position: absolute; border-radius: 9999px; background: rgb(255 232 180); box-shadow: 0 0 6px 1px rgb(255 214 140 / 0.7); opacity: 0; }
+
+/* illustrated plants (components/landscape/Foliage.tsx) */
+.foliage img { user-select: none; }
+.foliage .f-blur { opacity: 0; }
+.foliage-drift, .foliage .f-sharp, .foliage .f-blur { will-change: transform, opacity; }
+
+/* the stats, each on its own soft tint */
+.stat-marigold { background: linear-gradient(160deg, #fdf1dc, #f8e3c0); }
+.stat-sage { background: linear-gradient(160deg, #f1f4e6, #e2ead3); }
+.stat-rose { background: linear-gradient(160deg, #fcece3, #f6d9cb); }
+
 /* a tight shadow that crisps the letter edges, not a halo */
 .hero-shadow { text-shadow: 0 1px 2px rgb(5 14 10 / 0.45), 0 2px 8px rgb(5 14 10 / 0.22); }
-/* solid, slightly translucent paper panels: content is always readable */
+/* solid paper panels, warmed like paper in morning light: content is always readable */
 .dawn-panel {
-  background: rgb(251 248 241);
+  background: linear-gradient(165deg, #fdf7ec 0%, #f8ecd9 100%);
   box-shadow: 0 40px 90px -45px rgb(20 54 40 / 0.45), inset 0 0 0 1px rgb(30 77 58 / 0.08);
 }
 /* inner-page headers (components/landscape/HeaderScenery.tsx): a real
@@ -261,6 +281,18 @@ body {
   .method-node.is-pinged .method-ring { animation: method-ping 1100ms cubic-bezier(0.2, 0.6, 0.3, 1) both; }
   .method-node.is-pinged .method-ring-2 { animation-delay: 200ms; }
   .method-node.is-pinged .method-dot { animation: method-pop 520ms cubic-bezier(0.3, 1.6, 0.5, 1); }
+  /* plants sway from where they're attached; pollen rises and twinkles */
+  .foliage-sway { animation: foliage-sway 7s ease-in-out infinite; }
+  .foliage:nth-of-type(2n) .foliage-sway { animation-duration: 9s; animation-delay: -3s; }
+  .mote { animation: mote-rise var(--dur, 20s) linear var(--delay, 0s) infinite; }
+}
+@keyframes foliage-sway { 0%, 100% { rotate: -0.8deg; } 50% { rotate: 1deg; } }
+@keyframes mote-rise {
+  0% { transform: translate(0, 0); opacity: 0; }
+  12% { opacity: 0.85; }
+  50% { opacity: 0.35; }
+  70% { opacity: 0.8; }
+  100% { transform: translate(var(--drift, 0px), -46vh); opacity: 0; }
 }
 
 @supports (animation-timeline: view()) {
@@ -268,6 +300,21 @@ body {
     /* arrivals: finished after 240px of scroll, whatever the element's size */
     .rise-in { animation: rise-in linear both; animation-timeline: view(); animation-range: entry 0px entry 240px; }
     @keyframes rise-in { from { opacity: 0; transform: translateY(46px); } to { opacity: 1; transform: none; } }
+
+    /* plants drift at their own depth and pull focus: soft → sharp → soft */
+    .foliage-drift { animation: fol-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    @keyframes fol-drift { from { transform: translateY(calc(var(--depth, 0.6) * 22%)); } to { transform: translateY(calc(var(--depth, 0.6) * -22%)); } }
+    .foliage-cover .f-sharp { animation: fol-sharp linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    .foliage-cover .f-blur { animation: fol-blur linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    @keyframes fol-sharp { 0% { opacity: 0; } 28%, 72% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes fol-blur { 0% { opacity: 1; } 28%, 72% { opacity: 0; } 100% { opacity: 1; } }
+    /* plants on screen at load start sharp and soften (and rise away) as you scroll on */
+    .foliage-exit .foliage-drift { animation: fol-exit-drift linear both; animation-timeline: view(); animation-range: exit 0% exit 100%; }
+    @keyframes fol-exit-drift { to { transform: translateY(calc(var(--depth, 0.6) * -40%)); } }
+    .foliage-exit .f-sharp { animation: fol-exit-sharp linear both; animation-timeline: view(); animation-range: exit 0% exit 70%; }
+    .foliage-exit .f-blur { animation: fol-exit-blur linear both; animation-timeline: view(); animation-range: exit 0% exit 70%; }
+    @keyframes fol-exit-sharp { to { opacity: 0; } }
+    @keyframes fol-exit-blur { to { opacity: 1; } }
 
     /* photos drift a little inside their frames */
     .drift-photo img { animation: photo-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }

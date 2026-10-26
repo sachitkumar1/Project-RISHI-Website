@@ -1,0 +1,247 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Foliage painter</title>
+<!--
+  Paints the illustrated plants that frame the home page (components/landscape/Foliage.tsx):
+  a deodar bough, a fern, rhododendron (burans, Himachal's state flower),
+  wild grass with marigolds, and a marigold toran garland. Hand-tuned
+  procedural painting: thousands of short shaded strokes, lit from the upper
+  right by a low dawn sun. Seeded, so the same picture every time.
+
+  Open in a browser, then use the buttons to download each PNG; convert with
+  scripts/landscape/foliage_export.py (sharp + pre-blurred WebP).
+-->
+<style>body{font:14px system-ui;background:#8a9;margin:16px} canvas{background:repeating-conic-gradient(#bbb 0 25%,#ddd 0 50%) 0 0/20px 20px;max-width:46vw;margin:6px} button{margin:4px}</style>
+<div id="out"></div>
+<script>
+function rng(seed){ let s = seed >>> 0 || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 1000003) / 1000003; }; }
+const lerp = (a, b, t) => a + (b - a) * t;
+const mixc = (a, b, t) => a.map((v, i) => Math.round(lerp(v, b[i], t)));
+const rgba = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+function canvas(w, h){ const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+// point on a quadratic bezier
+const qb = (p0, p1, p2, t) => [ (1-t)*(1-t)*p0[0] + 2*(1-t)*t*p1[0] + t*t*p2[0], (1-t)*(1-t)*p0[1] + 2*(1-t)*t*p1[1] + t*t*p2[1] ];
+const qd = (p0, p1, p2, t) => [ 2*(1-t)*(p1[0]-p0[0]) + 2*t*(p2[0]-p1[0]), 2*(1-t)*(p1[1]-p0[1]) + 2*t*(p2[1]-p1[1]) ];
+
+/** a tapered stroke along a quadratic curve (branches, stems) */
+function taper(g, p0, p1, p2, w0, w1, col0, col1){
+  const N = 40, L = [], R = [];
+  for (let i = 0; i <= N; i++){
+    const t = i / N, p = qb(p0,p1,p2,t), d = qd(p0,p1,p2,t), len = Math.hypot(d[0],d[1]) || 1;
+    const nx = -d[1]/len, ny = d[0]/len, w = lerp(w0, w1, t) / 2;
+    L.push([p[0] + nx*w, p[1] + ny*w]); R.push([p[0] - nx*w, p[1] - ny*w]);
+  }
+  const gr = g.createLinearGradient(p0[0], p0[1], p2[0], p2[1]); gr.addColorStop(0, col0); gr.addColorStop(1, col1);
+  g.fillStyle = gr; g.beginPath(); g.moveTo(L[0][0], L[0][1]);
+  L.forEach(p => g.lineTo(p[0], p[1])); R.reverse().forEach(p => g.lineTo(p[0], p[1])); g.closePath(); g.fill();
+}
+
+// ---------------------------------------------------------------- deodar bough
+function deodar(seed, W = 1600, H = 1100){
+  const c = canvas(W, H), g = c.getContext('2d'), r = rng(seed);
+  const DARK = [22, 52, 44], MID = [48, 92, 72], LIGHT = [112, 150, 108], RIM = [214, 190, 120];
+  // the main branch comes in from the top-left and droops across
+  const p0 = [-40, 70], p1 = [W*0.42, H*0.02], p2 = [W*0.97, H*0.4];
+  // deodar boughs fan out in flat, drooping tiers: twigs leave the branch at a
+  // shallow angle, bow under their own weight, and carry short side-twigs
+  const twigs = [];
+  const addTwig = (base, ang, len, depth, t, level) => {
+    const tip = [base[0] + Math.cos(ang)*len, base[1] + Math.sin(ang)*len + len*0.32];
+    const mid = [base[0] + Math.cos(ang)*len*0.55, base[1] + Math.sin(ang)*len*0.55 - len*0.04];
+    twigs.push({base, mid, tip, depth, t, level});
+    if (level === 0){
+      for (let k = 1; k < 6; k++){
+        const u = k / 6, p = qb(base, mid, tip, u), d = qd(base, mid, tip, u), a = Math.atan2(d[1], d[0]);
+        const side = k % 2 ? 1 : -1;
+        addTwig(p, a + side*(0.55 + r()*0.3), len*(0.42 - u*0.22)*(0.8 + r()*0.4), depth, t, 1);
+      }
+    }
+  };
+  for (let i = 0; i < 18; i++){
+    const t = 0.05 + i / 18 * 0.92, base = qb(p0,p1,p2,t), d = qd(p0,p1,p2,t), a = Math.atan2(d[1], d[0]);
+    const len = (300 + r()*160) * (1 - t*0.5);
+    addTwig(base, a + 0.55 + r()*0.35, len, 1, t, 0);            // forward and down
+    if (r() < 0.8) addTwig(base, a - 0.35 - r()*0.3, len*0.6, 0, t, 0); // behind, rising a little
+  }
+  // back layer first (darker), then the branch, then front layer
+  const rosette = (x, y, size, shade, rim) => {
+    const n = 14 + Math.floor(r()*12);
+    for (let k = 0; k < n; k++){
+      const a = r()*Math.PI*2, l = size * (0.55 + r()*0.6);
+      const up = -Math.sin(a); // needles pointing up catch the light
+      const col = mixc(mixc(DARK, MID, shade), LIGHT, Math.max(0, up)*0.55*shade);
+      g.strokeStyle = rgba(col, 0.92); g.lineWidth = 1.5 + r()*1.3; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a)*l, y + Math.sin(a)*l*0.85 + l*0.12); g.stroke();
+      if (rim && up > 0.55 && r() < 0.5){ g.strokeStyle = rgba(RIM, 0.7); g.lineWidth = 1; g.beginPath(); g.moveTo(x + Math.cos(a)*l*0.5, y + Math.sin(a)*l*0.42); g.lineTo(x + Math.cos(a)*l, y + Math.sin(a)*l*0.85); g.stroke(); }
+    }
+  };
+  const drawTwigs = (depth) => {
+    for (const tw of twigs.filter(t => t.depth === depth)){
+      taper(g, tw.base, tw.mid, tw.tip, tw.level ? 3 : 7, 1.2, '#4a3424', '#5d4630');
+      const shade = depth ? 0.88 : 0.45;
+      const n = tw.level ? 9 : 18;
+      for (let k = 1; k <= n; k++){
+        const u = k / n, p = qb(tw.base, tw.mid, tw.tip, u);
+        const s = (tw.level ? 18 : 24) + 10*Math.sin(u*Math.PI);
+        rosette(p[0] + (r()-0.5)*14, p[1] + (r()-0.5)*12, s, shade * (0.72 + r()*0.28), depth === 1);
+      }
+    }
+  };
+  drawTwigs(0);
+  taper(g, p0, p1, p2, 34, 9, '#3b2a1d', '#5a4330');
+  // bark texture
+  for (let i = 0; i < 260; i++){ const t = r(), p = qb(p0,p1,p2,t), w = lerp(34, 9, t); g.fillStyle = `rgba(${30 + r()*40|0},${22 + r()*25|0},${14 + r()*18|0},0.6)`; g.fillRect(p[0] + (r()-0.5)*w*0.8, p[1] + (r()-0.5)*w*0.7, 2 + r()*8, 1.5 + r()*2); }
+  for (let i = 0; i < 40; i++){ const t = r(), p = qb(p0,p1,p2,t); g.fillStyle = 'rgba(220,190,130,0.35)'; g.fillRect(p[0], p[1] - lerp(15, 4, t), 6 + r()*10, 2); } // sunlit top edge
+  drawTwigs(1);
+  return c;
+}
+
+// ---------------------------------------------------------------- fern
+function fern(seed, W = 900, H = 1300){
+  const c = canvas(W, H), g = c.getContext('2d'), r = rng(seed);
+  const fronds = [[W*0.45, H, W*0.25, H*0.45, W*0.62, H*0.05], [W*0.5, H, W*0.82, H*0.6, W*0.95, H*0.22], [W*0.42, H, W*0.08, H*0.7, W*0.02, H*0.32]];
+  fronds.forEach((f, fi) => {
+    const p0 = [f[0], f[1]], p1 = [f[2], f[3]], p2 = [f[4], f[5]];
+    const tone = fi === 0 ? 1 : 0.7;
+    for (let i = 0; i < 34; i++){
+      const t = 0.08 + i / 34 * 0.9, p = qb(p0,p1,p2,t), d = qd(p0,p1,p2,t), a = Math.atan2(d[1], d[0]);
+      const len = (150 * Math.sin(Math.PI * Math.min(1, t * 1.15)) + 20) * (0.9 + r()*0.2);
+      for (const side of [-1, 1]){
+        const ang = a + side * (1.25 - t*0.25);
+        // a pinna: a slim leaf with lobes, shaded along its length
+        const tip = [p[0] + Math.cos(ang)*len, p[1] + Math.sin(ang)*len + len*0.12];
+        const nx = Math.cos(ang + Math.PI/2), ny = Math.sin(ang + Math.PI/2);
+        const lobes = 9, wmax = len * 0.13;
+        g.beginPath(); g.moveTo(p[0], p[1]);
+        for (let k = 0; k <= lobes; k++){ const u = k / lobes, w = wmax * Math.sin(Math.PI*u) * (k % 2 ? 1 : 0.7); g.lineTo(lerp(p[0], tip[0], u) + nx*w, lerp(p[1], tip[1], u) + ny*w); }
+        for (let k = lobes; k >= 0; k--){ const u = k / lobes, w = wmax * Math.sin(Math.PI*u) * (k % 2 ? 1 : 0.7); g.lineTo(lerp(p[0], tip[0], u) - nx*w, lerp(p[1], tip[1], u) - ny*w); }
+        const gr = g.createLinearGradient(p[0], p[1], tip[0], tip[1]);
+        const lit = side > 0 ? 0.25 : 0;
+        gr.addColorStop(0, rgba(mixc([34, 74, 40], [86, 128, 52], lit) .map(v => v * tone | 0)));
+        gr.addColorStop(1, rgba(mixc([92, 138, 58], [168, 182, 82], lit + 0.2).map(v => v * tone | 0)));
+        g.fillStyle = gr; g.fill();
+        g.strokeStyle = 'rgba(30,60,30,0.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(tip[0], tip[1]); g.stroke();
+      }
+    }
+    taper(g, p0, p1, p2, 9, 2, '#3e5a2a', '#6a8a3a');
+  });
+  return c;
+}
+
+// ---------------------------------------------------------------- rhododendron (burans)
+function rhodo(seed, W = 1200, H = 1000){
+  const c = canvas(W, H), g = c.getContext('2d'), r = rng(seed);
+  const leaf = (x, y, ang, len) => {
+    const w = len * 0.24, tip = [x + Math.cos(ang)*len, y + Math.sin(ang)*len];
+    const nx = Math.cos(ang + Math.PI/2), ny = Math.sin(ang + Math.PI/2);
+    g.beginPath(); g.moveTo(x, y);
+    g.quadraticCurveTo(x + Math.cos(ang)*len*0.5 + nx*w, y + Math.sin(ang)*len*0.5 + ny*w, tip[0], tip[1]);
+    g.quadraticCurveTo(x + Math.cos(ang)*len*0.5 - nx*w, y + Math.sin(ang)*len*0.5 - ny*w, x, y);
+    const gr = g.createLinearGradient(x + nx*w, y + ny*w, x - nx*w, y - ny*w);
+    gr.addColorStop(0, '#1d3a24'); gr.addColorStop(0.5, '#2f5a34'); gr.addColorStop(1, '#5d8a4a'); // glossy, lit on one side
+    g.fillStyle = gr; g.fill();
+    g.strokeStyle = 'rgba(190,210,150,0.45)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x, y); g.lineTo(tip[0], tip[1]); g.stroke();
+  };
+  const bell = (x, y, size, a) => {
+    // a crimson bell with five shallow lobes, darker inside
+    g.save(); g.translate(x, y); g.rotate(a);
+    const gr = g.createRadialGradient(0, -size*0.2, size*0.1, 0, 0, size);
+    gr.addColorStop(0, '#ff6a6a'); gr.addColorStop(0.6, '#d4182e'); gr.addColorStop(1, '#8e0f22');
+    g.fillStyle = gr; g.beginPath();
+    for (let k = 0; k <= 5; k++){ const t = k / 5 * Math.PI - Math.PI; const rr = size * (0.86 + 0.14*Math.cos(t*5)); g.lineTo(Math.cos(t)*rr, Math.sin(t)*rr*0.7); }
+    g.lineTo(size*0.55, size*0.9); g.lineTo(-size*0.55, size*0.9); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(80,0,10,0.5)'; g.beginPath(); g.ellipse(0, -size*0.12, size*0.5, size*0.22, 0, 0, Math.PI*2); g.fill();
+    g.strokeStyle = 'rgba(255,220,200,0.5)'; g.lineWidth = 1; for (let k = 0; k < 4; k++){ g.beginPath(); g.moveTo((r()-0.5)*size*0.4, -size*0.1); g.lineTo((r()-0.5)*size*0.5, -size*0.55); g.stroke(); }
+    g.restore();
+  };
+  const p0 = [W + 30, H*0.15], p1 = [W*0.6, H*0.32], p2 = [W*0.1, H*0.6];
+  taper(g, p0, p1, p2, 26, 8, '#5b4632', '#47362a');
+  const nodes = [0.3, 0.62, 0.93];
+  nodes.forEach((t, ni) => {
+    const p = qb(p0,p1,p2,t);
+    // a whorl of leaves, then a truss of flowers on top
+    for (let k = 0; k < 9; k++){ const a = (k / 9) * Math.PI*2 + r()*0.3; leaf(p[0], p[1], a, 150 + r()*90); }
+    const n = 9 + Math.floor(r()*4);
+    for (let k = 0; k < n; k++){
+      const a = r()*Math.PI*2, d = 30 + r()*50;
+      bell(p[0] + Math.cos(a)*d, p[1] - 40 + Math.sin(a)*d*0.7, 30 + r()*10, a - Math.PI/2 + (r()-0.5)*0.6);
+    }
+  });
+  return c;
+}
+
+// ---------------------------------------------------------------- grass with marigolds
+function marigold(g, r, x, y, size){
+  // ruffled, layered petals: deep orange outside, gold within
+  for (let ring = 0; ring < 5; ring++){
+    const rr = size * (1 - ring * 0.17), n = 18 + ring * 2;
+    for (let k = 0; k < n; k++){
+      const a = (k / n) * Math.PI*2 + ring*0.3 + r()*0.2;
+      const col = ring < 2 ? [226 - ring*10, 112 + ring*20, 18] : [244, 168 + ring*10, 30];
+      g.fillStyle = rgba(col.map(v => Math.min(255, v + (r()-0.5)*18 | 0)), 0.95);
+      g.beginPath(); g.ellipse(x + Math.cos(a)*rr*0.55, y + Math.sin(a)*rr*0.42, rr*0.32, rr*0.2, a, 0, Math.PI*2); g.fill();
+    }
+  }
+  g.fillStyle = 'rgba(150,70,10,0.6)'; g.beginPath(); g.arc(x, y, size*0.14, 0, Math.PI*2); g.fill();
+}
+function grass(seed, W = 1600, H = 820, flowers = 4){
+  const c = canvas(W, H), g = c.getContext('2d'), r = rng(seed);
+  const blade = (x, h, lean, col, w) => taper(g, [x, H + 4], [x + lean*0.3, H - h*0.6], [x + lean, H - h], w, 0.6, rgba(col), rgba(mixc(col, [214, 196, 120], 0.45)));
+  for (let pass = 0; pass < 3; pass++){
+    for (let i = 0; i < 260; i++){
+      const x = r()*W, h = (pass === 0 ? 240 : 360) * (0.35 + r()*0.9) * (1 - Math.abs(x/W - 0.35)*0.55);
+      const dry = r() < 0.22;
+      const base = dry ? [150 + r()*40|0, 132 + r()*30|0, 70] : [40 + r()*40|0, 82 + r()*50|0, 36 + r()*20|0];
+      blade(x, h, (r()-0.4)*h*0.55, base.map(v => v * (pass === 0 ? 0.7 : 1) | 0), 6 + r()*6);
+    }
+    if (pass === 1){
+      for (let k = 0; k < 14; k++){ // seed heads
+        const x = r()*W, h = 330 + r()*200; const top = [x + (r()-0.3)*60, H - h];
+        taper(g, [x, H], [x, H - h*0.5], top, 3, 1, '#6d7a3a', '#a89a58');
+        for (let s = 0; s < 22; s++){ g.fillStyle = `rgba(${200 + r()*30|0},${175 + r()*30|0},${110 + r()*30|0},0.85)`; g.beginPath(); g.ellipse(top[0] + (r()-0.5)*10, top[1] + s*3.2, 4, 2.2, 0.6, 0, Math.PI*2); g.fill(); }
+      }
+    }
+  }
+  for (let k = 0; k < flowers; k++){
+    const x = W*(0.12 + k / Math.max(1, flowers) * 0.7) + (r()-0.5)*80, h = 220 + r()*180;
+    taper(g, [x, H], [x - 20, H - h*0.5], [x + 10, H - h], 6, 4, '#3d6a2a', '#4c7a32');
+    marigold(g, r, x + 10, H - h, 42 + r()*20);
+  }
+  return c;
+}
+
+// ---------------------------------------------------------------- marigold toran (garland)
+function toran(seed, W = 2600, H = 640){
+  const c = canvas(W, H), g = c.getContext('2d'), r = rng(seed);
+  const sag = (u) => [u * W, 40 + Math.sin(Math.PI*u) * (H*0.42)];
+  g.strokeStyle = '#7a4a1e'; g.lineWidth = 6; g.beginPath(); for (let i = 0; i <= 60; i++){ const p = sag(i/60); i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); } g.stroke();
+  // mango leaves hanging in a fringe, then strings of marigolds
+  for (let i = 0; i < 26; i++){
+    const p = sag((i + 0.5) / 26), len = 120 + r()*40, ang = Math.PI/2 + (r()-0.5)*0.3;
+    const tip = [p[0] + Math.cos(ang)*len, p[1] + Math.sin(ang)*len];
+    g.beginPath(); g.moveTo(p[0], p[1]);
+    g.quadraticCurveTo(p[0] + 38, p[1] + len*0.5, tip[0], tip[1]); g.quadraticCurveTo(p[0] - 38, p[1] + len*0.5, p[0], p[1]);
+    const gr = g.createLinearGradient(p[0] - 20, 0, p[0] + 20, 0); gr.addColorStop(0, '#2b5a28'); gr.addColorStop(1, '#5e8c3a'); g.fillStyle = gr; g.fill();
+    g.strokeStyle = 'rgba(200,220,150,0.5)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(tip[0], tip[1]); g.stroke();
+  }
+  for (let i = 0; i < 64; i++){ const p = sag(i / 64); marigold(g, r, p[0], p[1] - 4, 34 + r()*6); }
+  // hanging strands at intervals
+  for (let s = 0; s < 7; s++){
+    const p = sag((s + 0.5) / 7);
+    for (let k = 0; k < 5; k++) marigold(g, r, p[0] + (r()-0.5)*4, p[1] + 44 + k*40, 26 - k*1.2);
+  }
+  return c;
+}
+
+const PIECES = { deodar: () => deodar(11), fern: () => fern(5), rhodo: () => rhodo(7), grass: () => grass(21), toran: () => toran(3) };
+const out = document.getElementById('out');
+window.rendered = {};
+for (const [name, fn] of Object.entries(PIECES)){
+  const c = fn(); out.appendChild(c);
+  window.rendered[name] = c.toDataURL('image/png');
+  const b = document.createElement('button'); b.textContent = 'Download ' + name;
+  b.onclick = () => { const a = document.createElement('a'); a.href = window.rendered[name]; a.download = name + '.png'; a.click(); };
+  out.appendChild(b);
+}
+window.done = true;
+</script>

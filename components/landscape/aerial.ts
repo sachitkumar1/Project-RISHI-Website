@@ -113,6 +113,11 @@ function terrainMaterial(map: THREE.Texture, uvRect: THREE.Vector4, hole: THREE.
         float near = 1.0 - smoothstep(1500.0, 9000.0, dist);
         float n = vnoise(vWorld.xz * 0.05) * 0.55 + vnoise(vWorld.xz * 0.19) * 0.45;
         base *= 1.0 + (n - 0.5) * 0.24 * near;
+        // golden-hour grade: richer colour, warm light on the sunlit slopes, cool shade
+        float lum = dot(base, vec3(0.2126, 0.7152, 0.0722));
+        base = max(mix(vec3(lum), base, 1.32), 0.0);
+        float lit = smoothstep(0.03, 0.16, lum);
+        base *= mix(vec3(0.86, 0.93, 1.08), vec3(1.12, 0.98, 0.8), lit);
         gl_FragColor = vec4(aerial(base * gain, vWorld), 1.0);
         #include <colorspace_fragment>
       }`,
@@ -159,8 +164,8 @@ function fogMaterial(hMap: THREE.Texture, rect: THREE.Vector4, hFine: THREE.Text
         vec2 toSun = normalize(sunDir.xz) * 160.0;
         float ahead = fbm((p + toSun) * 0.0011 + drift);
         float relief = clamp(0.5 + (wisp - ahead) * 5.0, 0.0, 1.0);
-        vec3 sunLit = vec3(1.0, 0.8, 0.62) * 1.25;
-        vec3 shade = vec3(0.42, 0.48, 0.62);
+        vec3 sunLit = vec3(1.0, 0.72, 0.48) * 1.22;   // fog tops glow gold at sunrise
+        vec3 shade = vec3(0.4, 0.42, 0.6);
         vec3 col = mix(shade, sunLit, 0.35 + 0.65 * relief * (0.6 + 0.4 * swell));
         gl_FragColor = vec4(aerial(col, vWorld), a * 0.9);
         #include <colorspace_fragment>
@@ -183,12 +188,12 @@ function skyMaterial(disc: boolean) {
         float cosS = dot(d, sunDir);
         vec2 dh = normalize(d.xz + 1e-5), sh = normalize(sunDir.xz);
         float toward = dot(dh, sh) * 0.5 + 0.5;            // 1 towards the sun's azimuth, 0 away
-        vec3 zenith = vec3(0.085, 0.19, 0.44);
-        vec3 hzSun = vec3(1.0, 0.64, 0.38);
-        vec3 hzAnti = vec3(0.6, 0.56, 0.66);                // belt of Venus
+        vec3 zenith = vec3(0.05, 0.14, 0.42);
+        vec3 hzSun = vec3(1.0, 0.52, 0.22);
+        vec3 hzAnti = vec3(0.78, 0.5, 0.55);                // belt of Venus: rose
         vec3 hz = mix(hzAnti, hzSun, pow(toward, 2.4));
         // warm and pink only in a low band; clear dawn blue above it
-        vec3 col = mix(hz, mix(vec3(0.36, 0.5, 0.74), zenith, smoothstep(0.2, 0.75, el)), smoothstep(0.0, 0.26, el));
+        vec3 col = mix(hz, mix(vec3(0.3, 0.44, 0.74), zenith, smoothstep(0.2, 0.75, el)), smoothstep(0.0, 0.26, el));
         // the earth's shadow: a cool band low on the side away from the sun
         float anti = pow(1.0 - toward, 2.0);
         col = mix(col, vec3(0.36, 0.40, 0.56), anti * smoothstep(0.075, 0.0, el) * 0.45);
@@ -240,7 +245,7 @@ export function createAerial(renderer: THREE.WebGLRenderer, opts: { small: boole
 
   const shared: Record<string, THREE.IUniform> = {
     skyCube: { value: cubeRT.texture },
-    hazeK: { value: 1.25 },
+    hazeK: { value: 1.0 },
     hazeGain: { value: 1.0 },
     gain: { value: 1.25 },
     time: { value: 0 },
@@ -254,7 +259,7 @@ export function createAerial(renderer: THREE.WebGLRenderer, opts: { small: boole
     [9500, 8200, 16454, 15000, false], [26488, 9800, 14084, 22000, true], [30854, 11500, 36770, 30000, true],
   ];
   for (const [e, u, n, w, flip] of CLOUDS) {
-    const m = new THREE.SpriteMaterial({ map: cloudTex, transparent: true, depthWrite: false, color: new THREE.Color(1.04, 0.9, 0.82) });
+    const m = new THREE.SpriteMaterial({ map: cloudTex, transparent: true, depthWrite: false, color: new THREE.Color(1.08, 0.84, 0.7) });
     const s = new THREE.Sprite(m);
     s.position.copy(V3(e, u, n)); s.scale.set(flip ? -w : w, w * (217 / 1105), 1);
     s.renderOrder = 2; scene.add(s); clouds.push(s);
