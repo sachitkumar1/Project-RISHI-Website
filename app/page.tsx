@@ -47,7 +47,7 @@ export default function Home() {
           </p>
           <h1 className="hero-shadow mt-6 font-display font-semibold leading-[0.86] tracking-tight text-paper">
             <span style={i(1)} className="dawn-rise block text-[clamp(4rem,11vw,10rem)]">{HOME.heroLine1}</span>
-            <span style={i(2)} className="dawn-rise block text-[clamp(4.6rem,13vw,12rem)] text-[rgb(236_134_42)]">{HOME.heroLine2}</span>
+            <span style={i(2)} className="dawn-rise block text-[clamp(4.6rem,13vw,12rem)] text-[rgb(216_163_72)]">{HOME.heroLine2}</span>
           </h1>
           <p style={i(3)} className="dawn-rise hero-shadow mt-7 max-w-xl text-lg text-paper sm:text-xl">
             {HOME.heroSub}
