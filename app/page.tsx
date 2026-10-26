@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { placeholderFor } from "@/lib/imagePlaceholders";
-import type { CSSProperties } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import Media from "@/components/Media";
 import Reveal from "@/components/Reveal";
 import Contours from "@/components/Contours";
@@ -11,10 +11,14 @@ import SectionHeading from "@/components/SectionHeading";
 import { HOME, PROJECTS, ABOUT, LINKS } from "@/lib/content";
 
 export default function Home() {
-  // The site's one orchestrated moment: the hero lines rise in, ~1s in all.
-  // Pure CSS (.hero-rise in globals.css), so it starts at first paint instead
-  // of waiting for JavaScript, and reduced motion shows everything at once.
-  const rise = (i: number) => ({ style: { "--i": i } as CSSProperties });
+  const reduce = useReducedMotion();
+
+  const rise = (i: number) => ({
+    initial: reduce ? false : { opacity: 0, y: 30 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.8, delay: 0.15 + i * 0.12, ease: [0.22, 1, 0.36, 1] as const },
+  });
+
 
   return (
     <>
@@ -40,44 +44,56 @@ export default function Home() {
 
         {/* Centered content */}
         <div className="container-rishi relative z-10 flex flex-col items-center pt-[var(--header-h)] text-center [text-shadow:_0_2px_16px_rgba(12,22,16,0.45)]">
-          <span style={rise(0).style} className="hero-rise eyebrow text-marigold-soft">
+          <motion.span {...rise(0)} className="eyebrow text-marigold-soft">
             <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
             {HOME.heroEyebrow}
-          </span>
+          </motion.span>
 
           <h1 className="mt-5 font-display font-semibold leading-[0.92]">
-            <span style={rise(1).style} className="hero-rise block text-6xl sm:text-7xl lg:text-8xl">
+            <motion.span {...rise(1)} className="block text-6xl sm:text-7xl lg:text-8xl">
               {HOME.heroLine1}
-            </span>
-            <span style={rise(2).style} className="hero-rise block text-7xl text-marigold sm:text-8xl lg:text-9xl">
+            </motion.span>
+            <motion.span
+              {...rise(2)}
+              className="block text-7xl text-marigold sm:text-8xl lg:text-9xl"
+            >
               {HOME.heroLine2}
-            </span>
+            </motion.span>
           </h1>
 
-          <p style={rise(3).style} className="hero-rise mt-6 max-w-xl text-lg text-paper/90 sm:text-xl">
+          <motion.p
+            {...rise(3)}
+            className="mt-6 max-w-xl text-lg text-paper/90 sm:text-xl"
+          >
             {HOME.heroSub}
-          </p>
+          </motion.p>
 
-          <div style={rise(4).style} className="hero-rise mt-9 flex flex-wrap justify-center gap-3">
+          <motion.div {...rise(4)} className="mt-9 flex flex-wrap justify-center gap-3">
             <a href={LINKS.interestForm} target="_blank" rel="noopener noreferrer" className="btn-accent">
               Register your interest
             </a>
             <Link href="/about" className="btn border border-paper/40 text-paper hover:bg-paper hover:text-pine-deep">
               Learn about us
             </Link>
-          </div>
+          </motion.div>
         </div>
 
-        {/* scroll cue: arrives last in the sequence, then stays still */}
-        <div
-          style={rise(5).style}
-          className="hero-rise absolute bottom-7 left-1/2 z-10 -translate-x-1/2 text-paper/60"
+        {/* scroll cue */}
+        <motion.div
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.8 }}
+          className="absolute bottom-7 left-1/2 z-10 -translate-x-1/2 text-paper/60"
           aria-hidden
         >
           <div className="flex h-9 w-5 items-start justify-center rounded-full border border-paper/40 p-1">
-            <span className="h-1.5 w-1 rounded-full bg-paper/80" />
+            <motion.span
+              className="h-1.5 w-1 rounded-full bg-paper/80"
+              animate={reduce ? {} : { y: [0, 10, 0] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+            />
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* ------------------------------------------------------------- MISSION */}

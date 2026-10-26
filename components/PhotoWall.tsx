@@ -121,7 +121,7 @@ export default function PhotoWall({ images }: { images: string[] }) {
                     objectFit: "cover",
                     ...blurBehind(images[idx]),
                   }}
-                  className="rounded-xl border border-pine/10"
+                  className="rounded-xl border border-pine/10 transition-transform duration-300 hover:scale-[1.02]"
                 />
               ))}
             </div>

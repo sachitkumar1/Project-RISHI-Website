@@ -144,7 +144,7 @@ body {
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-[background-color,color,border-color,box-shadow,transform] duration-200 ease-out;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-300 ease-out;
   }
   .btn-primary {
     @apply btn bg-pine text-paper hover:bg-pine-deep hover:-translate-y-0.5;
@@ -181,20 +181,6 @@ body {
   [class*="rounded-3xl"] {
     corner-shape: squircle;
   }
-}
-
-/* The home hero's load sequence — the site's one orchestrated motion moment.
-   CSS rather than JavaScript so it starts at first paint (never a blank hero
-   while scripts load). Uses the `translate` property, not `transform`, so it
-   doesn't fight Tailwind's -translate-x-1/2 centring. The reduced-motion
-   rule below collapses it to an instant appearance. */
-@keyframes hero-rise {
-  from { opacity: 0; translate: 0 18px; }
-  to { opacity: 1; translate: 0 0; }
-}
-.hero-rise {
-  animation: hero-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(100ms + var(--i, 0) * 80ms);
 }
 
 /* View transitions.

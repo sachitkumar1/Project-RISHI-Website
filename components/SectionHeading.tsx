@@ -1,3 +1,5 @@
+import Reveal from "@/components/Reveal";
+
 
 export default function SectionHeading({
   eyebrow,
@@ -20,10 +22,10 @@ export default function SectionHeading({
   const titleColor = tone === "dark" ? "text-paper" : "text-pine-deep";
 
   return (
-    <div className={align === "center" ? "text-center" : ""}>
+    <Reveal className={align === "center" ? "text-center" : ""}>
       <h2 className={`font-display text-3xl font-semibold sm:text-4xl ${titleColor}`}>
         {title}
       </h2>
-    </div>
+    </Reveal>
   );
 }
