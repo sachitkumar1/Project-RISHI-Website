@@ -11,10 +11,9 @@ import { HOME, PROJECTS, ABOUT, LINKS } from "@/lib/content";
  * the ranges near Bharog Baneri down to a terraced hillside village.
  *
  * The photos sit fixed behind the page (PhotoJourney); each one is composed
- * when its `data-shot` section is centred, and between them the camera pushes
- * on and the next photo rises out of the mist while a solid panel passes in
- * front. Content lives on solid panels so it's always readable; between them,
- * open "windows" onto the landscape carry one fact each.
+ * when its `data-shot` section (hero, teams, method, join) is centred, and
+ * between them the camera pushes on and the next photo rises out of the mist.
+ * Content lives on solid panels so it's always readable.
  *
  * Motion rules for this page (see globals.css, "Dawn home"):
  *  • Nothing ever fades OUT. Things arrive quickly as you reach them and stay.
@@ -48,7 +47,7 @@ export default function Home() {
           </p>
           <h1 className="hero-shadow mt-6 font-display font-semibold leading-[0.86] tracking-tight text-paper">
             <span style={i(1)} className="dawn-rise block text-[clamp(4rem,11vw,10rem)]">{HOME.heroLine1}</span>
-            <span style={i(2)} className="dawn-rise block text-[clamp(4.6rem,13vw,12rem)] text-marigold-soft">{HOME.heroLine2}</span>
+            <span style={i(2)} className="dawn-rise block text-[clamp(4.6rem,13vw,12rem)] text-[rgb(216_163_72)]">{HOME.heroLine2}</span>
           </h1>
           <p style={i(3)} className="dawn-rise hero-shadow mt-7 max-w-xl text-lg text-paper sm:text-xl">
             {HOME.heroSub}
@@ -61,12 +60,6 @@ export default function Home() {
               Learn about us
             </Link>
           </div>
-        </div>
-
-        {/* scroll cue: a line that keeps trickling down */}
-        <div aria-hidden style={i(6)} className="dawn-rise absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3 text-paper/85">
-          <span className="hero-shadow font-mono text-[10px] uppercase tracking-[0.35em]">Scroll</span>
-          <span className="scroll-trickle block h-12 w-px overflow-hidden bg-paper/25" />
         </div>
       </section>
 
@@ -98,20 +91,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* -------------------------------------------------------------- WINDOW 1 */}
-      <section data-shot="1" aria-label="The village" className="landscape-window relative flex min-h-[85svh] items-center">
-        <div className="container-rishi relative z-10">
-          <div className="window-card max-w-3xl">
-            <p className="rise-in font-mono text-xs uppercase tracking-[0.3em] text-paper/80">Sirmaur District · Himachal Pradesh</p>
-            <p className="rise-in mt-5 font-display text-[clamp(2.4rem,5.4vw,4.6rem)] font-semibold leading-[1.02] text-paper">
-              A village of 1,400 people, a mile above sea level.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* ----------------------------------------------------------------- TEAMS */}
-      <section id="teams" className="relative px-4 pb-10 sm:px-6">
+      <section id="teams" data-shot="1" className="relative px-4 pb-10 sm:px-6">
         <div className="relative mx-auto max-w-content overflow-hidden rounded-[2rem] bg-pine-deep px-6 py-14 text-paper shadow-[0_40px_80px_-40px_rgb(20_54_40/0.6)] sm:px-12 sm:py-20">
           <h2 className="rise-in font-display text-4xl font-semibold sm:text-5xl">Four teams, One village</h2>
           <p className="rise-in mt-5 max-w-2xl text-paper/75">
@@ -140,22 +121,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* -------------------------------------------------------------- WINDOW 2 */}
-      <section data-shot="2" aria-label="Bharog Baneri" className="landscape-window relative flex min-h-[85svh] items-center">
-        <div className="container-rishi relative z-10 flex justify-end">
-          <div className="window-card max-w-2xl text-right">
-            <p className="rise-in font-mono text-xs uppercase tracking-[0.3em] text-paper/80">Where the four teams work</p>
-            <p className="rise-in mt-5 font-display text-[clamp(2.4rem,5.4vw,4.6rem)] font-semibold leading-[1.02] text-paper">
-              Five wards. One school. One primary health center.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* ---------------------------------------------------------------- METHOD
           The five steps are a real sequence: a graph that rises step by step,
           each step pinging as the line reaches it while you scroll. */}
-      <section id="method" className="relative px-4 pb-10 sm:px-6">
+      <section id="method" data-shot="2" className="relative px-4 pb-10 sm:px-6">
         <div className="dawn-panel relative mx-auto max-w-content overflow-hidden rounded-[2rem] px-6 py-14 sm:px-12 sm:py-20">
           <h2 className="rise-in text-center font-display text-4xl font-semibold text-pine-deep sm:text-5xl">{ABOUT.methodology.title}</h2>
           <p className="rise-in mx-auto mt-4 max-w-xl text-center text-ink/75">The path every project follows, from first conversation to looking back.</p>
@@ -165,26 +134,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* -------------------------------------------------------------- WINDOW 3 */}
-      <section data-shot="3" aria-label="Since 2012" className="landscape-window relative flex min-h-[90svh] items-center py-16">
-        <div className="container-rishi relative z-10 grid items-center gap-10 lg:grid-cols-[1fr_0.9fr]">
-          <div className="window-card">
-            <p className="rise-in font-mono text-xs uppercase tracking-[0.3em] text-paper/80">Project RISHI Berkeley</p>
-            <p className="rise-in mt-5 font-display text-[clamp(2.4rem,5.4vw,4.6rem)] font-semibold leading-[1.02] text-paper">
-              Since 2012, side by side with Bharog Baneri.
-            </p>
-          </div>
-          {HOME.heroImage && (
-            <figure className="rise-in rotate-[1.5deg] rounded-[1.5rem] bg-paper p-3 shadow-[0_40px_80px_-30px_rgb(20_54_40/0.55)]">
-              <Media src={HOME.heroImage} alt="The Himalayan foothills near Bharog Baneri" label="Foothills" className="aspect-[4/3] w-full" rounded="rounded-[1.1rem]" sizes="(max-width: 1024px) 100vw, 45vw" />
-              <figcaption className="px-2 pb-1 pt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-ink/70">The foothills near Bharog Baneri</figcaption>
-            </figure>
-          )}
-        </div>
-      </section>
-
       {/* ------------------------------------------------------------------ JOIN */}
-      <section id="join" className="relative px-4 pb-24 sm:px-6">
+      <section id="join" data-shot="3" className="relative px-4 pb-24 sm:px-6">
         <div className="mx-auto grid max-w-content gap-6 lg:grid-cols-2">
           <div className="rise-in relative overflow-hidden rounded-[2rem] bg-pine p-10 text-paper sm:p-12">
             <h3 className="font-display text-4xl font-semibold">Join us</h3>
