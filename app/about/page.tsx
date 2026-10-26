@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Media from "@/components/Media";
 import Reveal from "@/components/Reveal";
-import Contours from "@/components/Contours";
 import SectionHeading from "@/components/SectionHeading";
 import PhotoWall from "@/components/PhotoWall";
 import { ABOUT, LINKS } from "@/lib/content";
+import HeaderScenery from "@/components/landscape/HeaderScenery";
 
 export const metadata: Metadata = {
   title: "About",
@@ -17,11 +17,11 @@ export default function AboutPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
+      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
+        <HeaderScenery />
         <div className="container-rishi relative z-10 py-20 lg:py-28">
           <Reveal>
-            <span className="eyebrow text-marigold-soft">
+            <span className="eyebrow text-marigold-ink">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               About Us
             </span>

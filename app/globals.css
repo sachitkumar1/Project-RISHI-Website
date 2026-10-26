@@ -183,6 +183,91 @@ body {
   }
 }
 
+/* ============================================================================
+   DAWN HOME (app/page.tsx) + shared landscape pieces
+   Rules: nothing animates OUT; arrivals are tied to scroll position (never a
+   timer) so fast scrolling is never held up; native scrolling; only opacity
+   and transforms animate. Everything moving sits inside
+   prefers-reduced-motion: no-preference, and scroll-linked effects inside
+   @supports (animation-timeline: view()) — elsewhere the page is just still.
+   ========================================================================== */
+.dawn-home { overflow-x: clip; }
+/* IMPORTANT for every scroll-linked effect below: `overflow: hidden` makes an
+   element a scroll container, and view() timelines bind to the nearest one —
+   so anything animated inside a rounded, clipped box would freeze part-way.
+   `overflow: clip` clips identically (rounded corners included) without being
+   a scroll container. */
+.dawn-home .overflow-hidden, .dawn-header, .dawn-header .overflow-hidden { overflow: clip; }
+/* instant poster sky under the 3D scene (and its fallback) */
+.dawn-sky { background: linear-gradient(to bottom, #93b4d2 0%, #b9cfe0 34%, #ecd9c4 62%, #f6cfa8 74%, #f3e3cf 100%); }
+/* solid, slightly translucent paper panels: content is always readable */
+.dawn-panel {
+  background: rgb(251 248 241 / 0.96);
+  box-shadow: 0 40px 90px -45px rgb(20 54 40 / 0.45), inset 0 0 0 1px rgb(30 77 58 / 0.08);
+}
+/* the soft mist card behind text that sits directly on the landscape */
+.window-card {
+  padding: 2rem 2.25rem; border-radius: 1.75rem;
+  background: linear-gradient(135deg, rgb(251 248 241 / 0.86), rgb(251 248 241 / 0.62));
+  box-shadow: 0 30px 70px -40px rgb(20 54 40 / 0.35);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+/* foliage: shown sharp unless the scroll effects run */
+.foliage .f-blur { opacity: 0; filter: blur(9px); }
+.foliage-drift, .foliage .f-blur, .foliage .f-sharp { will-change: transform, opacity; }
+/* inner-page dawn headers (components/landscape/HeaderScenery.tsx): a light
+   dawn sky, with the ridgelines in reserved space below the text */
+.dawn-header {
+  --ridge-h: clamp(110px, 15vw, 210px);
+  background: linear-gradient(to bottom, #c3d7e4 0%, #dde6e8 40%, #f1e3d1 74%, #f5e9d8 100%);
+  padding-bottom: var(--ridge-h);
+}
+.dawn-header > .container-rishi { position: relative; z-index: 10; }
+
+/* hover: photos ease closer (the `scale` property, so it adds to any drift) */
+.card-zoom img { transition: scale 700ms cubic-bezier(0.16, 1, 0.3, 1); }
+@media (hover: hover) { .group:hover .card-zoom img { scale: 1.06; } }
+
+@keyframes dawn-rise { from { opacity: 0; translate: 0 28px; } to { opacity: 1; translate: 0 0; } }
+@keyframes trickle { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+@keyframes sway { 0%, 100% { rotate: 0deg; } 50% { rotate: calc(1.2deg + var(--sway, 0.5) * 1.8deg); } }
+@media (prefers-reduced-motion: no-preference) {
+  /* hero lines rise in on load (CSS, starts at first paint) */
+  .dawn-rise { animation: dawn-rise 1000ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(120ms + var(--i, 0) * 120ms); }
+  .scroll-trickle::after { content: ""; display: block; height: 100%; width: 100%; background: currentColor; animation: trickle 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+  .grass-blade { transform-box: fill-box; transform-origin: 50% 100%; animation: sway calc(4s + var(--sway, 0.5) * 3s) ease-in-out infinite; }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* arrivals: finished after 240px of scroll, whatever the element's size */
+    .rise-in { animation: rise-in linear both; animation-timeline: view(); animation-range: entry 0px entry 240px; }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(46px); } to { opacity: 1; transform: none; } }
+
+    /* foliage drifts faster than the page and pulls focus: blurred → sharp → blurred */
+    .foliage-drift { animation: fol-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    @keyframes fol-drift { from { transform: translateY(26%); } to { transform: translateY(-26%); } }
+    .foliage .f-sharp { animation: fol-sharp linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    .foliage .f-blur { animation: fol-blur linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    @keyframes fol-sharp { 0% { opacity: 0; } 32%, 68% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes fol-blur { 0% { opacity: 1; } 32%, 68% { opacity: 0; } 100% { opacity: 1; } }
+
+    /* photos drift a little inside their frames */
+    .drift-photo img { animation: photo-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+    @keyframes photo-drift { from { transform: translateY(-5%) scale(1.12); } to { transform: translateY(5%) scale(1.12); } }
+
+    /* the methodology trail draws itself as you climb past it */
+    .trail-scope { view-timeline: --trail block; view-timeline-inset: 0px; }
+    .trail-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trail linear both; animation-timeline: --trail; animation-range: entry 20% cover 55%; }
+    @keyframes trail { to { stroke-dashoffset: 0; } }
+
+    /* inner-page headers: nearer ridges slide further (parallax) */
+    .ridge-scope { view-timeline: --ridge block; view-timeline-inset: 0px; }
+    .ridge-scope .ridge-layer { animation: ridge-par linear both; animation-timeline: --ridge; animation-range: exit 0% exit 100%; }
+    @keyframes ridge-par { to { transform: translateY(calc(var(--depth, 0.5) * 90px)); } }
+  }
+}
+
 /* View transitions.
    Between pages: full-page loads within the site cross-fade in 200ms
    (Next's client-side navigations aren't page loads, so this covers sign-in

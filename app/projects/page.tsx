@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Media from "@/components/Media";
 import Reveal from "@/components/Reveal";
-import Contours from "@/components/Contours";
 import SectionHeading from "@/components/SectionHeading";
 import { PROJECTS, PROJECTS_PAGE } from "@/lib/content";
+import HeaderScenery from "@/components/landscape/HeaderScenery";
 
 export const metadata: Metadata = {
   title: "Projects",
@@ -14,18 +14,18 @@ export const metadata: Metadata = {
 export default function ProjectsIndex() {
   return (
     <>
-      <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
+      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
+        <HeaderScenery />
         <div className="container-rishi relative z-10 py-20 lg:py-28">
           <Reveal>
-            <span className="eyebrow text-marigold-soft">
+            <span className="eyebrow text-marigold-ink">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               What We Do
             </span>
             <h1 className="mt-4 max-w-3xl font-display text-5xl font-semibold leading-[1.02] sm:text-6xl">
               Four teams, One village
             </h1>
-            <p className="mt-6 max-w-xl text-paper/80">
+            <p className="mt-6 max-w-xl text-ink/75">
               Each team focuses on a pillar of sustainable development in Bharog
               Baneri, Himachal Pradesh.
             </p>

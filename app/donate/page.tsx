@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Reveal from "@/components/Reveal";
-import Contours from "@/components/Contours";
 import { ORG } from "@/lib/content";
+import HeaderScenery from "@/components/landscape/HeaderScenery";
 
 export const metadata: Metadata = {
   title: "Donate",
@@ -12,18 +12,18 @@ const STRIPE_URL = "https://donate.stripe.com/6oEeYJ5CX6Ay5a03cl";
 
 export default function DonatePage() {
   return (
-    <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-      <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.1} />
+    <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
+      <HeaderScenery />
       <div className="container-rishi relative z-10 grid min-h-[70vh] place-items-center py-20 text-center">
         <Reveal className="max-w-2xl">
-          <span className="eyebrow text-marigold-soft">
+          <span className="eyebrow text-marigold-ink">
             <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
             Support our work
           </span>
           <h1 className="mt-4 font-display text-5xl font-semibold leading-[1.02] sm:text-6xl">
             Every gift reaches the village.
           </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-paper/80">
+          <p className="mx-auto mt-6 max-w-xl text-lg text-ink/75">
             We appreciate donations of all sizes — they keep us running as an
             organization and directly support our projects in Bharog Baneri.
           </p>
@@ -31,9 +31,9 @@ export default function DonatePage() {
 
         {/* Stripe donation block */}
         <Reveal delay={0.12} className="mt-12 w-full max-w-xl">
-          <div className="rounded-3xl border border-paper/15 bg-paper/[0.06] p-8 text-left">
-            <p className="font-display text-2xl font-semibold text-paper">Donate online</p>
-            <p className="mt-2 text-sm leading-relaxed text-paper/70">
+          <div className="rounded-3xl border border-pine/15 bg-paper/90 shadow-[0_30px_60px_-35px_rgb(20_54_40/0.35)] p-8 text-left">
+            <p className="font-display text-2xl font-semibold text-pine-deep">Donate online</p>
+            <p className="mt-2 text-sm leading-relaxed text-ink/70">
               Give securely by card in a few taps. Donations are processed through
               the ASUC (Associated Students of the University of California), which
               sponsors us as a UC Berkeley student organization.
@@ -41,11 +41,11 @@ export default function DonatePage() {
 
             {/* The one instruction people must follow */}
             <div className="mt-5 rounded-2xl border border-marigold/40 bg-marigold-soft/10 p-4">
-              <p className="text-sm text-paper/90">
+              <p className="text-sm text-ink/80">
                 On the payment page, under{" "}
                 <span className="font-semibold">“Student Organization”</span>, be sure to
                 type{" "}
-                <span className="font-display text-base font-semibold text-marigold-soft">
+                <span className="font-display text-base font-semibold text-marigold-ink">
                   Project RISHI
                 </span>{" "}
                 so your gift reaches us.
@@ -66,11 +66,11 @@ export default function DonatePage() {
           </div>
 
           {/* Secondary option */}
-          <p className="mt-8 text-center text-sm text-paper/60">
+          <p className="mt-8 text-center text-sm text-ink/70">
             Prefer another way to give, or giving on behalf of an organization?{" "}
             <a
               href={`mailto:${ORG.email}`}
-              className="font-medium text-paper underline decoration-marigold/60 underline-offset-4 hover:text-marigold-soft"
+              className="font-medium text-pine-deep underline decoration-marigold/60 underline-offset-4 hover:text-marigold-ink"
             >
               Reach out about other options
             </a>

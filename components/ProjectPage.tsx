@@ -2,8 +2,8 @@ import Link from "next/link";
 import Media from "@/components/Media";
 import Reveal from "@/components/Reveal";
 import SectionHeading from "@/components/SectionHeading";
-import Contours from "@/components/Contours";
 import { PROJECTS, LINKS } from "@/lib/content";
+import HeaderScenery from "@/components/landscape/HeaderScenery";
 
 type Project = (typeof PROJECTS)[number];
 
@@ -13,18 +13,18 @@ export default function ProjectPage({ project }: { project: Project }) {
   return (
     <article>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.1} />
+      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
+        <HeaderScenery />
         <div className="container-rishi relative z-10 grid gap-10 py-16 lg:grid-cols-2 lg:items-center lg:py-24">
           <Reveal>
-            <span className="eyebrow text-marigold-soft">
+            <span className="eyebrow text-marigold-ink">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               Project Team
             </span>
             <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.05] sm:text-6xl">
               {project.name}
             </h1>
-            <p className="mt-6 max-w-xl text-paper/80">{project.intro}</p>
+            <p className="mt-6 max-w-xl text-ink/75">{project.intro}</p>
           </Reveal>
           <Reveal delay={0.12}>
             <Media

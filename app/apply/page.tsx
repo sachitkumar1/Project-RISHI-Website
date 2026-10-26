@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Reveal from "@/components/Reveal";
-import Contours from "@/components/Contours";
 import { APPLY, LINKS } from "@/lib/content";
+import HeaderScenery from "@/components/landscape/HeaderScenery";
 
 export const metadata: Metadata = {
   title: "Apply",
@@ -11,21 +11,18 @@ export const metadata: Metadata = {
 export default function ApplyPage() {
   return (
     <>
-      <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
-        <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.12} />
-        <div className="absolute -bottom-10 left-0 right-0">
-          <Contours className="h-48 w-full text-marigold" opacity={0.16} />
-        </div>
+      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
+        <HeaderScenery />
         <div className="container-rishi relative z-10 py-20 lg:py-28">
           <Reveal>
-            <span className="eyebrow text-marigold-soft">
+            <span className="eyebrow text-marigold-ink">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               {APPLY.termLabel}
             </span>
             <h1 className="mt-4 max-w-4xl font-display text-5xl font-semibold leading-[1.02] sm:text-6xl">
               {APPLY.heading}
             </h1>
-            <p className="mt-6 max-w-2xl text-lg text-paper/80">{APPLY.blurb}</p>
+            <p className="mt-6 max-w-2xl text-lg text-ink/75">{APPLY.blurb}</p>
             {LINKS.application ? (
               <a
                 href={LINKS.application}
