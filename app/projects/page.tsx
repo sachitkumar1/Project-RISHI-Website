@@ -16,7 +16,7 @@ export default function ProjectsIndex() {
     <>
       <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
         <HeaderScenery photo="fields" />
-        <div className="container-rishi relative z-10 py-20 lg:py-28">
+        <div className="container-rishi relative z-10 py-10 lg:py-14">
           <Reveal>
             <span className="eyebrow text-marigold-soft">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />

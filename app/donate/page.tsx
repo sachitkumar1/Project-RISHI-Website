@@ -14,7 +14,7 @@ export default function DonatePage() {
   return (
     <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
       <HeaderScenery photo="slopes" shade="even" />
-      <div className="container-rishi relative z-10 grid min-h-[70vh] place-items-center py-20 text-center">
+      <div className="container-rishi relative z-10 grid place-items-center py-10 text-center lg:py-14">
         <Reveal className="max-w-2xl">
           <span className="eyebrow text-marigold-soft">
             <span className="h-1.5 w-1.5 rounded-full bg-marigold" />

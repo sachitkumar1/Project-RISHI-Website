@@ -207,20 +207,11 @@ body {
 }
 /* home hero over the photo: a soft shade behind the centred title */
 .hero-scrim {
-  /* a pool of shade under the text only; the sky and snow line around it stay bright */
-  background:
-    radial-gradient(46% 50% at 50% 46%, rgb(9 22 16 / 0.66), rgb(9 22 16 / 0.58) 56%, rgb(9 22 16 / 0.26) 84%, transparent 100%),
-    linear-gradient(to top, rgb(9 22 16 / 0.3), transparent 28%);
+  /* no shade pool behind the title (he found it too heavy): only a soft fall-off at the very bottom */
+  background: linear-gradient(to top, rgb(9 22 16 / 0.22), transparent 22%);
 }
-@media (max-width: 640px) {
-  .hero-scrim {
-    background:
-      radial-gradient(90% 60% at 50% 48%, rgb(9 22 16 / 0.56), rgb(9 22 16 / 0.42) 65%, rgb(9 22 16 / 0.1) 100%),
-      linear-gradient(rgb(9 22 16 / 0.2), rgb(9 22 16 / 0.2)),
-      linear-gradient(to top, rgb(9 22 16 / 0.35), transparent 30%);
-  }
-}
-.hero-shadow { text-shadow: 0 2px 24px rgb(5 14 10 / 0.45), 0 1px 3px rgb(5 14 10 / 0.35); }
+/* a tight shadow that crisps the letter edges, not a halo */
+.hero-shadow { text-shadow: 0 1px 2px rgb(5 14 10 / 0.45), 0 2px 8px rgb(5 14 10 / 0.22); }
 /* solid, slightly translucent paper panels: content is always readable */
 .dawn-panel {
   background: rgb(251 248 241);
@@ -228,7 +219,7 @@ body {
 }
 /* inner-page headers (components/landscape/HeaderScenery.tsx): a real
    landscape photograph under a shade, with light text */
-.dawn-header { background: #1d2c22; color: rgb(251 248 241); padding-bottom: clamp(48px, 7vw, 120px); }
+.dawn-header { background: #1d2c22; color: rgb(251 248 241); padding-bottom: clamp(12px, 2vw, 28px); }
 .dawn-header > .container-rishi { position: relative; z-index: 10; }
 
 /* shades over header photos, dark enough for light text over snow or cloud;

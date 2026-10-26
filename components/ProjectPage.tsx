@@ -23,7 +23,7 @@ export default function ProjectPage({ project }: { project: Project }) {
       {/* Hero */}
       <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
         <HeaderScenery photo={HEADER_PHOTO[project.slug] ?? "hillside"} />
-        <div className="container-rishi relative z-10 grid gap-10 py-16 lg:grid-cols-2 lg:items-center lg:py-24">
+        <div className="container-rishi relative z-10 grid gap-8 py-10 lg:grid-cols-2 lg:items-center lg:py-12">
           <Reveal>
             <span className="eyebrow text-marigold-soft">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />

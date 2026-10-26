@@ -12,7 +12,7 @@ export default function ContactPage() {
   return (
     <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
       <HeaderScenery photo="dhauladhar" />
-      <div className="container-rishi relative z-10 grid min-h-[70vh] gap-12 py-20 lg:grid-cols-2 lg:items-center">
+      <div className="container-rishi relative z-10 grid gap-10 py-10 lg:grid-cols-2 lg:items-center lg:py-14">
         <Reveal>
           <span className="eyebrow text-marigold-soft">
             <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
