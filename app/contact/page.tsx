@@ -10,18 +10,18 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
-      <HeaderScenery />
+    <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
+      <HeaderScenery photo="dhauladhar" />
       <div className="container-rishi relative z-10 grid min-h-[70vh] gap-12 py-20 lg:grid-cols-2 lg:items-center">
         <Reveal>
-          <span className="eyebrow text-marigold-ink">
+          <span className="eyebrow text-marigold-soft">
             <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
             Contact
           </span>
           <h1 className="mt-4 font-display text-5xl font-semibold leading-[1.02] sm:text-6xl">
             Let&rsquo;s talk.
           </h1>
-          <p className="mt-6 max-w-md text-lg text-ink/75">
+          <p className="mt-6 max-w-md text-lg text-paper/90">
             Questions about our work or partnerships? Reach out
             — we&rsquo;d love to hear from you.
           </p>

@@ -12,18 +12,18 @@ const STRIPE_URL = "https://donate.stripe.com/6oEeYJ5CX6Ay5a03cl";
 
 export default function DonatePage() {
   return (
-    <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
-      <HeaderScenery />
+    <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
+      <HeaderScenery photo="slopes" shade="even" />
       <div className="container-rishi relative z-10 grid min-h-[70vh] place-items-center py-20 text-center">
         <Reveal className="max-w-2xl">
-          <span className="eyebrow text-marigold-ink">
+          <span className="eyebrow text-marigold-soft">
             <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
             Support our work
           </span>
           <h1 className="mt-4 font-display text-5xl font-semibold leading-[1.02] sm:text-6xl">
             Every gift reaches the village.
           </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-ink/75">
+          <p className="mx-auto mt-6 max-w-xl text-lg text-paper/90">
             We appreciate donations of all sizes — they keep us running as an
             organization and directly support our projects in Bharog Baneri.
           </p>
@@ -66,11 +66,11 @@ export default function DonatePage() {
           </div>
 
           {/* Secondary option */}
-          <p className="mt-8 text-center text-sm text-ink/70">
+          <p className="mt-8 text-center text-sm text-paper/90">
             Prefer another way to give, or giving on behalf of an organization?{" "}
             <a
               href={`mailto:${ORG.email}`}
-              className="font-medium text-pine-deep underline decoration-marigold/60 underline-offset-4 hover:text-marigold-ink"
+              className="font-medium text-paper underline decoration-marigold/70 underline-offset-4 hover:text-marigold-soft"
             >
               Reach out about other options
             </a>

@@ -11,18 +11,18 @@ export const metadata: Metadata = {
 export default function ApplyPage() {
   return (
     <>
-      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
-        <HeaderScenery />
+      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
+        <HeaderScenery photo="deodars" />
         <div className="container-rishi relative z-10 py-20 lg:py-28">
           <Reveal>
-            <span className="eyebrow text-marigold-ink">
+            <span className="eyebrow text-marigold-soft">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               {APPLY.termLabel}
             </span>
             <h1 className="mt-4 max-w-4xl font-display text-5xl font-semibold leading-[1.02] sm:text-6xl">
               {APPLY.heading}
             </h1>
-            <p className="mt-6 max-w-2xl text-lg text-ink/75">{APPLY.blurb}</p>
+            <p className="mt-6 max-w-2xl text-lg text-paper/90">{APPLY.blurb}</p>
             {LINKS.application ? (
               <a
                 href={LINKS.application}

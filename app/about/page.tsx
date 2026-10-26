@@ -17,11 +17,11 @@ export default function AboutPage() {
   return (
     <>
       {/* Hero */}
-      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
-        <HeaderScenery />
+      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
+        <HeaderScenery photo="hamlet" />
         <div className="container-rishi relative z-10 py-20 lg:py-28">
           <Reveal>
-            <span className="eyebrow text-marigold-ink">
+            <span className="eyebrow text-marigold-soft">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               About Us
             </span>

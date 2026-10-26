@@ -14,18 +14,18 @@ export const metadata: Metadata = {
 export default function ProjectsIndex() {
   return (
     <>
-      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
-        <HeaderScenery />
+      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
+        <HeaderScenery photo="fields" />
         <div className="container-rishi relative z-10 py-20 lg:py-28">
           <Reveal>
-            <span className="eyebrow text-marigold-ink">
+            <span className="eyebrow text-marigold-soft">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               What We Do
             </span>
             <h1 className="mt-4 max-w-3xl font-display text-5xl font-semibold leading-[1.02] sm:text-6xl">
               Four teams, One village
             </h1>
-            <p className="mt-6 max-w-xl text-ink/75">
+            <p className="mt-6 max-w-xl text-paper/90">
               Each team focuses on a pillar of sustainable development in Bharog
               Baneri, Himachal Pradesh.
             </p>

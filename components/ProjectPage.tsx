@@ -3,7 +3,15 @@ import Media from "@/components/Media";
 import Reveal from "@/components/Reveal";
 import SectionHeading from "@/components/SectionHeading";
 import { PROJECTS, LINKS } from "@/lib/content";
-import HeaderScenery from "@/components/landscape/HeaderScenery";
+import HeaderScenery, { type HeaderPhoto } from "@/components/landscape/HeaderScenery";
+
+// each project page opens on a different hillside
+const HEADER_PHOTO: Record<string, HeaderPhoto> = {
+  education: "hillside",
+  "water-sanitation": "snowline",
+  "womens-empowerment": "slopes",
+  health: "fields",
+};
 
 type Project = (typeof PROJECTS)[number];
 
@@ -13,18 +21,18 @@ export default function ProjectPage({ project }: { project: Project }) {
   return (
     <article>
       {/* Hero */}
-      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-pine-deep">
-        <HeaderScenery />
+      <section className="dawn-header relative overflow-hidden pt-[var(--header-h)] text-paper">
+        <HeaderScenery photo={HEADER_PHOTO[project.slug] ?? "hillside"} />
         <div className="container-rishi relative z-10 grid gap-10 py-16 lg:grid-cols-2 lg:items-center lg:py-24">
           <Reveal>
-            <span className="eyebrow text-marigold-ink">
+            <span className="eyebrow text-marigold-soft">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               Project Team
             </span>
             <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.05] sm:text-6xl">
               {project.name}
             </h1>
-            <p className="mt-6 max-w-xl text-ink/75">{project.intro}</p>
+            <p className="mt-6 max-w-xl text-paper/90">{project.intro}</p>
           </Reveal>
           <Reveal delay={0.12}>
             <Media

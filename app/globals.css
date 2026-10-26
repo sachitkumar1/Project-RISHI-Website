@@ -198,31 +198,72 @@ body {
    `overflow: clip` clips identically (rounded corners included) without being
    a scroll container. */
 .dawn-home .overflow-hidden, .dawn-header, .dawn-header .overflow-hidden { overflow: clip; }
-/* instant poster sky under the 3D scene (and its fallback) */
-.dawn-sky { background: linear-gradient(to bottom, #93b4d2 0%, #b9cfe0 34%, #ecd9c4 62%, #f6cfa8 74%, #f3e3cf 100%); }
+/* the photo journey (components/landscape/PhotoJourney.tsx) */
+.journey-layer { transform-origin: 50% 50%; will-change: transform, opacity; }
+.journey-vignette {
+  background:
+    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgb(10 18 14 / 0.38) 100%),
+    linear-gradient(to bottom, rgb(10 18 14 / 0.18), transparent 22%);
+}
+/* home hero over the photo: a soft shade behind the centred title */
+.hero-scrim {
+  background:
+    radial-gradient(62% 58% at 50% 50%, rgb(9 22 16 / 0.56), rgb(9 22 16 / 0.4) 62%, transparent 100%),
+    linear-gradient(rgb(9 22 16 / 0.3), rgb(9 22 16 / 0.3)),
+    linear-gradient(to top, rgb(9 22 16 / 0.4), transparent 30%);
+}
+@media (max-width: 640px) {
+  .hero-scrim {
+    background:
+      radial-gradient(90% 60% at 50% 48%, rgb(9 22 16 / 0.56), rgb(9 22 16 / 0.42) 65%, rgb(9 22 16 / 0.1) 100%),
+      linear-gradient(rgb(9 22 16 / 0.32), rgb(9 22 16 / 0.32)),
+      linear-gradient(to top, rgb(9 22 16 / 0.4), transparent 30%);
+  }
+}
+.hero-shadow { text-shadow: 0 2px 24px rgb(5 14 10 / 0.45), 0 1px 3px rgb(5 14 10 / 0.35); }
 /* solid, slightly translucent paper panels: content is always readable */
 .dawn-panel {
-  background: rgb(251 248 241 / 0.96);
+  background: rgb(251 248 241);
   box-shadow: 0 40px 90px -45px rgb(20 54 40 / 0.45), inset 0 0 0 1px rgb(30 77 58 / 0.08);
 }
-/* the soft mist card behind text that sits directly on the landscape */
+/* dark glass behind text that sits directly on the photos */
 .window-card {
   padding: 2rem 2.25rem; border-radius: 1.75rem;
-  background: linear-gradient(135deg, rgb(251 248 241 / 0.86), rgb(251 248 241 / 0.62));
-  box-shadow: 0 30px 70px -40px rgb(20 54 40 / 0.35);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  background: linear-gradient(135deg, rgb(12 28 21 / 0.7), rgb(12 28 21 / 0.56));
+  box-shadow: 0 30px 70px -40px rgb(0 0 0 / 0.6), inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  backdrop-filter: blur(10px) saturate(1.1); -webkit-backdrop-filter: blur(10px) saturate(1.1);
 }
-/* foliage: shown sharp unless the scroll effects run */
-.foliage .f-blur { opacity: 0; filter: blur(9px); }
-.foliage-drift, .foliage .f-blur, .foliage .f-sharp { will-change: transform, opacity; }
-/* inner-page dawn headers (components/landscape/HeaderScenery.tsx): a light
-   dawn sky, with the ridgelines in reserved space below the text */
-.dawn-header {
-  --ridge-h: clamp(110px, 15vw, 210px);
-  background: linear-gradient(to bottom, #c3d7e4 0%, #dde6e8 40%, #f1e3d1 74%, #f5e9d8 100%);
-  padding-bottom: var(--ridge-h);
-}
+/* inner-page headers (components/landscape/HeaderScenery.tsx): a real
+   landscape photograph under a shade, with light text */
+.dawn-header { background: #1d2c22; color: rgb(251 248 241); padding-bottom: clamp(48px, 7vw, 120px); }
 .dawn-header > .container-rishi { position: relative; z-index: 10; }
+
+/* shades over header photos, dark enough for light text over snow or cloud;
+   on narrow screens text runs the full width, so the shade is even */
+.header-shade-side {
+  background:
+    linear-gradient(90deg, rgb(9 22 16 / 0.86) 0%, rgb(9 22 16 / 0.74) 50%, rgb(9 22 16 / 0.45) 100%),
+    linear-gradient(to top, rgb(9 22 16 / 0.35), transparent 40%);
+}
+.header-shade-even { background: radial-gradient(80% 70% at 50% 45%, rgb(9 22 16 / 0.82), rgb(9 22 16 / 0.72) 70%, rgb(9 22 16 / 0.6)); }
+@media (max-width: 1023px) {
+  .header-shade-side { background: linear-gradient(rgb(9 22 16 / 0.76), rgb(9 22 16 / 0.7)); }
+}
+
+/* the methodology graph's steps (components/MethodGraph.tsx) */
+.method-node { display: block; width: 26px; height: 26px; }
+.method-dot {
+  position: absolute; inset: 0; border-radius: 9999px; background: rgb(251 248 241);
+  border: 3px solid rgb(30 77 58 / 0.28);
+  transition: background-color 350ms ease, border-color 350ms ease, box-shadow 500ms ease;
+}
+.method-node.is-lit .method-dot {
+  background: #e2a02f; border-color: #fbf8f1;
+  box-shadow: 0 0 0 5px rgb(226 160 47 / 0.22), 0 0 26px 2px rgb(226 160 47 / 0.6);
+}
+.method-ring { position: absolute; inset: 0; border-radius: 9999px; border: 2px solid #e2a02f; opacity: 0; pointer-events: none; }
+@keyframes method-ping { 0% { transform: scale(1); opacity: 0.95; } 100% { transform: scale(3.6); opacity: 0; } }
+@keyframes method-pop { 0% { transform: scale(0.55); } 55% { transform: scale(1.3); } 100% { transform: scale(1); } }
 
 /* hover: photos ease closer (the `scale` property, so it adds to any drift) */
 .card-zoom img { transition: scale 700ms cubic-bezier(0.16, 1, 0.3, 1); }
@@ -230,12 +271,14 @@ body {
 
 @keyframes dawn-rise { from { opacity: 0; translate: 0 28px; } to { opacity: 1; translate: 0 0; } }
 @keyframes trickle { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-@keyframes sway { 0%, 100% { rotate: 0deg; } 50% { rotate: calc(1.2deg + var(--sway, 0.5) * 1.8deg); } }
 @media (prefers-reduced-motion: no-preference) {
   /* hero lines rise in on load (CSS, starts at first paint) */
   .dawn-rise { animation: dawn-rise 1000ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(120ms + var(--i, 0) * 120ms); }
   .scroll-trickle::after { content: ""; display: block; height: 100%; width: 100%; background: currentColor; animation: trickle 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
-  .grass-blade { transform-box: fill-box; transform-origin: 50% 100%; animation: sway calc(4s + var(--sway, 0.5) * 3s) ease-in-out infinite; }
+  /* each methodology step pings once, the moment the line reaches it */
+  .method-node.is-pinged .method-ring { animation: method-ping 1100ms cubic-bezier(0.2, 0.6, 0.3, 1) both; }
+  .method-node.is-pinged .method-ring-2 { animation-delay: 200ms; }
+  .method-node.is-pinged .method-dot { animation: method-pop 520ms cubic-bezier(0.3, 1.6, 0.5, 1); }
 }
 
 @supports (animation-timeline: view()) {
@@ -244,27 +287,14 @@ body {
     .rise-in { animation: rise-in linear both; animation-timeline: view(); animation-range: entry 0px entry 240px; }
     @keyframes rise-in { from { opacity: 0; transform: translateY(46px); } to { opacity: 1; transform: none; } }
 
-    /* foliage drifts faster than the page and pulls focus: blurred → sharp → blurred */
-    .foliage-drift { animation: fol-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
-    @keyframes fol-drift { from { transform: translateY(26%); } to { transform: translateY(-26%); } }
-    .foliage .f-sharp { animation: fol-sharp linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
-    .foliage .f-blur { animation: fol-blur linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
-    @keyframes fol-sharp { 0% { opacity: 0; } 32%, 68% { opacity: 1; } 100% { opacity: 0; } }
-    @keyframes fol-blur { 0% { opacity: 1; } 32%, 68% { opacity: 0; } 100% { opacity: 1; } }
-
     /* photos drift a little inside their frames */
     .drift-photo img { animation: photo-drift linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
     @keyframes photo-drift { from { transform: translateY(-5%) scale(1.12); } to { transform: translateY(5%) scale(1.12); } }
 
-    /* the methodology trail draws itself as you climb past it */
-    .trail-scope { view-timeline: --trail block; view-timeline-inset: 0px; }
-    .trail-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trail linear both; animation-timeline: --trail; animation-range: entry 20% cover 55%; }
-    @keyframes trail { to { stroke-dashoffset: 0; } }
-
-    /* inner-page headers: nearer ridges slide further (parallax) */
-    .ridge-scope { view-timeline: --ridge block; view-timeline-inset: 0px; }
-    .ridge-scope .ridge-layer { animation: ridge-par linear both; animation-timeline: --ridge; animation-range: exit 0% exit 100%; }
-    @keyframes ridge-par { to { transform: translateY(calc(var(--depth, 0.5) * 90px)); } }
+    /* inner-page header photos settle slowly as you scroll away */
+    .header-photo { view-timeline: --hdr block; view-timeline-inset: 0px; }
+    .header-photo img { animation: hdr-drift linear both; animation-timeline: --hdr; animation-range: exit 0% exit 100%; }
+    @keyframes hdr-drift { from { transform: scale(1.06); } to { transform: translateY(8%) scale(1.14); } }
   }
 }
 
