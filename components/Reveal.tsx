@@ -1,27 +1,40 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /**
- * Reveal — formerly a scroll-triggered fade + rise on every section.
+ * Reveal — plays its children in once as they scroll into view.
  *
- * Retired in the design pass: content was invisible until it scrolled into
- * view, so slow phones, link previews and screenshots could catch blank
- * sections, and motion on every section diluted the one moment that matters
- * (the home hero, .hero-rise in globals.css). It now renders its children
- * as-is; the wrapper stays so the ~40 call sites keep working unchanged.
+ * Server-rendered fully visible; components/SiteMotion.tsx hides it only if
+ * it's still below the screen after the page loads, then animates it in when
+ * it arrives (CSS in globals.css, "Scroll-in reveals"). Reduced motion: never
+ * hidden, never animated.
+ *
+ *   variant  "rise" (default) · "fade" · "scale" (photos/cards) · "clip" (an
+ *            image unmasking from its centre)
+ *   delay    seconds; staggers siblings in a row
  */
 export default function Reveal({
   children,
+  delay = 0,
+  variant = "rise",
   className = "",
   as = "div",
 }: {
   children: ReactNode;
-  /** Ignored (kept for existing call sites). */
   delay?: number;
-  /** Ignored (kept for existing call sites). */
+  variant?: "rise" | "fade" | "scale" | "clip";
+  /** Ignored (kept for older call sites). */
   y?: number;
   className?: string;
   as?: "div" | "section" | "li" | "article";
 }) {
   const Tag = as;
-  return <Tag className={className || undefined}>{children}</Tag>;
+  return (
+    <Tag
+      data-reveal={variant}
+      className={className || undefined}
+      style={delay ? ({ "--reveal-delay": `${Math.round(delay * 1000)}ms` } as CSSProperties) : undefined}
+    >
+      {children}
+    </Tag>
+  );
 }

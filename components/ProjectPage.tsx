@@ -16,7 +16,7 @@ export default function ProjectPage({ project }: { project: Project }) {
       <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
         <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.1} />
         <div className="container-rishi relative z-10 grid gap-10 py-16 lg:grid-cols-2 lg:items-center lg:py-24">
-          <Reveal>
+          <Reveal className="hero-seq">
             <span className="eyebrow text-marigold-soft">
               <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
               Project Team
@@ -26,7 +26,7 @@ export default function ProjectPage({ project }: { project: Project }) {
             </h1>
             <p className="mt-6 max-w-xl text-paper/80">{project.intro}</p>
           </Reveal>
-          <Reveal delay={0.12}>
+          <Reveal className="hero-unmask">
             <Media
               src={(project as { heroImage?: string | null }).heroImage ?? null}
               alt={`${project.name} team in Bharog Baneri`}

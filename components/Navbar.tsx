@@ -55,7 +55,7 @@ export default function Navbar() {
 
   return (
     <header
-      className="fixed inset-x-0 top-0 z-50 border-b border-pine/10 bg-paper/90 backdrop-blur-md"
+      className="site-header fixed inset-x-0 top-0 z-50 border-b border-pine/10 bg-paper/90 backdrop-blur-md"
       // Height includes the top inset; padding keeps the nav itself below the notch.
       style={{ height: "var(--header-h)", paddingTop: "var(--safe-top)" }}
     >

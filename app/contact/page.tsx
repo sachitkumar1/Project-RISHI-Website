@@ -13,7 +13,7 @@ export default function ContactPage() {
     <section className="relative overflow-hidden bg-pine pt-[var(--header-h)] text-paper">
       <Contours className="absolute inset-0 h-full w-full text-paper" opacity={0.1} />
       <div className="container-rishi relative z-10 grid min-h-[70vh] gap-12 py-20 lg:grid-cols-2 lg:items-center">
-        <Reveal>
+        <Reveal className="hero-seq">
           <span className="eyebrow text-marigold-soft">
             <span className="h-1.5 w-1.5 rounded-full bg-marigold" />
             Contact
