@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import Media from "@/components/Media";
 import PhotoJourney from "@/components/landscape/PhotoJourney";
-import { PhotoCreditLink } from "@/components/landscape/PhotoCreditLink";
 import MethodGraph from "@/components/MethodGraph";
 import { HOME, PROJECTS, ABOUT, LINKS } from "@/lib/content";
 
@@ -149,19 +148,6 @@ export default function Home() {
             </p>
             <a href={LINKS.donate} className="btn mt-8 bg-pine-deep text-paper hover:bg-pine">Donate now</a>
           </div>
-        </div>
-      </section>
-
-      {/* -------------------------------------------------------- PHOTO CREDITS */}
-      <section aria-label="Photo credits" className="relative px-4 pb-10 sm:px-6">
-        <div className="mx-auto max-w-content rounded-2xl bg-paper/90 px-5 py-4 text-xs leading-relaxed text-ink/75">
-          <p>
-            <span className="font-semibold text-ink/80">Landscape photographs, top to bottom: </span>
-            {["ranges", "valley", "terraces", "village"].map((n, k) => (
-              <span key={n}>{k > 0 && "; "}<PhotoCreditLink name={n} /></span>
-            ))}
-            . The valley, terraces and village are elsewhere in Himachal Pradesh, shown for the landscape they share with Bharog Baneri.
-          </p>
         </div>
       </section>
     </div>

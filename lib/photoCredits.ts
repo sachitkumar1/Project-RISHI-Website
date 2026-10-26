@@ -4,6 +4,7 @@
 // the CC BY-SA licence asks us to say. These are views of villages elsewhere
 // in Himachal Pradesh, used for atmosphere — not photos of Bharog Baneri, and
 // never captioned as such. Swap in the team's own photos whenever they exist.
+// Shown on /credits (app/credits/page.tsx), linked from the footer.
 
 export type PhotoCredit = {
   place: string;
@@ -29,6 +30,3 @@ export const PHOTO_CREDITS: Record<string, PhotoCredit> = {
   dhauladhar: { place: "The Dhauladhar range from Shali Mata temple", author: "502hsuya", license: "CC0", licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/", source: "https://commons.wikimedia.org/wiki/File:Dhauladhar_views_from_Shali_Mata_Temple.jpg" },
   snowline: { place: "The Dhauladhar range", author: "Gayatri Priyadarshini", ...BY_SA, source: "https://commons.wikimedia.org/wiki/File:Snow_peaked_dhauladhar_mountain_ranges.jpg" },
 };
-
-/** "Kundakh, Mandi district · Timothy A. Gonsalves, CC BY-SA 4.0" */
-export const creditLine = (c: PhotoCredit) => (c.license ? `${c.place} · ${c.author}, ${c.license}` : c.place);

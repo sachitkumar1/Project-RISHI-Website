@@ -106,6 +106,9 @@ export default function Footer() {
             <span className="text-xs text-paper/50">
               Promoting sustainable development since 2008.
             </span>
+            <Link href="/credits" className="text-[10px] text-paper/50 transition-colors hover:text-paper">
+              Photo credits
+            </Link>
             <Link
               href="/login"
               className="inline-flex items-center gap-2 rounded-full border border-paper/30 bg-paper/5 px-4 py-2 text-sm font-semibold text-paper transition-colors hover:border-marigold hover:bg-marigold hover:text-pine-deep"

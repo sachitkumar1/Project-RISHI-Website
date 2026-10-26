@@ -1,5 +1,3 @@
-import { PhotoCreditLink } from "./PhotoCreditLink";
-
 /** Landscape photos prepared for page headers (scripts/landscape/prepare_photos.py). */
 export type HeaderPhoto = "hamlet" | "fields" | "hillside" | "slopes" | "deodars" | "dhauladhar" | "snowline";
 
@@ -12,7 +10,7 @@ const FOCUS: Record<HeaderPhoto, string> = {
  * The backdrop for the public pages' headers (About, Projects, the four
  * project pages, Apply, Contact, Donate): a real photograph of the Himachal
  * hills under a shade dark enough for light text, settling slowly as you scroll
- * away, with its credit in the corner. Pair with a section carrying the
+ * away (credits: /credits, linked from the footer). Pair with a section carrying the
  * `dawn-header` class (globals.css).
  *
  * `shade`: "side" darkens the left (text on the left), "even" darkens evenly
@@ -35,9 +33,6 @@ export default function HeaderScenery({ photo, shade = "side" }: { photo: Header
         </picture>
         <div className={`absolute inset-0 ${shade === "side" ? "header-shade-side" : "header-shade-even"}`} />
       </div>
-      <p className="absolute bottom-3 right-4 z-10 max-w-[80%] text-right text-[11px] leading-snug text-paper/75 sm:right-6">
-        <PhotoCreditLink name={photo} />
-      </p>
     </>
   );
 }
