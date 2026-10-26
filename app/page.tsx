@@ -7,7 +7,8 @@ import { HOME, PROJECTS, ABOUT, LINKS } from "@/lib/content";
 
 /**
  * Home: a descent through real photographs of the Himalayan foothills, from
- * the ranges near Bharog Baneri down to a terraced hillside village.
+ * a 3D dawn flight over the real hills of Sirmaur (Bharog Baneri's district),
+ * built from satellite data, down to a terraced hillside village.
  *
  * The photos sit fixed behind the page (PhotoJourney); each one is composed
  * when its `data-shot` section (hero, teams, method, join) is centred, and

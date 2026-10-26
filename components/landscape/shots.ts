@@ -1,11 +1,13 @@
-// The home page's descent from the ranges down to a hillside village, as real
-// photographs. Each shot has a depth map (scripts/landscape/prepare_photos.py)
+// The home page's descent from a 3D dawn flight over the real hills of Sirmaur
+// (aerial.ts) down to a hillside village, in real photographs. Each shot has a depth map (scripts/landscape/prepare_photos.py)
 // so the live scene can move a camera *into* the photo with true parallax.
 // Shared by the WebGL scene (journey.ts) and the photo layer that paints first
 // and stands in for it (PhotoJourney.tsx).
 
 export type Shot = {
   name: string;
+  /** "aerial": the live 3D flight over real terrain (aerial.ts); otherwise a photo with depth */
+  kind?: "aerial" | "photo";
   /** width / height of the prepared photo */
   aspect: number;
   /** what to keep in frame when the screen is narrower than the photo (0..1) */
@@ -26,8 +28,8 @@ export type Shot = {
 };
 
 export const SHOTS: Shot[] = [
-  { name: "ranges", aspect: 2200 / 1650, focusX: 0.5, focusY: 0.42, push: 0.42, driftX: 0.02, driftY: 0.03, depthRatio: 9, mist: 0.3, birds: true,
-    alt: "Forested ridges and blue mountains under a summer sky, near Bharog Baneri" },
+  { name: "aerial", kind: "aerial", aspect: 16 / 9, focusX: 0.5, focusY: 0.5, push: 0, driftX: 0, driftY: 0, depthRatio: 1, mist: 0, birds: false,
+    alt: "Dawn over the hills of Sirmaur, with Churdhar and the snows of the Himalaya beyond" },
   { name: "valley", aspect: 3840 / 2124, focusX: 0.4, focusY: 0.55, push: 0.38, driftX: -0.03, driftY: -0.02, depthRatio: 6, mist: 0.24, birds: true,
     alt: "A Himachal valley from above: a river winding past green terraced fields and scattered houses" },
   { name: "terraces", aspect: 3840 / 2560, focusX: 0.68, focusY: 0.5, push: 0.36, driftX: 0.03, driftY: -0.01, depthRatio: 4.5, mist: 0.12, birds: false,
@@ -41,10 +43,10 @@ export const SHOTS: Shot[] = [
  * edges. The photo layer scales by the same amount, so the live scene fades in
  * over it without the picture shifting.
  */
-export const overscan = (s: Shot) => 1.12 + 1.5 * (Math.abs(s.driftX) + Math.abs(s.driftY));
+export const overscan = (s: Shot) => (s.kind === "aerial" ? 1 : 1.12 + 1.5 * (Math.abs(s.driftX) + Math.abs(s.driftY)));
 
 /** Uniform zoom that approximates the live camera's push-in (for the photo layer). */
-export const photoScale = (s: Shot, t: number) => overscan(s) * (1 + 0.14 * Math.max(-0.3, Math.min(1, t)));
+export const photoScale = (s: Shot, t: number) => overscan(s) * (1 + (s.kind === "aerial" ? 0.1 : 0.14) * Math.max(-0.3, Math.min(1, t)));
 
 export const shotSrc = (name: string, width: 1440 | 2560, ext: "avif") => `/images/landscape/${name}-${width}.${ext}`;
 export const shotFallback = (name: string) => `/images/landscape/${name}-1600.webp`;

@@ -16,6 +16,7 @@
 
 import * as THREE from "three";
 import { SHOTS, shotWeights, shotDepth, overscan, type Shot } from "./shots";
+import { createAerial, type Aerial } from "./aerial";
 
 export type Journey = {
   setPosition: (pos: number) => void;
@@ -113,7 +114,9 @@ export function createJourney(canvas: HTMLCanvasElement, options: { small: boole
   const loader = new THREE.ImageBitmapLoader();
   loader.setOptions({ premultiplyAlpha: "none" });
 
-  type Live = { shot: Shot; mesh: THREE.Mesh; mat: THREE.ShaderMaterial; scene: THREE.Scene; ready: boolean };
+  type Live =
+    | { shot: Shot; aerial: Aerial; mesh?: undefined; mat?: undefined; scene?: undefined }
+    | { shot: Shot; aerial?: undefined; mesh: THREE.Mesh; mat: THREE.ShaderMaterial; scene: THREE.Scene };
   const geo = sheet(small ? 160 : 288, small ? 120 : 200);
   const live: (Live | null)[] = SHOTS.map(() => null);
   const pending = new Map<number, Promise<void>>();
@@ -134,6 +137,17 @@ export function createJourney(canvas: HTMLCanvasElement, options: { small: boole
   const load = (index: number, photoUrl: string) => {
     if (live[index] || pending.has(index) || disposed) return;
     const shot = SHOTS[index];
+    if (shot.kind === "aerial") {
+      // the 3D flight over real terrain: loads its own data
+      const aerial = createAerial(renderer, { small });
+      aerial.resize(canvas.clientWidth, canvas.clientHeight);
+      const job = aerial.ready.then(() => {
+        if (disposed) { aerial.dispose(); return; }
+        live[index] = { shot, aerial }; dirty = true;
+      }).catch(() => { aerial.dispose(); /* the photo layer keeps showing this shot */ });
+      pending.set(index, job);
+      return;
+    }
     const tex = (url: string) => new Promise<THREE.Texture>((res, rej) =>
       loader.load(url, (bmp) => {
         const t = new THREE.Texture(bmp as unknown as HTMLImageElement);
@@ -160,7 +174,7 @@ export function createJourney(canvas: HTMLCanvasElement, options: { small: boole
       const mesh = new THREE.Mesh(geo, mat);
       mesh.frustumCulled = false;
       const scene = new THREE.Scene(); scene.add(mesh);
-      live[index] = { shot, mesh, mat, scene, ready: true };
+      live[index] = { shot, mesh, mat, scene };
       frame(); // fit to the screen
       // upload now (not on the first frame that needs it) so the dissolve never hitches
       renderer.initTexture(map); renderer.initTexture(depthMap);
@@ -174,7 +188,7 @@ export function createJourney(canvas: HTMLCanvasElement, options: { small: boole
   const frame = () => {
     const A = camera.aspect;
     for (const l of live) {
-      if (!l) continue;
+      if (!l || !l.mat) continue;
       const { shot } = l;
       const over = overscan(shot);
       const halfH = Math.max(fovHalf * over, (fovHalf * A * over) / shot.aspect);
@@ -191,6 +205,7 @@ export function createJourney(canvas: HTMLCanvasElement, options: { small: boole
   const resize = () => {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix();
+    for (const l of live) l?.aerial?.resize(w, h);
     frame(); dirty = true;
   };
   resize();
@@ -216,6 +231,12 @@ export function createJourney(canvas: HTMLCanvasElement, options: { small: boole
     for (const w of weights) {
       const l = live[w.index];
       if (!l) continue;
+      if (l.aerial) {
+        renderer.clearDepth();
+        l.aerial.render(w.t, still ? 0 : s);
+        drew = true;
+        continue;
+      }
       pose(l.shot, w.t, still ? 0 : s);
       const u = l.mat.uniforms;
       u.alpha.value = drew ? w.alpha : 1; // the first shot drawn is always opaque
@@ -287,6 +308,7 @@ export function createJourney(canvas: HTMLCanvasElement, options: { small: boole
       window.removeEventListener("resize", resize);
       for (const l of live) {
         if (!l) continue;
+        if (l.aerial) { l.aerial.dispose(); continue; }
         (l.mat.uniforms.map.value as THREE.Texture).dispose();
         (l.mat.uniforms.depthMap.value as THREE.Texture).dispose();
         l.mat.dispose();

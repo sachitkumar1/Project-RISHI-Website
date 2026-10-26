@@ -6,7 +6,7 @@ import { SHOTS, shotSrc, shotFallback, shotWeights, journeyPosition, overscan, p
 
 /**
  * The home page's fixed backdrop: a descent through real photographs of the
- * Himalayan foothills, from the ranges above Bharog Baneri down to a terraced
+ * Himalayan foothills, from a dawn flight over the hills of Sirmaur down to a terraced
  * hillside village.
  *
  * Two layers:
@@ -15,9 +15,11 @@ import { SHOTS, shotSrc, shotFallback, shotWeights, journeyPosition, overscan, p
  *     prefer reduced motion (dissolves only), without WebGL, on data-saver, or
  *     on low-powered devices.
  *  2. The live scene (journey.ts), started once the page has loaded and the
- *     browser is idle: the same photos with depth, so the camera moves into
- *     them, with mist, birds and focus pulls. It sits over the photos and
- *     hands back to them if the device can't keep up.
+ *     browser is idle. The first shot is a 3D dawn flight over the real
+ *     terrain of Sirmaur (aerial.ts; its photo-layer stand-in is a still
+ *     rendered from that same scene); the rest are the photos with depth, so
+ *     the camera moves into them, with mist, birds and focus pulls. It sits
+ *     over the photos and hands back to them if the device can't keep up.
  *
  * Which photo shows where: elements with `data-shot="n"` mark where shot n is
  * composed (centred on screen). Scroll position maps straight to the journey,
@@ -92,8 +94,10 @@ export default function PhotoJourney() {
     // hand each photo to the scene once the photo layer has it (same file, one download)
     const feed = () => {
       if (!journey) return;
+      // the aerial shot loads its own terrain data; it needn't wait for its poster
+      SHOTS.forEach((s, i) => { if (s.kind === "aerial") journey?.load(i, ""); });
       imgs.current.forEach((img, i) => {
-        if (!img) return;
+        if (!img || SHOTS[i].kind === "aerial") return;
         const give = () => img.currentSrc && journey?.load(i, img.currentSrc);
         if (img.complete && img.naturalWidth) give(); else img.addEventListener("load", give, { once: true });
       });
@@ -159,6 +163,7 @@ export default function PhotoJourney() {
             <picture>
               {/* phones get the 1440px photo whatever their pixel density: four
                   full-size photos would cost a phone too much memory */}
+              {s.kind === "aerial" && <source media="(max-aspect-ratio: 1/1)" type="image/avif" srcSet={`/images/landscape/${s.name}-portrait.avif`} />}
               <source media="(max-width: 767px)" type="image/avif" srcSet={shotSrc(s.name, 1440, "avif")} />
               <source
                 type="image/avif"

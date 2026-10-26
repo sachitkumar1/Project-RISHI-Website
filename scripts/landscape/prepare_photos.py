@@ -30,8 +30,7 @@ os.makedirs(OUT, exist_ok=True)
 
 # name: (source file, crop box as fractions l, t, r, b, depth map?)
 PHOTOS = {
-    # the home page's descent, top to bottom
-    "ranges":   ("hero-bg.jpg",  (0, 0, 1, 1), True),       # Project RISHI's own photo near Bharog Baneri
+    # the home page's descent after the 3D opening (aerial.ts), top to bottom
     "valley":   ("navlay.jpg",   (0, 0, 1, 0.83), True),    # cropped above an out-of-focus leaf
     "terraces": ("kundakh.jpg",  (0, 0, 1, 1), True),
     "village":  ("sunisher.jpg", (0, 0, 1, 1), True),

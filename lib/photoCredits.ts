@@ -18,7 +18,6 @@ const BY_SA = { license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.or
 const GONSALVES = "Timothy A. Gonsalves";
 
 export const PHOTO_CREDITS: Record<string, PhotoCredit> = {
-  ranges: { place: "The foothills near Bharog Baneri", author: "Project RISHI", license: "", licenseUrl: "", source: "" },
   valley: { place: "Navlay valley, Mandi district", author: GONSALVES, ...BY_SA, source: "https://commons.wikimedia.org/wiki/File:Navlay_Valley_Wheat_Himachal_Mar19_D72_10022.jpg" },
   terraces: { place: "Kundakh, Mandi district", author: GONSALVES, ...BY_SA, source: "https://commons.wikimedia.org/wiki/File:Houses_Fields_Kundakh_Mandi_Mar26_A7CR_10628.jpg" },
   village: { place: "Suni Sher, Mandi district", author: GONSALVES, ...BY_SA, source: "https://commons.wikimedia.org/wiki/File:Houses_Fields_Suni_Sher_Close_Mandi_Mar26_A7CR_10630.jpg" },

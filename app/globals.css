@@ -207,17 +207,17 @@ body {
 }
 /* home hero over the photo: a soft shade behind the centred title */
 .hero-scrim {
+  /* a pool of shade under the text only; the sky and snow line around it stay bright */
   background:
-    radial-gradient(62% 58% at 50% 50%, rgb(9 22 16 / 0.56), rgb(9 22 16 / 0.4) 62%, transparent 100%),
-    linear-gradient(rgb(9 22 16 / 0.3), rgb(9 22 16 / 0.3)),
-    linear-gradient(to top, rgb(9 22 16 / 0.4), transparent 30%);
+    radial-gradient(46% 50% at 50% 46%, rgb(9 22 16 / 0.66), rgb(9 22 16 / 0.58) 56%, rgb(9 22 16 / 0.26) 84%, transparent 100%),
+    linear-gradient(to top, rgb(9 22 16 / 0.3), transparent 28%);
 }
 @media (max-width: 640px) {
   .hero-scrim {
     background:
       radial-gradient(90% 60% at 50% 48%, rgb(9 22 16 / 0.56), rgb(9 22 16 / 0.42) 65%, rgb(9 22 16 / 0.1) 100%),
-      linear-gradient(rgb(9 22 16 / 0.32), rgb(9 22 16 / 0.32)),
-      linear-gradient(to top, rgb(9 22 16 / 0.4), transparent 30%);
+      linear-gradient(rgb(9 22 16 / 0.2), rgb(9 22 16 / 0.2)),
+      linear-gradient(to top, rgb(9 22 16 / 0.35), transparent 30%);
   }
 }
 .hero-shadow { text-shadow: 0 2px 24px rgb(5 14 10 / 0.45), 0 1px 3px rgb(5 14 10 / 0.35); }
